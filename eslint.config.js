@@ -11,7 +11,15 @@ const restrict = (files, patterns, message) => ({
 });
 
 export default tseslint.config(
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/.turbo/**', 'tools/parity/dart/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.turbo/**',
+      '**/.vercel/**',
+      'tools/parity/dart/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ['**/test/**'], rules: { '@typescript-eslint/no-explicit-any': 'off' } },
