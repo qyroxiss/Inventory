@@ -47,10 +47,17 @@ export const changePassword = z.object({
   confirmPassword: z.string(),
 });
 
+export const groupCreate = z.object({
+  name: z.string(),
+  type: z.enum(['Liabilities', 'Expenses', 'Assets', 'Income']).optional(),
+  isLedger: z.enum(['Yes', 'No']).optional(),
+});
+
 export type CompanyCreate = z.infer<typeof companyCreate>;
 export type YearCreate = z.infer<typeof yearCreate>;
 export type BookLoginInput = z.infer<typeof bookLogin>;
 export type ChangePasswordInput = z.infer<typeof changePassword>;
+export type GroupCreate = z.infer<typeof groupCreate>;
 
 /** Body of every 422 response. */
 export type ErrorBody = { message: string; fieldErrors?: Record<string, string> };

@@ -175,6 +175,30 @@ export const bookUsers = pgTable(
   ],
 );
 
+/** Maacct2: accounting groups and sub groups, one table for both (docs/LOGIC-SPEC.md §2). */
+export const accountGroups = pgTable(
+  'account_groups',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    grpCode: text('grp_code').notNull(),
+    grpName: text('grp_name').notNull(),
+    grpType: text('grp_type').notNull(),
+    /** `'Parent'` = top level; otherwise another row's grpCode. */
+    parentGrp: text('parent_grp').notNull(),
+    isLedger: text('is_ledger').notNull().default('No'),
+    sortOrder: bigint('sort_order', { mode: 'number' }).notNull().default(0),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('account_groups_book_code').on(t.bookId, t.grpCode),
+    // Case-sensitive, like MDA's SQLite UNIQUE (docs/LOGIC-SPEC.md Q-15).
+    uniqueIndex('account_groups_book_name').on(t.bookId, t.grpName),
+  ],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {

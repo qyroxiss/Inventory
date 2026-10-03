@@ -14,11 +14,15 @@ import {
   bookLogin,
   changeBookPassword,
   createCompany,
+  createGroup,
   createYear,
   deleteCompany,
+  deleteGroup,
   deleteYear,
   getDashboard,
+  listGroups,
   updateCompany,
+  updateGroup,
   listBookIndex,
   listCompanies,
   listYears,
@@ -159,6 +163,32 @@ export function createApp(opts: AppOptions) {
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       return c.json(await getDashboard(db, book));
     })
+
+    // ── Masters (book-scoped) ────────────────────────────────────────────────────
+    .get('/api/groups', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listGroups(db, book.bookId));
+    })
+    .post('/api/groups', json(contract.groupCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createGroup(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/groups/:grpCode', json(contract.groupCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateGroup(db, book.bookId, c.req.param('grpCode'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/groups/:grpCode', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await deleteGroup(db, book.bookId, c.req.param('grpCode'));
+      return c.json({ ok: true });
+    })
+
     .post('/api/book/logout', (c) => {
       deleteCookie(c, BOOK_COOKIE, { path: '/api' });
       return c.json({ ok: true });

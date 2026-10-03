@@ -52,6 +52,49 @@ export function Dialog({
   );
 }
 
+/** A non-destructive confirmation ("Wants to update this record …?"), confirm button in green. */
+export function ConfirmUpdate({
+  open,
+  title,
+  text,
+  onCancel,
+  onConfirm,
+  busy,
+}: {
+  open: boolean;
+  title: [string, string];
+  text: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+  busy?: boolean;
+}) {
+  return (
+    <Dialog open={open} onClose={onCancel} title={title} alert>
+      <div className="flex flex-col gap-[18px] px-[26px] pb-[26px] pt-[18px]">
+        <p className="m-0 whitespace-pre-line text-[15px] leading-[1.55]">{text}</p>
+        <div className="flex justify-end gap-2.5">
+          <button
+            type="button"
+            onClick={onCancel}
+            autoFocus
+            className="flex h-12 cursor-pointer items-center border-[1.5px] border-foreground px-5 text-[15px] font-semibold"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className="flex h-12 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:opacity-70"
+          >
+            Update
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 /** MDA's Cancel / Delete confirmation. */
 export function ConfirmDelete({
   open,

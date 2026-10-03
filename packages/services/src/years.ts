@@ -12,6 +12,7 @@ import {
 import { and, asc, eq, schema, type Db } from '@qi/db';
 import { getCompany } from './companies.ts';
 import { UserError, assertNoFieldErrors } from './errors.ts';
+import { seedDefaultGroups } from './groups.ts';
 
 const { books, bookUsers, financialYears } = schema;
 
@@ -91,9 +92,9 @@ export async function createYear(
 }
 
 /**
- * Seeds a new book. For now only the admin user: the masters it also seeds in MDA (groups,
- * units, tax ledgers, states, tax rates, voucher series) are added here when their tables
- * land in Phase 2 — see docs/LOGIC-SPEC.md §3.
+ * Seeds a new book: the admin user and the 28 default groups. The rest MDA also seeds (units,
+ * tax ledgers, states, tax rates, voucher series) are added here as their own tables land —
+ * see docs/LOGIC-SPEC.md §3.
  */
 async function seedBook(db: Db, bookId: string, adminPasswordHash: string): Promise<void> {
   await db.insert(bookUsers).values({
@@ -105,6 +106,7 @@ async function seedBook(db: Db, bookId: string, adminPasswordHash: string): Prom
     isActive: SEED_ADMIN.isActive,
     mustChangePassword: SEED_ADMIN.mustChangePassword,
   });
+  await seedDefaultGroups(db, bookId);
 }
 
 /**

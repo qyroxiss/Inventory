@@ -55,7 +55,7 @@ export function MainShell() {
         <Sidebar />
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex h-16 flex-none items-center gap-4 border-b border-border pl-9 pr-8">
+          <header className="flex h-16 flex-none items-center gap-4 border-b border-border pl-9 pr-8 print:hidden">
             <div className="flex min-w-0 items-baseline gap-3.5">
               <span className="truncate font-serif text-[26px] leading-none">
                 {me.data?.companyName}
@@ -118,7 +118,7 @@ export function MainShell() {
         </div>
       </div>
 
-      <footer className="flex h-[30px] flex-none items-center gap-[18px] border-t border-border bg-card px-5 font-mono text-[11px] text-muted-foreground">
+      <footer className="flex h-[30px] flex-none items-center gap-[18px] border-t border-border bg-card px-5 font-mono text-[11px] text-muted-foreground print:hidden">
         <span className="flex items-center gap-1.5">
           <span aria-hidden="true" className="size-[7px] rounded-full bg-primary" />
           Ready
@@ -158,7 +158,7 @@ function Sidebar() {
   return (
     <nav
       aria-label="Navigation"
-      className="relative flex min-h-0 flex-[0_0_272px] flex-col border-r border-border bg-card bg-[repeating-linear-gradient(to_bottom,transparent_0_39px,var(--ledger-ruled)_39px_40px)]"
+      className="relative flex min-h-0 flex-[0_0_272px] flex-col border-r border-border bg-card bg-[repeating-linear-gradient(to_bottom,transparent_0_39px,var(--ledger-ruled)_39px_40px)] print:hidden"
     >
       <div aria-hidden="true" className="absolute inset-y-0 left-11 w-px bg-ledger-margin" />
       <div aria-hidden="true" className="absolute inset-y-0 left-12 w-px bg-ledger-margin" />
