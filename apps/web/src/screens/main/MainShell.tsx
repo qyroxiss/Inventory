@@ -5,7 +5,7 @@
 
 import { brand } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, Outlet, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from '../../api.ts';
 import { Dialog } from '../../components/Dialog.tsx';
@@ -148,11 +148,17 @@ export function MainShell() {
  * its items underneath; MDA's own placeholders carry "Not built yet".
  */
 function Sidebar() {
-  const params = useParams({ strict: false }) as { screen?: string; section?: string };
-  const here = params.section
-    ? findSection(params.section)?.label
-    : params.screen
-      ? findItem(params.screen)?.section
+  // Read the current screen/section from the URL itself, not route params — Group Master and
+  // Sub Group Master are their own routes (not the generic /app/$screen placeholder), so they
+  // never populate a `screen` param, and relying on it left the sidebar stuck on "Dashboard".
+  const location = useLocation();
+  const segments = location.pathname.replace(/^\/app\/?/, '').split('/').filter(Boolean);
+  const screenSlug = segments[0] === 'section' ? undefined : segments[0];
+  const sectionSlug = segments[0] === 'section' ? segments[1] : undefined;
+  const here = sectionSlug
+    ? findSection(sectionSlug)?.label
+    : screenSlug
+      ? findItem(screenSlug)?.section
       : 'Dashboard';
 
   return (
@@ -230,7 +236,7 @@ function Sidebar() {
                       )}
                       {g.items.map((label) => {
                         const item = findItem(slug(label))!;
-                        const active = params.screen === item.slug;
+                        const active = screenSlug === item.slug;
                         return (
                           <Link
                             key={label}
