@@ -29,6 +29,7 @@ import { MainShell } from './screens/main/MainShell.tsx';
 import { ScreenPlaceholder } from './screens/main/ScreenPlaceholder.tsx';
 import { SectionPage } from './screens/main/SectionPage.tsx';
 import { GroupMasterScreen } from './screens/masters/GroupMasterScreen.tsx';
+import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
 
 export const queryClient = new QueryClient();
 
@@ -113,6 +114,12 @@ const groupMasterRoute = createRoute({
   component: GroupMasterScreen,
 });
 
+const subGroupMasterRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'sub-group-master',
+  component: SubGroupMasterScreen,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -125,7 +132,13 @@ export const router = createRouter({
     booksRoute,
     newCompanyRoute,
     yearsRoute,
-    appRoute.addChildren([dashboardRoute, sectionRoute, groupMasterRoute, screenRoute]),
+    appRoute.addChildren([
+      dashboardRoute,
+      sectionRoute,
+      groupMasterRoute,
+      subGroupMasterRoute,
+      screenRoute,
+    ]),
   ]),
   context: { queryClient },
 });

@@ -11,7 +11,7 @@ The web, desktop (offline) and mobile rebuild of **MDA Inventory** (`../MDA-Inve
 | [docs/design/AUTH-SCREENS.md](docs/design/AUTH-SCREENS.md)             | The approved login designs (S3, A6) and how to change them                                                                                                            |
 | [docs/design/MASTERS-SCREENS.md](docs/design/MASTERS-SCREENS.md)       | The approved New Company and Manage Years designs (M1, M2)                                                                                                            |
 | [docs/design/MAIN-SCREEN.md](docs/design/MAIN-SCREEN.md)               | The approved main screen design (D1 · Ledger Desk)                                                                                                                    |
-| [docs/design/ACCOUNTING-MASTERS.md](docs/design/ACCOUNTING-MASTERS.md) | Group Master, built directly from spec, and the Q-16 quirk                                                                                                            |
+| [docs/design/ACCOUNTING-MASTERS.md](docs/design/ACCOUNTING-MASTERS.md) | Group Master and Sub Group Master, built directly from spec, and the Q-16/Q-18 quirks                                                                                 |
 
 **Status:** Phase 0 done. All login screens are built from the approved designs:
 
@@ -20,7 +20,7 @@ The web, desktop (offline) and mobile rebuild of **MDA Inventory** (`../MDA-Inve
 - the forced password change
 - New Company (M1) and Manage Years (M2)
 - the main screen (D1 · Ledger Desk): sidebar, section pages, Quick find and a one-screen dashboard. Its figures show no activity until the stock, sales and voucher parts are built.
-- Masters › Accounting Masters › **Group Master**, including the default 28-group seed every new book gets
+- Masters › Accounting Masters › **Group Master** and **Sub Group Master**, including the default 28-group seed every new book gets
 
 ## Run it locally
 

@@ -15,14 +15,18 @@ import {
   changeBookPassword,
   createCompany,
   createGroup,
+  createSubGroup,
   createYear,
   deleteCompany,
   deleteGroup,
+  deleteSubGroup,
   deleteYear,
   getDashboard,
   listGroups,
+  listSubGroups,
   updateCompany,
   updateGroup,
+  updateSubGroup,
   listBookIndex,
   listCompanies,
   listYears,
@@ -186,6 +190,29 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await deleteGroup(db, book.bookId, c.req.param('grpCode'));
+      return c.json({ ok: true });
+    })
+    .get('/api/sub-groups', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listSubGroups(db, book.bookId));
+    })
+    .post('/api/sub-groups', json(contract.subGroupCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createSubGroup(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/sub-groups/:grpCode', json(contract.subGroupCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateSubGroup(db, book.bookId, c.req.param('grpCode'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/sub-groups/:grpCode', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await deleteSubGroup(db, book.bookId, c.req.param('grpCode'));
       return c.json({ ok: true });
     })
 

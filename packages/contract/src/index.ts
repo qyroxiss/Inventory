@@ -53,11 +53,17 @@ export const groupCreate = z.object({
   isLedger: z.enum(['Yes', 'No']).optional(),
 });
 
+export const subGroupCreate = z.object({
+  name: z.string(),
+  under: z.string().optional(),
+});
+
 export type CompanyCreate = z.infer<typeof companyCreate>;
 export type YearCreate = z.infer<typeof yearCreate>;
 export type BookLoginInput = z.infer<typeof bookLogin>;
 export type ChangePasswordInput = z.infer<typeof changePassword>;
 export type GroupCreate = z.infer<typeof groupCreate>;
+export type SubGroupCreate = z.infer<typeof subGroupCreate>;
 
 /** Body of every 422 response. */
 export type ErrorBody = { message: string; fieldErrors?: Record<string, string> };

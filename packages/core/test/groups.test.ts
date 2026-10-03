@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { DEFAULT_GROUPS, groupCodePrefix, groupFieldErrors, nextCode } from '../src/groups.ts';
+import {
+  DEFAULT_GROUPS,
+  SUB_GROUP_CODE_PREFIX,
+  SUB_GROUP_CODE_WIDTH,
+  groupCodePrefix,
+  groupFieldErrors,
+  nextCode,
+  subGroupFieldErrors,
+} from '../src/groups.ts';
 
 describe('nextCode', () => {
   test('starts at 1 when nothing of that prefix exists', () => {
@@ -49,6 +57,30 @@ describe('groupFieldErrors', () => {
 
   test('a complete form has no errors', () => {
     expect(groupFieldErrors({ name: 'Petty Cash', type: 'Assets' })).toEqual({});
+  });
+});
+
+describe('subGroupFieldErrors', () => {
+  test('name is required', () => {
+    expect(subGroupFieldErrors({ name: '', under: 'A001' })).toEqual({
+      name: 'Sub group name is required',
+    });
+  });
+
+  test('an under group is required', () => {
+    expect(subGroupFieldErrors({ name: 'Petty Cash' })).toEqual({
+      under: 'Please select an under group',
+    });
+  });
+
+  test('a complete form has no errors', () => {
+    expect(subGroupFieldErrors({ name: 'Petty Cash', under: 'A001' })).toEqual({});
+  });
+
+  test('the code prefix is SG, width 4 (docs/LOGIC-SPEC.md §4.1)', () => {
+    expect(SUB_GROUP_CODE_PREFIX).toBe('SG');
+    expect(SUB_GROUP_CODE_WIDTH).toBe(4);
+    expect(nextCode(['SG0007'], SUB_GROUP_CODE_PREFIX, SUB_GROUP_CODE_WIDTH)).toBe('SG0008');
   });
 });
 

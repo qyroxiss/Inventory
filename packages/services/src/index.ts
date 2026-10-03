@@ -25,6 +25,12 @@ export {
   createGroup,
   updateGroup,
   deleteGroup,
+  listSubGroups,
+  createSubGroup,
+  updateSubGroup,
+  deleteSubGroup,
   type AccountGroup,
   type GroupInput,
+  type SubGroup,
+  type SubGroupInput,
 } from './groups.ts';

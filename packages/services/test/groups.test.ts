@@ -4,10 +4,14 @@ import {
   UserError,
   createCompany,
   createGroup,
+  createSubGroup,
   createYear,
   deleteGroup,
+  deleteSubGroup,
   listGroups,
+  listSubGroups,
   updateGroup,
+  updateSubGroup,
 } from '../src/index.ts';
 
 const ACC = 'acc-1';
@@ -114,5 +118,83 @@ describe('deleteGroup', () => {
 
   test('a seeded top-level group is equally protected', async () => {
     await rejects(deleteGroup(db, bookId, 'A001'), 'This record will be not deleted');
+  });
+});
+
+describe('createSubGroup', () => {
+  test('inherits GrpType from the chosen parent and generates an SG code', async () => {
+    const g = await createSubGroup(db, bookId, { name: 'Petty Cash', under: 'A001' });
+    expect(g.grpCode).toBe('SG0001');
+    expect(g.grpType).toBe('Assets'); // A001 is Assets
+    expect(g.parentGrp).toBe('A001');
+  });
+
+  test('rejects a duplicate name, even against a top-level group', async () => {
+    await rejects(
+      createSubGroup(db, bookId, { name: 'Current Assets', under: 'A001' }),
+      'Error: Sub Group "Current Assets" may already exist.',
+    );
+  });
+
+  test('requires a name and an under group', async () => {
+    await rejects(
+      createSubGroup(db, bookId, { name: '', under: 'A001' }),
+      'Sub group name is required',
+    );
+    await rejects(
+      createSubGroup(db, bookId, { name: 'Petty Cash' }),
+      'Please select an under group',
+    );
+  });
+
+  test("falls back to Assets when the chosen parent does not exist (MDA's own fallback)", async () => {
+    const g = await createSubGroup(db, bookId, { name: 'Orphan', under: 'NOPE' });
+    expect(g.grpType).toBe('Assets');
+    expect(g.parentGrp).toBe('NOPE');
+  });
+});
+
+describe('updateSubGroup', () => {
+  test('renames and re-parents, but never changes GrpType (Q-18)', async () => {
+    const g = await createSubGroup(db, bookId, { name: 'Temp', under: 'A001' }); // Assets
+    const updated = await updateSubGroup(db, bookId, g.grpCode, {
+      name: 'Renamed',
+      under: 'L002', // Capital Account — Liabilities
+    });
+    expect(updated.grpName).toBe('Renamed');
+    expect(updated.parentGrp).toBe('L002');
+    expect(updated.grpType).toBe('Assets'); // unchanged, even under a Liabilities parent
+  });
+
+  test('rejects a rename onto an existing name', async () => {
+    await createSubGroup(db, bookId, { name: 'Petty Cash', under: 'A001' });
+    const g = await createSubGroup(db, bookId, { name: 'Temp', under: 'A001' });
+    await rejects(
+      updateSubGroup(db, bookId, g.grpCode, { name: 'Petty Cash', under: 'A001' }),
+      'Error: "Petty Cash" may conflict with an existing sub group.',
+    );
+  });
+});
+
+describe('listSubGroups', () => {
+  test('joins the parent name in, and never lists top-level groups', async () => {
+    await createSubGroup(db, bookId, { name: 'Petty Cash', under: 'A001' });
+    const rows = await listSubGroups(db, bookId);
+    const mine = rows.find((r) => r.grpName === 'Petty Cash');
+    expect(mine?.parentGrpName).toBe('Current Assets');
+    expect(rows.every((r) => r.parentGrp !== 'Parent')).toBe(true);
+  });
+
+  test('a fresh book already has the 12 seeded sub groups', async () => {
+    const rows = await listSubGroups(db, bookId);
+    expect(rows).toHaveLength(12);
+  });
+});
+
+describe('deleteSubGroup', () => {
+  test('removes outright, with no guard (unlike Group Master)', async () => {
+    const g = await createSubGroup(db, bookId, { name: 'Petty Cash', under: 'A001' });
+    await deleteSubGroup(db, bookId, g.grpCode);
+    expect(await listSubGroups(db, bookId)).toHaveLength(12); // back to just the seeded ones
   });
 });

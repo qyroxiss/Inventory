@@ -100,6 +100,7 @@ export function ConfirmDelete({
   open,
   title,
   text,
+  confirmLabel = 'Delete',
   onCancel,
   onConfirm,
   busy,
@@ -107,6 +108,8 @@ export function ConfirmDelete({
   open: boolean;
   title: [string, string];
   text: string;
+  /** MDA's own label for this master's destructive action ("Delete", "Remove", …). */
+  confirmLabel?: string;
   onCancel: () => void;
   onConfirm: () => void;
   busy?: boolean;
@@ -130,7 +133,7 @@ export function ConfirmDelete({
             disabled={busy}
             className="flex h-12 cursor-pointer items-center bg-destructive px-5 text-[15px] font-semibold text-card disabled:opacity-70"
           >
-            Delete
+            {confirmLabel}
           </button>
         </div>
       </div>

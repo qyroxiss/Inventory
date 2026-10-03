@@ -1,6 +1,8 @@
-// Group Master, ported from MDA-Inventory lib/group_master_page.dart (fields, messages,
-// quirks) and the group seed in lib/db_service.dart:936-984 (docs/LOGIC-SPEC.md §2, §3, §7).
-// Sub Group Master reads/writes the same table (Maacct2) and is built separately.
+// Group Master and Sub Group Master, ported from MDA-Inventory lib/group_master_page.dart and
+// lib/sub_group_master_page.dart (fields, messages, quirks), and the group seed in
+// lib/db_service.dart:936-984 (docs/LOGIC-SPEC.md §2, §3, §7). Both read and write the same
+// table (Maacct2 / account_groups): Group Master only ever sees ParentGrp='Parent' rows,
+// Sub Group Master only the rest.
 
 /** MDA's own order (group_master_page.dart:40). Not alphabetical — kept as is. */
 export const GROUP_TYPES = ['Liabilities', 'Expenses', 'Assets', 'Income'] as const;
@@ -33,6 +35,33 @@ export function groupFieldErrors(input: { name?: string; type?: string }) {
   if (!input.type) errors.type = groupMessages.typeRequired;
   return errors;
 }
+
+/** Sub Group Master's own messages (sub_group_master_page.dart) — a different wording from
+ * Group Master's, including its own duplicate-name text and its own confirm dialogs. */
+export const subGroupMessages = {
+  nameRequired: 'Sub group name is required',
+  underRequired: 'Please select an under group',
+  saved: (name: string, code: string) => `Sub Group "${name}" saved (Code: ${code})`,
+  updated: (name: string) => `Sub Group "${name}" updated`,
+  /** MDA shows this with the error/red toast colour even though it is a success message. */
+  removed: (name: string) => `Sub Group "${name}" removed`,
+  duplicateOnSave: (name: string) => `Error: Sub Group "${name}" may already exist.`,
+  duplicateOnUpdate: (name: string) => `Error: "${name}" may conflict with an existing sub group.`,
+  updateConfirm: (name: string) => `Update record "${name}"?`,
+  deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
+  noneFound: 'No sub groups saved yet.',
+};
+
+export function subGroupFieldErrors(input: { name?: string; under?: string }) {
+  const errors: Record<string, string> = {};
+  if (!(input.name ?? '').trim()) errors.name = subGroupMessages.nameRequired;
+  if (!input.under) errors.under = subGroupMessages.underRequired;
+  return errors;
+}
+
+/** Sub Group's code prefix and width (docs/LOGIC-SPEC.md §4.1). */
+export const SUB_GROUP_CODE_PREFIX = 'SG';
+export const SUB_GROUP_CODE_WIDTH = 4;
 
 /** First letter of the Group Type (A/L/E/I) — the code prefix (docs/LOGIC-SPEC.md §4.1). */
 export const groupCodePrefix = (type: GroupType): string => type.charAt(0);

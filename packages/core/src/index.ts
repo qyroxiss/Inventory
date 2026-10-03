@@ -44,6 +44,10 @@ export {
   groupFieldErrors,
   groupCodePrefix,
   nextCode,
+  subGroupMessages,
+  subGroupFieldErrors,
+  SUB_GROUP_CODE_PREFIX,
+  SUB_GROUP_CODE_WIDTH,
   type GroupType,
   type DefaultGroup,
 } from './groups.ts';
