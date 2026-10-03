@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Account sign-in — Quiet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{opacity:.8}
+input:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+input::placeholder{color:inherit;opacity:.5}
+</style>
+</helmet>
+<div style="height: 100vh; min-height: 760px; display: flex; flex-direction: column; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: {{t.desk}}; color: {{t.ink}}">
+
+  <header style="height: 64px; flex: none; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid {{t.rule}}">
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase">Inventory</span>
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{today}}</span>
+    <button type="button" onClick="{{toggleDark}}" aria-label="{{themeLabel}}" style="all: unset; cursor: pointer; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid {{t.rule}}; border-radius: 999px; font-size: 13px; color: {{t.muted}}">
+      <sc-if value="{{dark}}" hint-placeholder-val="{{ false }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      </sc-if>
+      <sc-if value="{{light}}" hint-placeholder-val="{{ true }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+      </sc-if>
+      <span>{{themeName}}</span>
+    </button>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: flex">
+
+    <section aria-label="Inventory" style="position: relative; flex: 1 1 0; min-width: 0; box-sizing: border-box; padding: 72px 64px 48px 120px; display: flex; flex-direction: column; justify-content: center; gap: 40px; background-color: {{t.paper}}; background-image: repeating-linear-gradient(to bottom, transparent 0 47px, {{t.ruled}} 47px 48px); border-right: 1px solid {{t.rule}}">
+      <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 84px; width: 1px; background: {{t.margin}}"></div>
+      <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 89px; width: 1px; background: {{t.margin}}"></div>
+
+      <sc-if value="{{isJournal}}" hint-placeholder-val="{{ true }}">
+        <div aria-hidden="true" style="display: flex; flex-direction: column; gap: 18px; max-width: 720px; width: 100%">
+          <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px">
+            <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 56px; line-height: 1">Journal<span style="font-style: italic">.</span></span>
+            <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.muted}}">Folio 01 · {{monthName}}</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) 120px 120px; gap: 16px; padding: 0 12px 10px; border-bottom: 2px solid {{t.ink}}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">
+            <span>Date</span><span>Particulars</span><span style="text-align: right">Dr</span><span style="text-align: right">Cr</span>
+          </div>
+          <div style="display: flex; flex-direction: column">
+            <sc-for list="{{journal}}" as="j" hint-placeholder-count="8">
+              <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) 120px 120px; gap: 16px; align-items: baseline; min-height: 40px; padding: 0 12px; border-bottom: 1px solid {{j.rule}}; font-size: 15px">
+                <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{j.date}}</span>
+                <span style="padding-left: {{j.indent}}; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 19px">{{j.text}}</span>
+                <span style="text-align: right; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px">{{j.dr}}</span>
+                <span style="text-align: right; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px">{{j.cr}}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr) 120px 120px; gap: 16px; padding: 10px 12px; border-top: 1px solid {{t.ink}}; border-bottom: 3px double {{t.ink}}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; font-weight: 500">
+            <span></span><span style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Total</span>
+            <span style="text-align: right">2,47,500.00</span><span style="text-align: right">2,47,500.00</span>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isYear}}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 36px; max-width: 720px; width: 100%">
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.muted}}">Financial year</span>
+            <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 112px; line-height: 0.9">{{fyName}}</span>
+            <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; color: {{t.muted}}">Day {{fyDay}} of {{fyDays}} · closes 31 March {{fyEnd}}</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <div style="display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px">
+              <sc-for list="{{months}}" as="m" hint-placeholder-count="12">
+                <div style="display: flex; flex-direction: column; gap: 8px">
+                  <span style="height: 56px; border: 1px solid {{m.border}}; background: {{m.bg}}"></span>
+                  <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; text-align: center; color: {{m.fg}}; font-weight: {{m.weight}}">{{m.label}}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; letter-spacing: 0.08em; color: {{t.muted}}">
+              <span style="border-top: 1px solid {{t.rule}}; padding-top: 6px">Q1</span><span style="border-top: 1px solid {{t.rule}}; padding-top: 6px">Q2</span><span style="border-top: 1px solid {{t.rule}}; padding-top: 6px">Q3</span><span style="border-top: 1px solid {{t.rule}}; padding-top: 6px">Q4</span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{isQuiet}}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top: auto; display: flex; flex-direction: column; gap: 14px">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.muted}}">{{todayShort}}</span>
+          <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 160px; line-height: 0.85; letter-spacing: -0.01em">Inven<span style="font-style: italic">tory.</span></span>
+        </div>
+      </sc-if>
+    </section>
+
+    <section aria-label="Account" style="flex: 0 0 540px; min-width: 0; box-sizing: border-box; padding: 40px 64px; display: flex; align-items: center; justify-content: center; overflow-y: auto">
+      <div style="width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 32px">
+
+        <sc-if value="{{notDone}}" hint-placeholder-val="{{ true }}">
+          <div style="display: flex; flex-direction: column; gap: 28px">
+            <div role="group" aria-label="Sign in or create an account" style="display: flex; border-bottom: 3px double {{t.ink}}">
+              <button type="button" onClick="{{toSignIn}}" aria-pressed="{{signInPressed}}" style="all: unset; cursor: pointer; box-sizing: border-box; flex: 1; height: 52px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; background: {{signInBg}}; color: {{signInFg}}">Sign In</button>
+              <button type="button" onClick="{{toCreate}}" aria-pressed="{{createPressed}}" style="all: unset; cursor: pointer; box-sizing: border-box; flex: 1; height: 52px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; background: {{createBg}}; color: {{createFg}}">Create Account</button>
+            </div>
+
+            <sc-if value="{{isSignIn}}" hint-placeholder-val="{{ true }}">
+              <form noValidate="{{ true }}" style="display: flex; flex-direction: column; gap: 24px">
+                <div style="display: flex; flex-direction: column; gap: 8px"><h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Sign <span style="font-style: italic">In</span></h2><p style="margin: 0; font-size: 15px; color: {{t.muted}}">Enter your credentials to continue</p></div>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <label for="a-email" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Email</label>
+                  <input id="a-email" type="email" value="{{email}}" onChange="{{onEmail}}" onKeyDown="{{emailKey}}" autocomplete="email" placeholder="you@business.com" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{emailBorder}}; border-radius: 0">
+                  <sc-if value="{{emailErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{emailErr}}</span></sc-if>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <label for="a-pass" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Password</label>
+                  <div style="display: flex; align-items: center; border-bottom: 1.5px solid {{passBorder}}">
+                    <input id="a-pass" ref="{{setPass}}" type="{{passType}}" value="{{pass}}" onChange="{{onPass}}" onKeyDown="{{passKey}}" autocomplete="current-password" style="flex: 1; min-width: 0; box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0">
+                    <button type="button" onClick="{{toggleShow}}" style="all: unset; cursor: pointer; height: 44px; padding: 0 4px; display: flex; align-items: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: {{t.muted}}">{{showText}}</button>
+                  </div>
+                  <sc-if value="{{passErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{passErr}}</span></sc-if>
+                </div>
+                <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 44px; cursor: pointer">
+                  <input type="checkbox" checked="{{keep}}" onChange="{{toggleKeep}}" style="width: 18px; height: 18px; accent-color: {{t.accent}}">
+                  Remember me
+                </label>
+                <sc-if value="{{formErr}}" hint-placeholder-val="{{ false }}">
+                  <p role="alert" style="margin: 0; padding: 12px 14px; font-size: 14px; color: {{t.danger}}; border: 1px solid {{t.danger}}; background: {{t.dangerBg}}">{{formErr}}</p>
+                </sc-if>
+                <button type="button" onClick="{{submitSignIn}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 16px; font-weight: 600">
+                  <span>Sign In</span><span aria-hidden="true" style="font-size: 20px">→</span>
+                </button>
+              </form>
+            </sc-if>
+
+            <sc-if value="{{isCreate}}" hint-placeholder-val="{{ false }}">
+              <form noValidate="{{ true }}" style="display: flex; flex-direction: column; gap: 22px">
+                <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Create <span style="font-style: italic">Account</span></h2>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <label for="c-name" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Name</label>
+                  <input id="c-name" value="{{name}}" onChange="{{onName}}" autocomplete="name" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{nameBorder}}; border-radius: 0">
+                  <sc-if value="{{nameErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{nameErr}}</span></sc-if>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 6px">
+                  <label for="c-email" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Email</label>
+                  <input id="c-email" type="email" value="{{email}}" onChange="{{onEmail}}" autocomplete="email" placeholder="you@business.com" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{emailBorder}}; border-radius: 0">
+                  <sc-if value="{{emailErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{emailErr}}</span></sc-if>
+                </div>
+                <div style="display: flex; gap: 20px">
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                    <label for="c-pass" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Password</label>
+                    <input id="c-pass" type="password" value="{{pass}}" onChange="{{onPass}}" autocomplete="new-password" style="box-sizing: border-box; width: 100%; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{passBorder}}; border-radius: 0">
+                    <sc-if value="{{passErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{passErr}}</span></sc-if>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                    <label for="c-cp" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Confirm</label>
+                    <input id="c-cp" type="password" value="{{cp}}" onChange="{{onCp}}" onKeyDown="{{cpKey}}" autocomplete="new-password" style="box-sizing: border-box; width: 100%; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{cpBorder}}; border-radius: 0">
+                    <sc-if value="{{cpErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{cpErr}}</span></sc-if>
+                  </div>
+                </div>
+                <span style="margin-top: -10px; font-size: 13px; color: {{t.muted}}">At least 8 characters.</span>
+                <sc-if value="{{formErr}}" hint-placeholder-val="{{ false }}">
+                  <p role="alert" style="margin: 0; padding: 12px 14px; font-size: 14px; color: {{t.danger}}; border: 1px solid {{t.danger}}; background: {{t.dangerBg}}">{{formErr}}</p>
+                </sc-if>
+                <button type="button" onClick="{{submitCreate}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 16px; font-weight: 600">
+                  <span>Create Account</span><span aria-hidden="true" style="font-size: 20px">→</span>
+                </button>
+              </form>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 24px">
+            <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 18px; border-bottom: 3px double {{t.ink}}">
+              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.accentText}}">Account</span>
+              <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1.1">{{who}}</span>
+              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{email}}</span>
+            </div>
+            <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Signed <span style="font-style: italic">In</span></h2>
+            <p style="margin: 0; font-size: 15px; line-height: 1.55; color: {{t.muted}}">{{doneText}}</p>
+            <div style="display: flex; gap: 12px">
+              <button type="button" onClick="{{signOut}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; padding: 0 22px; display: flex; align-items: center; border: 1px solid {{t.ink}}; font-size: 16px">Logout</button>
+              <a href="ManyCompanies.dc.html" style="text-decoration: none; cursor: pointer; box-sizing: border-box; flex: 1; height: 56px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 16px; font-weight: 600"><span>Continue</span><span aria-hidden="true" style="font-size: 20px">→</span></a>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+// Sample only. Existing account: demo@example.com / password1. Any other email can be created.
+const DEMO = { email: 'demo@example.com', pass: 'password1', name: 'Demo Owner' };
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const THEMES = {
+  light: { desk: '#F1EEE6', paper: '#FBF9F3', ruled: 'rgba(48, 72, 110, 0.07)', margin: 'rgba(196, 80, 60, 0.55)',
+    ink: '#1C1B18', muted: '#5C5850', rule: '#DED8C9',
+    accent: 'oklch(0.42 0.09 160)', accentInk: '#FFFFFF', accentText: 'oklch(0.42 0.09 160)', sel: 'oklch(0.95 0.03 160)',
+    danger: '#B42318', dangerBg: 'rgba(180, 35, 24, 0.05)' },
+  dark: { desk: '#0F1012', paper: '#16171A', ruled: 'rgba(190, 205, 230, 0.05)', margin: 'rgba(214, 112, 92, 0.45)',
+    ink: '#ECE8DE', muted: '#A6A194', rule: '#2C2D31',
+    accent: 'oklch(0.78 0.1 160)', accentInk: '#0E1411', accentText: 'oklch(0.80 0.1 160)', sel: 'oklch(0.27 0.035 160)',
+    danger: '#F97066', dangerBg: 'rgba(249, 112, 102, 0.08)' }
+};
+
+// Left-side artwork: 'journal' (a ruled journal page), 'year' (the financial year so far), 'quiet' (name only).
+// The journal entries are illustration only.
+const JOURNAL = [
+  ['01', 'Cash A/c', '1,18,000.00', ''], ['', 'To Sales A/c', '', '1,18,000.00'],
+  ['02', 'Purchase A/c', '64,500.00', ''], ['', 'To Agarwal Steel Traders', '', '64,500.00'],
+  ['03', 'Rent A/c', '25,000.00', ''], ['', 'To Bank A/c', '', '25,000.00'],
+  ['04', 'Bank A/c', '40,000.00', ''], ['', 'To Gupta Brothers', '', '40,000.00']
+];
+const FY_MONTHS = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { dark: !!props.dark, mode: 'signin', done: false, created: false,
+      email: '', pass: '', cp: '', name: '', show: false, keep: true,
+      emailErr: '', passErr: '', cpErr: '', nameErr: '', formErr: '', accounts: { [DEMO.email]: DEMO } };
+  }
+  setPass = (el) => { this.passEl = el; };
+  clear() { return { emailErr: '', passErr: '', cpErr: '', nameErr: '', formErr: '' }; }
+  toggleDark = () => this.setState({ dark: !this.state.dark });
+  toSignIn = () => this.setState({ mode: 'signin', pass: '', cp: '', ...this.clear() });
+  toCreate = () => this.setState({ mode: 'create', pass: '', cp: '', ...this.clear() });
+  onEmail = (e) => this.setState({ email: e.target.value, emailErr: '', formErr: '' });
+  onPass = (e) => this.setState({ pass: e.target.value, passErr: '', formErr: '' });
+  onCp = (e) => this.setState({ cp: e.target.value, cpErr: '' });
+  onName = (e) => this.setState({ name: e.target.value, nameErr: '' });
+  emailKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (this.passEl) this.passEl.focus(); } };
+  passKey = (e) => { if (e.key === 'Enter') this.submitSignIn(e); };
+  cpKey = (e) => { if (e.key === 'Enter') this.submitCreate(e); };
+  toggleShow = () => this.setState({ show: !this.state.show });
+  toggleKeep = () => this.setState({ keep: !this.state.keep });
+  emailError(v) { return !v.trim() ? 'Required' : EMAIL.test(v.trim()) ? '' : 'Invalid email'; }
+  submitSignIn = (e) => {
+    e.preventDefault();
+    const s = this.state;
+    const emailErr = this.emailError(s.email);
+    const passErr = s.pass ? '' : 'Required';
+    if (emailErr || passErr) return this.setState({ emailErr, passErr, formErr: '' });
+    const acc = s.accounts[s.email.trim().toLowerCase()];
+    if (acc && acc.pass === s.pass) this.setState({ done: true, created: false, name: acc.name, pass: '' });
+    else this.setState({ formErr: 'Invalid email or password' });
+  };
+  submitCreate = (e) => {
+    e.preventDefault();
+    const s = this.state;
+    const nameErr = s.name.trim() ? '' : 'Required';
+    const emailErr = this.emailError(s.email);
+    const passErr = !s.pass ? 'Required' : s.pass.length < 8 ? 'Password too short' : '';
+    const cpErr = s.cp === s.pass ? '' : 'Passwords do not match';
+    if (nameErr || emailErr || passErr || cpErr) return this.setState({ nameErr, emailErr, passErr, cpErr, formErr: '' });
+    const key = s.email.trim().toLowerCase();
+    if (s.accounts[key]) return this.setState({ formErr: 'User already exists. Use another email.' });
+    this.setState({ accounts: { ...s.accounts, [key]: { email: key, pass: s.pass, name: s.name.trim() } },
+      done: true, created: true, pass: '', cp: '' });
+  };
+  signOut = () => this.setState({ done: false, mode: 'signin', pass: '', ...this.clear() });
+
+  renderVals() {
+    const s = this.state;
+    const t = s.dark ? THEMES.dark : THEMES.light;
+    const d = new Date();
+    const on = (b) => b ? 'true' : 'false';
+    const signIn = s.mode === 'signin';
+    const err = (v) => v ? t.danger : t.ink;
+    const left = 'quiet';
+    // Indian financial year: 1 April to 31 March.
+    const fyStart = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+    const day0 = Date.UTC(fyStart, 3, 1);
+    const fyDays = Math.round((Date.UTC(fyStart + 1, 3, 1) - day0) / 86400000);
+    const fyDay = Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - day0) / 86400000) + 1;
+    const fyMonth = (d.getMonth() + 9) % 12;
+    return {
+      t, dark: s.dark, light: !s.dark, themeName: s.dark ? 'Light' : 'Dark',
+      themeLabel: s.dark ? 'Switch to light theme' : 'Switch to dark theme',
+      today: DAYS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+      isJournal: left === 'journal', isYear: left === 'year', isQuiet: left === 'quiet',
+      monthName: MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+      todayShort: String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+      journal: JOURNAL.map(([day, text, dr, cr], i) => ({
+        date: day ? day + '/' + String(d.getMonth() + 1).padStart(2, '0') : '', text, dr, cr,
+        indent: day ? '0' : '40px', rule: i % 2 ? t.rule : 'transparent'
+      })),
+      fyName: fyStart + '–' + String(fyStart + 1).slice(2), fyEnd: fyStart + 1, fyDay, fyDays,
+      months: FY_MONTHS.map((label, i) => {
+        const past = i < fyMonth, cur = i === fyMonth;
+        return { label, bg: cur ? t.accent : past ? t.sel : 'transparent', border: cur ? t.accent : past ? t.sel : t.rule,
+          fg: cur ? t.accentText : t.muted, weight: cur ? '600' : '400' };
+      }),
+      notDone: !s.done, done: s.done, isSignIn: signIn, isCreate: !signIn,
+      signInPressed: on(signIn), createPressed: on(!signIn),
+      signInBg: signIn ? t.ink : 'transparent', signInFg: signIn ? t.paper : t.ink,
+      createBg: !signIn ? t.ink : 'transparent', createFg: !signIn ? t.paper : t.ink,
+      email: s.email, pass: s.pass, cp: s.cp, name: s.name, keep: s.keep,
+      passType: s.show ? 'text' : 'password', showText: s.show ? 'Hide' : 'Show',
+      emailErr: s.emailErr, passErr: s.passErr, cpErr: s.cpErr, nameErr: s.nameErr, formErr: s.formErr,
+      emailBorder: err(s.emailErr), passBorder: err(s.passErr), cpBorder: err(s.cpErr), nameBorder: err(s.nameErr),
+      who: s.name.trim() || DEMO.name,
+      doneText: s.created
+        ? 'Your account is ready and has no companies yet. Create one with New Company, then add its year with Manage Years.'
+        : 'Continue to Company & Year Setup to select the company and year.',
+      toggleDark: this.toggleDark, toSignIn: this.toSignIn, toCreate: this.toCreate,
+      onEmail: this.onEmail, onPass: this.onPass, onCp: this.onCp, onName: this.onName, emailKey: this.emailKey,
+      setPass: this.setPass, passKey: this.passKey, cpKey: this.cpKey, toggleShow: this.toggleShow, toggleKeep: this.toggleKeep,
+      submitSignIn: this.submitSignIn, submitCreate: this.submitCreate, signOut: this.signOut
+    };
+  }
+}
+</script>
+</body>
+</html>

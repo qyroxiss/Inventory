@@ -1,0 +1,19 @@
+{
+  "name": "@qi/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Account login (better-auth) and MDA book login.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@qi/core": "workspace:*",
+    "@qi/db": "workspace:*",
+    "better-auth": "^1.7.7"
+  }
+}

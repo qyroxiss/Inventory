@@ -1,0 +1,173 @@
+/* THE THEME FILE — every colour, font and corner radius in the app comes from here.
+   Approved design: "A6 · Ledger, many companies" (docs/design/AUTH-SCREENS.md).
+   To restyle the app, change a value below; every screen follows. Names on the left are
+   shadcn/ui's standard variable names, so its components pick them up automatically.
+   Unbranded for now (decisions D-17): no product colours or logo here yet. */
+@import 'tailwindcss';
+
+/* Fonts are bundled with the app (not loaded from Google) so the offline desktop build works. */
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/instrument-serif/400-italic.css';
+@import '@fontsource/ibm-plex-sans/400.css';
+@import '@fontsource/ibm-plex-sans/500.css';
+@import '@fontsource/ibm-plex-sans/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
+@source '../../../apps/web/src';
+@source '.';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  /* Page scale: how zoomed-in the whole app looks. 1 = the design's full size; lower = more
+     fits on screen (0.85 looks like the browser at 85%). One knob for every screen. */
+  --ui-scale: 0.85;
+
+  --radius: 0rem; /* square corners, like a ledger */
+
+  --background: #f1eee6; /* desk: page background, header strip */
+  --foreground: #1c1b18; /* ink: main text, underline fields */
+  --card: #fbf9f3; /* paper: the ruled index panel */
+  --card-foreground: #1c1b18;
+  --popover: #fbf9f3;
+  --popover-foreground: #1c1b18;
+
+  --primary: oklch(0.42 0.09 160); /* green: the main action ("Open the books") */
+  --primary-foreground: #ffffff;
+  --secondary: #1c1b18; /* solid ink button ("New company") */
+  --secondary-foreground: #fbf9f3;
+  --accent: oklch(0.95 0.03 160); /* selected row tint */
+  --accent-foreground: #1c1b18;
+  --muted: #f1eee6;
+  --muted-foreground: #5c5850; /* labels, hints, captions */
+  --destructive: #b42318; /* error text and borders */
+
+  --border: #ded8c9; /* thin rules between rows */
+  --input: #1c1b18; /* underline of text fields */
+  --ring: #1c1b18; /* keyboard focus outline */
+
+  /* Ledger details used by the design */
+  --ledger-ruled: rgb(48 72 110 / 0.07); /* faint horizontal paper lines */
+  --ledger-margin: rgb(196 80 60 / 0.55); /* red double margin line */
+  --ledger-faint: #b9b2a2; /* disabled letters in the A–Z bar */
+  --primary-text: oklch(0.42 0.09 160); /* green used as text ("Folio 01") */
+  --destructive-bg: rgb(180 35 24 / 0.05);
+}
+
+.dark {
+  --background: #0f1012;
+  --foreground: #ece8de;
+  --card: #16171a;
+  --card-foreground: #ece8de;
+  --popover: #16171a;
+  --popover-foreground: #ece8de;
+
+  --primary: oklch(0.78 0.1 160);
+  --primary-foreground: #0e1411;
+  --secondary: #ece8de;
+  --secondary-foreground: #16171a;
+  --accent: oklch(0.27 0.035 160);
+  --accent-foreground: #ece8de;
+  --muted: #0f1012;
+  --muted-foreground: #a6a194;
+  --destructive: #f97066;
+
+  --border: #2c2d31;
+  --input: #ece8de;
+  --ring: #ece8de;
+
+  --ledger-ruled: rgb(190 205 230 / 0.05);
+  --ledger-margin: rgb(214 112 92 / 0.45);
+  --ledger-faint: #4a4842;
+  --primary-text: oklch(0.8 0.1 160);
+  --destructive-bg: rgb(249 112 102 / 0.08);
+}
+
+@theme inline {
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; /* body text */
+  --font-serif: 'Instrument Serif', Georgia, serif; /* headings ("Choose your books.") */
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace; /* labels, codes, dates, GSTIN */
+
+  --radius-sm: var(--radius);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ledger-ruled: var(--ledger-ruled);
+  --color-ledger-margin: var(--ledger-margin);
+  --color-ledger-faint: var(--ledger-faint);
+  --color-primary-text: var(--primary-text);
+  --color-destructive-bg: var(--destructive-bg);
+}
+
+html {
+  zoom: var(--ui-scale);
+}
+
+/* Full window height. Divided by the scale because zoom also shrinks viewport units. */
+@utility h-app-screen {
+  height: calc(100dvh / var(--ui-scale));
+}
+
+/* Ruled ledger paper: a faint line every 48px (the index panel). */
+@utility ledger-paper {
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 47px,
+    var(--ledger-ruled) 47px 48px
+  );
+}
+
+/* Small capitals label in mono ("USERNAME", "FIND A COMPANY"). */
+@utility ledger-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  input::placeholder {
+    color: inherit;
+    opacity: 0.5;
+  }
+}
+
+/* Printing (e.g. Company Master): plain white paper at full size. */
+@media print {
+  html {
+    zoom: 1;
+  }
+  body {
+    background: #fff;
+  }
+}

@@ -1,0 +1,25 @@
+{
+    "name": "@qi/ui",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "description": "shadcn/ui components, AppShell, LookupBox, EnterNav, DataGrid.",
+    "exports": {
+        ".": "./src/index.ts",
+        "./styles.css": "./src/styles.css",
+        "./cn": "./src/cn.ts",
+        "./components/*": "./src/components/*.tsx"
+    },
+    "scripts": {
+        "typecheck": "tsc -p tsconfig.json",
+        "test": "vitest run --passWithNoTests"
+    },
+    "dependencies": {
+        "@fontsource/ibm-plex-mono": "^5.3.0",
+        "@fontsource/ibm-plex-sans": "^5.3.0",
+        "@fontsource/instrument-serif": "^5.3.0",
+        "@qi/core": "workspace:*",
+        "clsx": "^2.1.1",
+        "tailwind-merge": "^3.7.0"
+    }
+}

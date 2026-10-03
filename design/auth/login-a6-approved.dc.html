@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in — Ledger, many companies</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{opacity:.8}
+input:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+input::placeholder{color:inherit;opacity:.5}
+mark{background:transparent;color:inherit;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+</style>
+</helmet>
+<div style="height: 100vh; min-height: 760px; display: flex; flex-direction: column; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: {{t.desk}}; color: {{t.ink}}">
+
+  <header style="height: 64px; flex: none; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid {{t.rule}}">
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase">Inventory</span>
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{today}}</span>
+    <button type="button" onClick="{{toggleDark}}" aria-label="{{themeLabel}}" style="all: unset; cursor: pointer; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid {{t.rule}}; border-radius: 999px; font-size: 13px; color: {{t.muted}}">
+      <sc-if value="{{dark}}" hint-placeholder-val="{{ false }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>
+      </sc-if>
+      <sc-if value="{{light}}" hint-placeholder-val="{{ true }}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path></svg>
+      </sc-if>
+      <span>{{themeName}}</span>
+    </button>
+  </header>
+
+  <div style="flex: 1; min-height: 0; display: flex">
+
+    <section aria-label="Company &amp; Year Setup" style="position: relative; flex: 1 1 0; min-width: 0; min-height: 0; box-sizing: border-box; padding: 36px 48px 24px 120px; display: flex; flex-direction: column; gap: 22px; background-color: {{t.paper}}; background-image: repeating-linear-gradient(to bottom, transparent 0 47px, {{t.ruled}} 47px 48px); border-right: 1px solid {{t.rule}}">
+      <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 84px; width: 1px; background: {{t.margin}}"></div>
+      <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 89px; width: 1px; background: {{t.margin}}"></div>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px">
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.muted}}">{{countText}}</span>
+          <h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 52px; line-height: 1">Company &amp; Year <span style="font-style: italic">Setup</span></h1>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px">
+          <button type="button" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; gap: 10px; background: {{t.ink}}; color: {{t.paper}}; font-size: 15px; font-weight: 600">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+            New Company
+          </button>
+          <button type="button" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; gap: 10px; border: 1.5px solid {{t.ink}}; background: {{t.paper}}; color: {{t.ink}}; font-size: 15px; font-weight: 600">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="1.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4"></path></svg>
+            Manage Years
+          </button>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 6px; max-width: 560px">
+          <label for="m-q" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Search Company</label>
+          <div style="display: flex; align-items: center; gap: 10px; border-bottom: 1.5px solid {{t.ink}}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="color: {{t.muted}}"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <input id="m-q" ref="{{setQ}}" value="{{q}}" onChange="{{onQ}}" onKeyDown="{{qKey}}" placeholder="Company name or city" autocomplete="off" style="flex: 1; min-width: 0; height: 44px; border: 0; background: transparent; font: inherit; font-size: 16px; color: {{t.ink}}">
+            <sc-if value="{{q}}" hint-placeholder-val="{{ false }}">
+              <button type="button" onClick="{{clearQ}}" aria-label="Clear search" style="all: unset; cursor: pointer; width: 32px; height: 32px; display: grid; place-items: center; color: {{t.muted}}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+              </button>
+            </sc-if>
+          </div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; display: flex; gap: 16px">
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0">
+          <div style="display: grid; grid-template-columns: 56px minmax(0, 1fr) 150px 56px; gap: 16px; padding: 0 12px 10px; border-bottom: 2px solid {{t.ink}}; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">
+            <span>No.</span><span>Company Name</span><span>City</span><span style="text-align: right">Years</span>
+          </div>
+          <div role="list" style="flex: 1; min-height: 0; overflow-y: auto">
+            <sc-for list="{{rows}}" as="c" hint-placeholder-count="8">
+              <div role="listitem" style="display: flex; flex-direction: column; border-bottom: 1px solid {{t.rule}}; background: {{c.bg}}">
+                <button type="button" ref="{{c.ref}}" onClick="{{c.pick}}" onKeyDown="{{c.key}}" aria-expanded="{{c.expanded}}" style="all: unset; cursor: pointer; display: grid; grid-template-columns: 56px minmax(0, 1fr) 150px 56px; gap: 16px; align-items: center; min-height: 52px; padding: 0 12px; font-size: 16px">
+                  <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{c.noColor}}">{{c.no}}</span>
+                  <span style="font-weight: {{c.weight}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.pre}}<mark>{{c.hit}}</mark>{{c.post}}</span>
+                  <span style="font-size: 14px; color: {{t.muted}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{c.city}}</span>
+                  <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}; text-align: right">{{c.count}}</span>
+                </button>
+                <sc-if value="{{c.selected}}" hint-placeholder-val="{{ false }}">
+                  <div role="group" aria-label="Financial year" style="display: flex; flex-wrap: wrap; gap: 10px; padding: 2px 12px 16px 84px">
+                    <sc-for list="{{years}}" as="y" hint-placeholder-count="2">
+                      <button type="button" ref="{{y.ref}}" onClick="{{y.pick}}" onKeyDown="{{y.key}}" aria-pressed="{{y.pressed}}" style="all: unset; cursor: pointer; box-sizing: border-box; min-height: 52px; padding: 8px 14px; display: flex; flex-direction: column; gap: 2px; border: 1px solid {{y.border}}; background: {{y.bg}}; color: {{y.fg}}">
+                        <span style="font-size: 15px; font-weight: 600">FY {{y.name}}</span>
+                        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; opacity: 0.85">{{y.range}}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            <sc-if value="{{noMatch}}" hint-placeholder-val="{{ false }}">
+              <div style="padding: 28px 12px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start">
+                <p style="margin: 0; font-size: 15px; color: {{t.muted}}">No company matches “{{q}}”.</p>
+                <button type="button" onClick="{{clearQ}}" style="all: unset; cursor: pointer; min-height: 44px; display: flex; align-items: center; font-size: 14px; text-decoration: underline; text-underline-offset: 4px">Clear search</button>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+
+        <nav aria-label="Jump to letter" style="flex: none; width: 28px; display: flex; flex-direction: column; justify-content: space-between; padding-top: 34px">
+          <sc-for list="{{letters}}" as="l" hint-placeholder-count="26">
+            <button type="button" onClick="{{l.jump}}" disabled="{{l.disabled}}" aria-label="{{l.aria}}" style="all: unset; cursor: {{l.cursor}}; height: 22px; display: grid; place-items: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 11px; color: {{l.color}}">{{l.ch}}</button>
+          </sc-for>
+        </nav>
+      </div>
+
+      <div style="flex: none; display: flex; align-items: center; min-height: 28px">
+        <span style="margin-left: auto; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{t.muted}}">Type a letter to jump · ↑ ↓ move · Enter open</span>
+      </div>
+    </section>
+
+    <section aria-label="Sign in" style="flex: 0 0 540px; min-width: 0; box-sizing: border-box; padding: 40px 64px; display: flex; align-items: center; justify-content: center; overflow-y: auto">
+      <div style="width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 32px">
+
+        <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 18px; border-bottom: 3px double {{t.ink}}">
+          <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1.1">{{selected.name}}</span>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">FY {{year.name}} · {{year.range}}</span>
+        </div>
+
+        <sc-if value="{{isLogin}}" hint-placeholder-val="{{ true }}">
+          <form onSubmit="{{submit}}" style="display: flex; flex-direction: column; gap: 24px">
+            <div style="display: flex; flex-direction: column; gap: 8px"><h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Sign <span style="font-style: italic">In</span></h2><p style="margin: 0; font-size: 15px; color: {{t.muted}}">Enter your credentials to continue</p></div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="m-user" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">User Name</label>
+              <input id="m-user" placeholder="Enter username" value="{{user}}" onChange="{{onUser}}" onKeyDown="{{userKey}}" autocomplete="username" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{uBorder}}; border-radius: 0">
+              <sc-if value="{{uErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{uErr}}</span></sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="m-pass" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Password</label>
+              <div style="display: flex; align-items: center; border-bottom: 1.5px solid {{pBorder}}">
+                <input id="m-pass" placeholder="Enter password" ref="{{setPass}}" type="{{passType}}" value="{{pass}}" onChange="{{onPass}}" autocomplete="current-password" style="flex: 1; min-width: 0; box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0">
+                <button type="button" onClick="{{toggleShow}}" style="all: unset; cursor: pointer; height: 44px; padding: 0 4px; display: flex; align-items: center; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: {{t.muted}}">{{showText}}</button>
+              </div>
+              <sc-if value="{{pErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{pErr}}</span></sc-if>
+            </div>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 14px; min-height: 44px; cursor: pointer">
+              <input type="checkbox" checked="{{remember}}" onChange="{{toggleRemember}}" style="width: 18px; height: 18px; accent-color: {{t.accent}}">
+              Remember me
+            </label>
+            <sc-if value="{{formErr}}" hint-placeholder-val="{{ false }}">
+              <p role="alert" style="margin: 0; padding: 12px 14px; font-size: 14px; color: {{t.danger}}; border: 1px solid {{t.danger}}; background: {{t.dangerBg}}">{{formErr}}</p>
+            </sc-if>
+            <button type="submit" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 16px; font-weight: 600">
+              <span>Sign In</span><span aria-hidden="true" style="font-size: 20px">→</span>
+            </button>
+          </form>
+        </sc-if>
+
+        <sc-if value="{{isChange}}" hint-placeholder-val="{{ false }}">
+          <form onSubmit="{{saveNew}}" style="display: flex; flex-direction: column; gap: 22px">
+            <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Set a new <span style="font-style: italic">password</span></h2>
+            <p style="margin: 0; font-size: 15px; line-height: 1.55; color: {{t.muted}}">"{{userName}}" is still using the default password. Choose a new one to continue.</p>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="m-np" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">New password</label>
+              <input id="m-np" ref="{{setNp}}" type="password" value="{{np}}" onChange="{{onNp}}" onKeyDown="{{npKey}}" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{npBorder}}; border-radius: 0">
+              <sc-if value="{{npErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{npErr}}</span></sc-if>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <label for="m-cp" style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}">Confirm password</label>
+              <input id="m-cp" ref="{{setCp}}" type="password" value="{{cp}}" onChange="{{onCp}}" style="box-sizing: border-box; height: 46px; padding: 0 2px; font: inherit; font-size: 18px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{cpBorder}}; border-radius: 0">
+              <sc-if value="{{cpErr}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{cpErr}}</span></sc-if>
+            </div>
+            <div style="display: flex; gap: 12px">
+              <button type="button" onClick="{{cancelChange}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; padding: 0 22px; display: flex; align-items: center; border: 1px solid {{t.ink}}; font-size: 16px">Cancel</button>
+              <button type="submit" style="all: unset; cursor: pointer; box-sizing: border-box; flex: 1; height: 56px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 16px; font-weight: 600"><span>Save password</span><span aria-hidden="true" style="font-size: 20px">→</span></button>
+            </div>
+          </form>
+        </sc-if>
+
+        <sc-if value="{{isDone}}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; flex-direction: column; gap: 24px">
+            <h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 42px; line-height: 1">Signed <span style="font-style: italic">In</span></h2>
+            <p style="margin: 0; font-size: 15px; color: {{t.muted}}">Signed in as {{userName}} (Admin). The main screen opens here.</p>
+            <button type="button" onClick="{{signOut}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 56px; padding: 0 22px; display: flex; align-items: center; justify-content: center; border: 1px solid {{t.ink}}; font-size: 16px">Logout</button>
+          </div>
+        </sc-if>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+// Sample data: 40 companies, sorted by name as MDA does (CompName). Years end at 2026-2027.
+const RAW = [
+  ['Aarav Electricals', 'Pune', 2], ['Agarwal Steel Traders', 'Nagpur', 7], ['Annapurna Kirana Stores', 'Nashik', 1],
+  ['Balaji Medicals', 'Hyderabad', 3], ['Bharat Auto Spares', 'Indore', 2], ['Chandra Textiles', 'Surat', 4],
+  ['Deccan Cement Agency', 'Solapur', 2], ['Desai Plastics', 'Vadodara', 1], ['Ganesh Hardware', 'Kolhapur', 3],
+  ['Gupta Brothers', 'Lucknow', 5], ['Hindustan Paper Mart', 'Kanpur', 2], ['Iyer & Sons Provisions', 'Chennai', 3],
+  ['Jain Jewellers', 'Jaipur', 2], ['Joshi Pharma Distributors', 'Aurangabad', 4], ['Kaveri Agro Foods', 'Mysuru', 3],
+  ['Khanna Furnishings', 'Ludhiana', 1], ['Krishna Dairy', 'Anand', 2], ['Laxmi Rice Mills', 'Raipur', 6],
+  ['Lotus Stationers', 'Bhopal', 1], ['Mahalaxmi Garments', 'Tiruppur', 3], ['Mehta Hardware & Paints', 'Ahmedabad', 1],
+  ['Modern Glass House', 'Thane', 2], ['Nandi Tiles & Sanitary', 'Bengaluru', 2], ['National Tyres', 'Delhi', 4],
+  ['Om Sai Traders', 'Shirdi', 1], ['Patel Agro Chemicals', 'Rajkot', 3], ['Pooja Cosmetics', 'Mumbai', 2],
+  ['Raj Electronics', 'Nagpur', 3], ['Rathi Bearings', 'Jodhpur', 2], ['Reddy Poultry Feeds', 'Vijayawada', 2],
+  ['Sagar Book Depot', 'Sangli', 1], ['Shah Packaging', 'Vapi', 2], ['Sharma Traders', 'Mumbai', 2],
+  ['Shree Ganesh Sweets', 'Pune', 1], ['Sri Venkateswara Spices', 'Guntur', 3], ['Tirupati Oil Mills', 'Latur', 4],
+  ['Usha Kitchenware', 'Coimbatore', 2], ['Vasant Yarns', 'Bhiwandi', 3], ['Vijay Fabrication Works', 'Satara', 1],
+  ['Zenith Pipes & Fittings', 'Rajkot', 2]
+];
+const yearsOf = (n) => Array.from({ length: n }, (_, k) => {
+  const a = 2026 - (n - 1 - k);
+  return { name: a + '-' + (a + 1), short: a + '–' + String(a + 1).slice(2), range: '01/04/' + a + ' – 31/03/' + (a + 1) };
+});
+const COMPANIES = RAW.map(([name, city, n]) => ({ name, city, years: yearsOf(n) }));
+const find = (name) => COMPANIES.findIndex((c) => c.name === name);
+const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+const THEMES = {
+  light: { desk: '#F1EEE6', paper: '#FBF9F3', ruled: 'rgba(48, 72, 110, 0.07)', margin: 'rgba(196, 80, 60, 0.55)',
+    ink: '#1C1B18', muted: '#5C5850', faint: '#B9B2A2', rule: '#DED8C9',
+    accent: 'oklch(0.42 0.09 160)', accentInk: '#FFFFFF', accentText: 'oklch(0.42 0.09 160)', sel: 'oklch(0.95 0.03 160)',
+    danger: '#B42318', dangerBg: 'rgba(180, 35, 24, 0.05)' },
+  dark: { desk: '#0F1012', paper: '#16171A', ruled: 'rgba(190, 205, 230, 0.05)', margin: 'rgba(214, 112, 92, 0.45)',
+    ink: '#ECE8DE', muted: '#A6A194', faint: '#4A4842', rule: '#2C2D31',
+    accent: 'oklch(0.78 0.1 160)', accentInk: '#0E1411', accentText: 'oklch(0.80 0.1 160)', sel: 'oklch(0.27 0.035 160)',
+    danger: '#F97066', dangerBg: 'rgba(249, 112, 102, 0.08)' }
+};
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const sharma = find('Sharma Traders');
+    this.state = { dark: !!props.dark, q: '', comp: sharma, year: COMPANIES[sharma].years.length - 1,
+      user: 'admin', pass: '', remember: true, show: false, uErr: '', pErr: '', formErr: '',
+      stage: 'login', np: '', cp: '', npErr: '', cpErr: '', passwords: {} };
+    this.rRefs = [];
+    this.yRefs = [];
+  }
+  key() { return this.state.comp + '/' + this.state.year; }
+  focus(el) { if (el) el.focus(); }
+  setQ = (el) => { this.qEl = el; };
+  setPass = (el) => { this.passEl = el; };
+  setNp = (el) => { this.npEl = el; };
+  setCp = (el) => { this.cpEl = el; };
+  toggleDark = () => this.setState({ dark: !this.state.dark });
+  onQ = (e) => this.setState({ q: e.target.value });
+  clearQ = () => this.setState({ q: '' }, () => this.focus(this.qEl));
+  shown() {
+    const q = this.state.q.trim().toLowerCase();
+    return COMPANIES.map((c, i) => ({ c, i }))
+      .filter(({ c }) => !q || c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q));
+  }
+  qKey = (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); const first = this.shown()[0]; if (first) this.pickCompany(first.i); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); this.focus(this.rRefs[0]); }
+    else if (e.key === 'Escape') { e.preventDefault(); this.setState({ q: '' }); }
+  };
+  pickCompany(i) {
+    const same = i === this.state.comp;
+    this.setState({ comp: i, year: same ? this.state.year : COMPANIES[i].years.length - 1, stage: 'login',
+      pass: '', formErr: '', uErr: '', pErr: '' }, () => this.focus(this.yRefs[this.state.year]));
+  }
+  pickYear(j) {
+    this.setState({ year: j, stage: 'login', pass: '', formErr: '', uErr: '', pErr: '' }, () => this.focus(this.passEl));
+  }
+  jump(ch) {
+    const k = this.shown().findIndex(({ c }) => c.name.toUpperCase().startsWith(ch));
+    if (k >= 0) this.focus(this.rRefs[k]);
+  }
+  rowKey(k, n) {
+    return (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.focus(this.rRefs[Math.min(k + 1, n - 1)]); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); if (k === 0) this.focus(this.qEl); else this.focus(this.rRefs[k - 1]); }
+      else if (e.key === 'Home') { e.preventDefault(); this.focus(this.rRefs[0]); }
+      else if (e.key === 'End') { e.preventDefault(); this.focus(this.rRefs[n - 1]); }
+      else if (/^[a-z]$/i.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        const ch = e.key.toUpperCase();
+        const list = this.shown();
+        for (let s = 1; s <= n; s++) {
+          const idx = (k + s) % n;
+          if (list[idx].c.name.toUpperCase().startsWith(ch)) { this.focus(this.rRefs[idx]); return; }
+        }
+      }
+    };
+  }
+  yearKey(j, n, rowIdx) {
+    return (e) => {
+      if (e.key === 'ArrowRight') { e.preventDefault(); this.focus(this.yRefs[(j + 1) % n]); }
+      else if (e.key === 'ArrowLeft') { e.preventDefault(); this.focus(this.yRefs[(j - 1 + n) % n]); }
+      else if (e.key === 'ArrowUp' || e.key === 'Escape') { e.preventDefault(); this.focus(this.rRefs[rowIdx]); }
+      else if (e.key === 'ArrowDown') { e.preventDefault(); this.focus(this.rRefs[rowIdx + 1] || this.rRefs[rowIdx]); }
+    };
+  }
+  onUser = (e) => this.setState({ user: e.target.value, uErr: '', formErr: '' });
+  onPass = (e) => this.setState({ pass: e.target.value, pErr: '', formErr: '' });
+  userKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); this.focus(this.passEl); } };
+  toggleShow = () => this.setState({ show: !this.state.show });
+  toggleRemember = () => this.setState({ remember: !this.state.remember });
+  submit = (e) => {
+    e.preventDefault();
+    const s = this.state;
+    const uErr = s.user.trim() ? '' : 'Required';
+    const pErr = s.pass ? '' : 'Required';
+    if (uErr || pErr) return this.setState({ uErr, pErr, formErr: '' });
+    const stored = s.passwords[this.key()];
+    if (s.user.trim() === 'admin' && s.pass === (stored || 'admin')) {
+      this.setState({ stage: stored ? 'done' : 'change', formErr: '' }, () => this.focus(this.npEl));
+    } else {
+      this.setState({ formErr: 'Invalid username or password' });
+    }
+  };
+  onNp = (e) => this.setState({ np: e.target.value, npErr: '' });
+  onCp = (e) => this.setState({ cp: e.target.value, cpErr: '' });
+  npKey = (e) => { if (e.key === 'Enter') { e.preventDefault(); this.focus(this.cpEl); } };
+  saveNew = (e) => {
+    e.preventDefault();
+    const { np, cp } = this.state;
+    let npErr = '';
+    if (np.length < 6) npErr = 'Use at least 6 characters';
+    else if (np === 'admin') npErr = 'Choose a different password';
+    const cpErr = cp === np ? '' : 'Passwords do not match';
+    if (npErr || cpErr) return this.setState({ npErr, cpErr });
+    this.setState({ passwords: { ...this.state.passwords, [this.key()]: np }, stage: 'done', np: '', cp: '' });
+  };
+  cancelChange = () => this.setState({ stage: 'login', pass: '', np: '', cp: '', npErr: '', cpErr: '',
+    formErr: 'Password change is required to continue.' });
+  signOut = () => this.setState({ stage: 'login', pass: '', formErr: '' });
+
+  renderVals() {
+    const s = this.state;
+    const t = s.dark ? THEMES.dark : THEMES.light;
+    const comp = COMPANIES[s.comp];
+    const shown = this.shown();
+    const q = s.q.trim().toLowerCase();
+    const d = new Date();
+    this.rRefs.length = shown.length;
+    this.yRefs.length = comp.years.length;
+    const selIdx = shown.findIndex(({ i }) => i === s.comp);
+    const initials = new Set(shown.map(({ c }) => c.name.charAt(0).toUpperCase()));
+    return {
+      t, dark: s.dark, light: !s.dark, themeName: s.dark ? 'Light' : 'Dark',
+      themeLabel: s.dark ? 'Switch to light theme' : 'Switch to dark theme',
+      today: DAYS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+      countText: q ? shown.length + ' of ' + COMPANIES.length + ' companies' : COMPANIES.length + ' companies',
+      q: s.q, onQ: this.onQ, qKey: this.qKey, clearQ: this.clearQ, setQ: this.setQ, noMatch: shown.length === 0,
+      rows: shown.map(({ c, i }, k) => {
+        const at = q ? c.name.toLowerCase().indexOf(q) : -1;
+        return {
+          no: String(i + 1).padStart(2, '0'), city: c.city, count: String(c.years.length),
+          pre: at >= 0 ? c.name.slice(0, at) : c.name, hit: at >= 0 ? c.name.slice(at, at + q.length) : '',
+          post: at >= 0 ? c.name.slice(at + q.length) : '',
+          selected: i === s.comp, expanded: i === s.comp ? 'true' : 'false',
+          bg: i === s.comp ? t.sel : 'transparent', noColor: i === s.comp ? t.accentText : t.muted,
+          weight: i === s.comp ? '600' : '400',
+          ref: (el) => { this.rRefs[k] = el; }, key: this.rowKey(k, shown.length),
+          pick: () => this.pickCompany(i)
+        };
+      }),
+      years: comp.years.map((y, j) => ({
+        name: y.name, range: y.range, pressed: j === s.year ? 'true' : 'false',
+        bg: j === s.year ? t.ink : 'transparent', fg: j === s.year ? t.paper : t.ink,
+        border: j === s.year ? t.ink : t.rule,
+        ref: (el) => { this.yRefs[j] = el; }, key: this.yearKey(j, comp.years.length, Math.max(selIdx, 0)),
+        pick: () => this.pickYear(j)
+      })),
+      letters: ALPHA.map((ch) => {
+        const on = initials.has(ch);
+        return { ch, disabled: !on, aria: 'Jump to ' + ch, color: on ? t.ink : t.faint, cursor: on ? 'pointer' : 'default',
+          jump: () => this.jump(ch) };
+      }),
+      folio: String(s.comp + 1).padStart(2, '0'), selected: comp, year: comp.years[s.year],
+      isLogin: s.stage === 'login', isChange: s.stage === 'change', isDone: s.stage === 'done',
+      user: s.user, pass: s.pass, remember: s.remember, passType: s.show ? 'text' : 'password',
+      showText: s.show ? 'Hide' : 'Show', userName: s.user.trim(),
+      uErr: s.uErr, pErr: s.pErr, formErr: s.formErr, np: s.np, cp: s.cp, npErr: s.npErr, cpErr: s.cpErr,
+      uBorder: s.uErr ? t.danger : t.ink, pBorder: s.pErr ? t.danger : t.ink,
+      npBorder: s.npErr ? t.danger : t.ink, cpBorder: s.cpErr ? t.danger : t.ink,
+      toggleDark: this.toggleDark, onUser: this.onUser, onPass: this.onPass, userKey: this.userKey,
+      setPass: this.setPass, setNp: this.setNp, setCp: this.setCp,
+      toggleShow: this.toggleShow, toggleRemember: this.toggleRemember,
+      submit: this.submit, onNp: this.onNp, onCp: this.onCp, npKey: this.npKey, saveNew: this.saveNew,
+      cancelChange: this.cancelChange, signOut: this.signOut
+    };
+  }
+}
+</script>
+</body>
+</html>

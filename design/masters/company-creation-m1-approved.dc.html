@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Company Creation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{opacity:.8}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+input::placeholder,textarea::placeholder{color:inherit;opacity:.45}
+select option{color:#1c1b18}
+</style>
+</helmet>
+<div style="position: relative; height: 100vh; min-height: 760px; display: flex; flex-direction: column; font-family: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif; background: {{t.desk}}; color: {{t.ink}}">
+
+  <header style="height: 64px; flex: none; box-sizing: border-box; padding: 0 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid {{t.rule}}">
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase">Inventory</span>
+    <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{today}}</span>
+    <button type="button" onClick="{{toggleDark}}" aria-label="{{themeLabel}}" style="all: unset; cursor: pointer; height: 40px; padding: 0 14px; display: flex; align-items: center; gap: 8px; border: 1px solid {{t.rule}}; border-radius: 999px; font-size: 13px; color: {{t.muted}}">{{themeName}}</button>
+  </header>
+
+  <main style="position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; background-color: {{t.paper}}; background-image: repeating-linear-gradient(to bottom, transparent 0 47px, {{t.ruled}} 47px 48px)">
+    <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 84px; width: 1px; background: {{t.margin}}"></div>
+    <div aria-hidden="true" style="position: absolute; top: 0; bottom: 0; left: 89px; width: 1px; background: {{t.margin}}"></div>
+
+    <div style="flex: none; box-sizing: border-box; padding: 28px 48px 18px 120px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 2px solid {{t.ink}}">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: {{t.muted}}">Masters  ›  Company {{modeWord}}</span>
+        <h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 52px; line-height: 1">Company <span style="font-style: italic">{{modeWord}}</span></h1>
+      </div>
+      <a href="ManyCompanies.dc.html" style="text-decoration: none; cursor: pointer; box-sizing: border-box; height: 44px; padding: 0 18px; display: flex; align-items: center; gap: 8px; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">← Back</a>
+    </div>
+
+    <div style="flex: 1; min-height: 0; overflow-y: auto; box-sizing: border-box; padding: 26px 48px 26px 120px">
+      <div style="display: grid; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); gap: 56px; align-items: start">
+        <sc-for list="{{cols}}" as="col" hint-placeholder-count="2">
+          <div style="display: flex; flex-direction: column; gap: 30px">
+            <sc-for list="{{col.sections}}" as="sec" hint-placeholder-count="2">
+              <section style="display: flex; flex-direction: column; gap: 4px">
+                <h2 style="margin: 0 0 6px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-weight: 500; font-size: 12px; letter-spacing: 0.12em; color: {{t.accentText}}">{{sec.title}}</h2>
+                <sc-for list="{{sec.fields}}" as="f" hint-placeholder-count="4">
+                  <div style="display: grid; grid-template-columns: 140px 14px minmax(0, 1fr); align-items: start; gap: 4px">
+                    <label for="{{f.id}}" style="padding-top: 12px; font-size: 14px; color: {{t.muted}}">{{f.label}}<span style="color: {{t.danger}}">{{f.star}}</span></label>
+                    <span aria-hidden="true" style="padding-top: 12px; font-size: 14px; color: {{t.muted}}">:</span>
+                    <div style="display: flex; flex-direction: column; gap: 4px">
+                      <sc-if value="{{f.isText}}" hint-placeholder-val="{{ true }}">
+                        <input id="{{f.id}}" ref="{{f.ref}}" value="{{f.value}}" onChange="{{f.onChange}}" onKeyDown="{{f.onKey}}" placeholder="{{f.hint}}" autocomplete="off" style="box-sizing: border-box; width: 100%; height: 42px; padding: 0 2px; font: inherit; font-size: 16px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{f.border}}; border-radius: 0; text-transform: {{f.case}}">
+                      </sc-if>
+                      <sc-if value="{{f.isArea}}" hint-placeholder-val="{{ false }}">
+                        <textarea id="{{f.id}}" rows="2" value="{{f.value}}" onChange="{{f.onChange}}" placeholder="{{f.hint}}" style="box-sizing: border-box; width: 100%; padding: 10px 2px 6px; font: inherit; font-size: 16px; line-height: 1.5; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{t.ink}}; border-radius: 0; resize: vertical"></textarea>
+                      </sc-if>
+                      <sc-if value="{{f.isSelect}}" hint-placeholder-val="{{ false }}">
+                        <select id="{{f.id}}" value="{{f.value}}" onChange="{{f.onChange}}" style="box-sizing: border-box; width: 100%; height: 42px; padding: 0 2px; font: inherit; font-size: 16px; color: {{t.ink}}; background: transparent; border: 0; border-bottom: 1.5px solid {{t.ink}}; border-radius: 0; cursor: pointer">
+                          <sc-for list="{{f.options}}" as="o" hint-placeholder-count="3">
+                            <option value="{{o.v}}">{{o.v}}</option>
+                          </sc-for>
+                        </select>
+                      </sc-if>
+                      <sc-if value="{{f.isRo}}" hint-placeholder-val="{{ false }}">
+                        <span id="{{f.id}}" style="display: flex; align-items: center; height: 42px; padding: 0 2px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 14px; color: {{t.muted}}; border-bottom: 1px dashed {{t.rule}}">{{f.value}}</span>
+                      </sc-if>
+                      <sc-if value="{{f.err}}" hint-placeholder-val="{{ false }}"><span style="font-size: 13px; color: {{t.danger}}">{{f.err}}</span></sc-if>
+                    </div>
+                  </div>
+                </sc-for>
+              </section>
+            </sc-for>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex: none; box-sizing: border-box; padding: 14px 48px 14px 120px; display: flex; align-items: center; gap: 10px; border-top: 3px double {{t.ink}}; background: {{t.desk}}">
+      <button type="button" onClick="{{cancel}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">Cancel</button>
+      <sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+        <button type="button" onClick="{{newForm}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">New</button>
+      </sc-if>
+      <button type="button" onClick="{{openView}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">View</button>
+      <span style="flex: 1"></span>
+      <sc-if value="{{editing}}" hint-placeholder-val="{{ false }}">
+        <button type="button" onClick="{{askDelete}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.danger}}; color: {{t.danger}}; font-size: 15px; font-weight: 600">Delete</button>
+        <button type="button" onClick="{{print}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">Print</button>
+      </sc-if>
+      <button type="button" onClick="{{save}}" style="all: unset; cursor: pointer; box-sizing: border-box; height: 48px; min-width: 220px; padding: 0 22px; display: flex; align-items: center; justify-content: space-between; gap: 16px; background: {{t.accent}}; color: {{t.accentInk}}; font-size: 15px; font-weight: 600"><span>{{saveLabel}}</span><span aria-hidden="true" style="font-size: 20px">→</span></button>
+    </div>
+  </main>
+
+  <sc-if value="{{toast}}" hint-placeholder-val="{{ false }}">
+    <div role="status" style="position: absolute; right: 48px; bottom: 92px; max-width: 460px; padding: 14px 18px; font-size: 14px; color: {{toastFg}}; background: {{toastBg}}; border: 1px solid {{toastFg}}">{{toast}}</div>
+  </sc-if>
+
+  <sc-if value="{{viewOpen}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; display: grid; place-items: center; background: {{t.scrim}}">
+      <div role="dialog" aria-modal="true" aria-label="Select Company" style="width: 720px; max-width: calc(100% - 48px); max-height: 80%; display: flex; flex-direction: column; background: {{t.paper}}; border: 1.5px solid {{t.ink}}">
+        <div style="padding: 22px 26px 14px; display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid {{t.ink}}">
+          <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 34px; line-height: 1">Select <span style="font-style: italic">Company</span></span>
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{t.muted}}">{{recordCount}} record(s)</span>
+        </div>
+        <div style="display: grid; grid-template-columns: 110px minmax(0, 1fr) 180px; gap: 16px; padding: 10px 26px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{t.muted}}; border-bottom: 1px solid {{t.rule}}">
+          <span>Code</span><span>Company Name</span><span>State</span>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow-y: auto">
+          <sc-for list="{{viewRows}}" as="r" hint-placeholder-count="6">
+            <button type="button" ref="{{r.ref}}" onClick="{{r.pick}}" onKeyDown="{{r.key}}" style="all: unset; cursor: pointer; box-sizing: border-box; width: 100%; display: grid; grid-template-columns: 110px minmax(0, 1fr) 180px; gap: 16px; align-items: center; min-height: 46px; padding: 0 26px; border-bottom: 1px solid {{t.rule}}; font-size: 15px">
+              <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; color: {{t.muted}}">{{r.code}}</span>
+              <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.name}}</span>
+              <span style="font-size: 14px; color: {{t.muted}}">{{r.state}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="padding: 12px 26px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid {{t.rule}}">
+          <span style="font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; color: {{t.muted}}">↑↓ Navigate  •  Enter Select  •  Esc Close</span>
+          <button type="button" onClick="{{closeView}}" style="all: unset; cursor: pointer; height: 44px; padding: 0 18px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 14px; font-weight: 600">Close</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{confirmOpen}}" hint-placeholder-val="{{ false }}">
+    <div style="position: absolute; inset: 0; display: grid; place-items: center; background: {{t.scrim}}">
+      <div role="alertdialog" aria-modal="true" aria-label="Delete Company" style="width: 480px; max-width: calc(100% - 48px); display: flex; flex-direction: column; gap: 18px; padding: 26px; background: {{t.paper}}; border: 1.5px solid {{t.ink}}">
+        <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 34px; line-height: 1">Delete <span style="font-style: italic">Company</span></span>
+        <p style="margin: 0; font-size: 15px; line-height: 1.55; white-space: pre-line">{{confirmText}}</p>
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <button type="button" onClick="{{closeConfirm}}" style="all: unset; cursor: pointer; height: 48px; padding: 0 20px; display: flex; align-items: center; border: 1.5px solid {{t.ink}}; font-size: 15px; font-weight: 600">Cancel</button>
+          <button type="button" onClick="{{doDelete}}" style="all: unset; cursor: pointer; height: 48px; padding: 0 20px; display: flex; align-items: center; background: {{t.danger}}; color: {{t.paper}}; font-size: 15px; font-weight: 600">Delete</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":900}}'>
+// Sample data only. Labels, hints, buttons and messages are MDA's (company_creation_page.dart).
+const STATES = ['Not Applicable', 'Andaman & Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar',
+  'Chandigarh', 'Chhattisgarh', 'Dadra & Nagar Haveli and Daman & Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
+  'Himachal Pradesh', 'Jammu & Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh',
+  'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim',
+  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+const COUNTRIES = ['India', 'Others'];
+
+const SECTIONS = [
+  [
+    { title: 'COMPANY INFORMATION', fields: [
+      ['name', 'Company Name', 'Enter company name', { req: true }],
+      ['mail', 'Mailing Name', 'Mailing name'],
+      ['addr', 'Address', 'Company address', { area: true }],
+      ['state', 'State', '', { options: STATES }],
+      ['country', 'Country', '', { options: COUNTRIES }],
+      ['pin', 'Pincode', '000 000'],
+      ['phone', 'Telephone', '+91 00000 00000'],
+      ['mobile', 'Mobile', '+91 00000 00000'],
+      ['fax', 'Fax', 'Fax number'],
+      ['email', 'E-mail', 'company@example.com'],
+      ['web', 'Website', 'www.example.com']
+    ] }
+  ],
+  [
+    { title: 'STATUTORY DETAILS', fields: [
+      ['gstin', 'GSTIN', '27AAAAA0000A1Z5', { upper: true }],
+      ['pan', 'PAN', 'AAAAA0000A', { upper: true }],
+      ['cin', 'CIN', 'Corporate Identity Number (optional)', { upper: true }]
+    ] },
+    { title: 'BANK DETAILS (PRINTED ON INVOICES)', fields: [
+      ['bank', 'Bank Name', 'Bank name'],
+      ['branch', 'Branch', 'Branch name'],
+      ['acno', 'A/c Number', 'Account number'],
+      ['ifsc', 'IFSC Code', 'ABCD0123456', { upper: true }]
+    ] },
+    { title: 'FINANCIAL YEAR', fields: [
+      ['fy', 'Fin. Year From', '1-Apr-26'],
+      ['books', 'Books From', '1-Apr-26']
+    ] },
+    { title: 'BASE CURRENCY', fields: [
+      ['c1', 'Symbol', '', { ro: '₹' }], ['c2', 'Formal Name', '', { ro: 'Indian Rupees' }],
+      ['c3', 'Symbol Suffix', '', { ro: 'No' }], ['c4', 'Decimal Places', '', { ro: '2' }],
+      ['c5', 'In Millions', '', { ro: 'No' }], ['c6', 'Decimal Word', '', { ro: 'Paise' }]
+    ] }
+  ]
+];
+const INPUT_IDS = SECTIONS.flat().flatMap((s) => s.fields).filter((f) => !(f[3] && f[3].ro)).map((f) => f[0]);
+const EMPTY = { name: '', mail: '', addr: '', state: 'Not Applicable', country: 'India', pin: '', phone: '', mobile: '', fax: '',
+  email: '', web: '', gstin: '', pan: '', cin: '', bank: '', branch: '', acno: '', ifsc: '', fy: '1-Apr-26', books: '1-Apr-26' };
+
+const SAMPLE = [
+  { code: 'CAARAV_1001', name: 'Aarav Electricals', state: 'Maharashtra', mail: 'Aarav Electricals', addr: '14 Laxmi Road\nPune', pin: '411030', mobile: '9822012345', gstin: '27AAPFU0939F1ZV', pan: 'AAPFU0939F' },
+  { code: 'CBALAJ_1002', name: 'Balaji Medicals', state: 'Telangana', addr: 'Ameerpet\nHyderabad', pin: '500016' },
+  { code: 'CGUPTA_1003', name: 'Gupta Brothers', state: 'Uttar Pradesh', addr: 'Aminabad\nLucknow', pin: '226018' },
+  { code: 'CMEHTA_1004', name: 'Mehta Hardware & Paints', state: 'Gujarat', addr: 'Relief Road\nAhmedabad', pin: '380001' },
+  { code: 'CSHARM_1005', name: 'Sharma Traders', state: 'Maharashtra', addr: 'Masjid Bunder\nMumbai', pin: '400003', bank: 'State Bank of India', branch: 'Fort', acno: '30012345678', ifsc: 'SBIN0000300' },
+  { code: 'CZENIT_1006', name: 'Zenith Pipes & Fittings', state: 'Gujarat', addr: 'GIDC\nRajkot', pin: '360003' }
+];
+
+const GSTIN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+const PAN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+
+const THEMES = {
+  light: { desk: '#F1EEE6', paper: '#FBF9F3', ruled: 'rgba(48, 72, 110, 0.07)', margin: 'rgba(196, 80, 60, 0.55)',
+    ink: '#1C1B18', muted: '#5C5850', rule: '#DED8C9', scrim: 'rgba(28, 27, 24, 0.45)',
+    accent: 'oklch(0.42 0.09 160)', accentInk: '#FFFFFF', accentText: 'oklch(0.42 0.09 160)', okBg: 'oklch(0.95 0.03 160)',
+    danger: '#B42318', dangerBg: '#FBEDEB' },
+  dark: { desk: '#0F1012', paper: '#16171A', ruled: 'rgba(190, 205, 230, 0.05)', margin: 'rgba(214, 112, 92, 0.45)',
+    ink: '#ECE8DE', muted: '#A6A194', rule: '#2C2D31', scrim: 'rgba(0, 0, 0, 0.6)',
+    accent: 'oklch(0.78 0.1 160)', accentInk: '#0E1411', accentText: 'oklch(0.80 0.1 160)', okBg: 'oklch(0.27 0.035 160)',
+    danger: '#F97066', dangerBg: '#2A1614' }
+};
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { dark: !!props.dark, form: { ...EMPTY }, errors: {}, editing: null, list: SAMPLE.slice(),
+      viewOpen: false, confirmOpen: false, toast: '', toastKind: 'ok' };
+    this.fieldRefs = {};
+    this.viewRefs = [];
+  }
+  focus(el) { if (el) el.focus(); }
+  say(text, kind) {
+    clearTimeout(this.timer);
+    this.setState({ toast: text, toastKind: kind || 'ok' });
+    this.timer = setTimeout(() => this.setState({ toast: '' }), 3500);
+  }
+  componentWillUnmount() { clearTimeout(this.timer); }
+  toggleDark = () => this.setState({ dark: !this.state.dark });
+  set(id, v) { const e = { ...this.state.errors }; delete e[id]; this.setState({ form: { ...this.state.form, [id]: v }, errors: e }); }
+  // Enter moves to the next field, as in MDA's forms.
+  next(id) { const i = INPUT_IDS.indexOf(id); const n = INPUT_IDS[i + 1]; if (n) this.focus(this.fieldRefs[n] || document.getElementById('cc-' + n)); }
+  validate() {
+    const f = this.state.form, e = {};
+    if (!f.name.trim()) e.name = 'Required';
+    const g = f.gstin.trim().toUpperCase();
+    if (g) e.gstin = g.length !== 15 ? 'GSTIN must be 15 characters' : !GSTIN.test(g) ? 'Invalid GSTIN format' : undefined;
+    const p = f.pan.trim().toUpperCase();
+    if (p && !PAN.test(p)) e.pan = 'PAN must look like AAAAA9999A';
+    Object.keys(e).forEach((k) => e[k] === undefined && delete e[k]);
+    return e;
+  }
+  save = () => {
+    const errors = this.validate();
+    if (Object.keys(errors).length) { this.setState({ errors }); this.focus(this.fieldRefs[Object.keys(errors)[0]]); return; }
+    const f = this.state.form, name = f.name.trim();
+    if (this.state.editing) {
+      const list = this.state.list.map((c) => c.code === this.state.editing ? { ...c, ...f, name } : c);
+      this.setState({ list });
+      this.say('Company "' + name + '" updated successfully');
+    } else {
+      const code = 'C' + name.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6) + '_' + String(Date.now()).slice(-4);
+      const list = this.state.list.concat([{ ...f, name, code }]).sort((a, b) => (a.name < b.name ? -1 : 1));
+      this.setState({ list, form: { ...EMPTY }, errors: {} }, () => this.focus(this.fieldRefs.name));
+      this.say('Company "' + name + '" saved successfully');
+    }
+  };
+  cancel = () => this.setState({ form: { ...EMPTY }, errors: {}, editing: null });
+  newForm = () => this.setState({ form: { ...EMPTY }, errors: {}, editing: null }, () => this.focus(this.fieldRefs.name));
+  openView = () => {
+    if (!this.state.list.length) { this.say('No companies found', 'err'); return; }
+    this.setState({ viewOpen: true }, () => this.focus(this.viewRefs[0]));
+  };
+  closeView = () => this.setState({ viewOpen: false });
+  pick(c) { this.setState({ viewOpen: false, editing: c.code, errors: {}, form: { ...EMPTY, ...c } }); }
+  viewKey(k, c) {
+    return (e) => {
+      const n = this.state.list.length;
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.focus(this.viewRefs[Math.min(k + 1, n - 1)]); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); this.focus(this.viewRefs[Math.max(k - 1, 0)]); }
+      else if (e.key === 'Escape') { e.preventDefault(); this.closeView(); }
+    };
+  }
+  askDelete = () => this.setState({ confirmOpen: true });
+  closeConfirm = () => this.setState({ confirmOpen: false });
+  doDelete = () => {
+    const name = this.state.form.name.trim();
+    this.setState({ confirmOpen: false, list: this.state.list.filter((c) => c.code !== this.state.editing), form: { ...EMPTY }, editing: null });
+    this.say('Company "' + name + '" deleted');
+  };
+  print = () => this.say('Print: the Company Master PDF opens here (sample only)');
+
+  renderVals() {
+    const s = this.state, t = s.dark ? THEMES.dark : THEMES.light, d = new Date();
+    const editing = !!s.editing;
+    this.viewRefs.length = s.list.length;
+    const field = ([id, label, hint, opt]) => {
+      opt = opt || {};
+      const err = s.errors[id] || '';
+      return {
+        id: 'cc-' + id, label, hint, star: opt.req ? ' *' : '', err,
+        isText: !opt.area && !opt.options && !opt.ro, isArea: !!opt.area, isSelect: !!opt.options, isRo: !!opt.ro,
+        options: (opt.options || []).map((v) => ({ v })),
+        value: opt.ro ? opt.ro : (s.form[id] ?? ''),
+        case: opt.upper ? 'uppercase' : 'none', border: err ? t.danger : t.ink,
+        ref: (el) => { this.fieldRefs[id] = el; },
+        onChange: (e) => this.set(id, e.target.value),
+        onKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.next(id); } }
+      };
+    };
+    return {
+      t, themeName: s.dark ? 'Light' : 'Dark', themeLabel: s.dark ? 'Switch to light theme' : 'Switch to dark theme',
+      today: DAYS[d.getDay()] + ', ' + String(d.getDate()).padStart(2, '0') + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(),
+      modeWord: editing ? 'Update' : 'Creation', editing, saveLabel: editing ? 'Update Company' : 'Save Company',
+      cols: SECTIONS.map((sections) => ({ sections: sections.map((sec) => ({ title: sec.title, fields: sec.fields.map(field) })) })),
+      toast: s.toast, toastFg: s.toastKind === 'err' ? t.danger : t.accentText, toastBg: s.toastKind === 'err' ? t.dangerBg : t.okBg,
+      viewOpen: s.viewOpen, recordCount: s.list.length,
+      viewRows: s.list.map((c, k) => ({ code: c.code.slice(0, 11), name: c.name, state: c.state,
+        ref: (el) => { this.viewRefs[k] = el; }, pick: () => this.pick(c), key: this.viewKey(k, c) })),
+      confirmOpen: s.confirmOpen,
+      confirmText: 'Delete company "' + s.form.name.trim() + '"?\n\nAll financial year records for this company will also be removed.',
+      toggleDark: this.toggleDark, save: this.save, cancel: this.cancel, newForm: this.newForm, openView: this.openView,
+      closeView: this.closeView, askDelete: this.askDelete, closeConfirm: this.closeConfirm, doDelete: this.doDelete, print: this.print
+    };
+  }
+}
+</script>
+</body>
+</html>

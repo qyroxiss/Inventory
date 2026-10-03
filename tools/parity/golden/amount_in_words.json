@@ -1,0 +1,898 @@
+[
+ {
+  "input": 0.0,
+  "output": "Rupees Zero Only"
+ },
+ {
+  "input": 0.5,
+  "output": "Rupees Zero and Fifty Paise Only"
+ },
+ {
+  "input": 1.0,
+  "output": "Rupees One Only"
+ },
+ {
+  "input": 1.01,
+  "output": "Rupees One and One Paise Only"
+ },
+ {
+  "input": 10.1,
+  "output": "Rupees Ten and Ten Paise Only"
+ },
+ {
+  "input": 19.0,
+  "output": "Rupees Nineteen Only"
+ },
+ {
+  "input": 20.0,
+  "output": "Rupees Twenty Only"
+ },
+ {
+  "input": 99.99,
+  "output": "Rupees Ninety Nine and Ninety Nine Paise Only"
+ },
+ {
+  "input": 100.0,
+  "output": "Rupees One Hundred Only"
+ },
+ {
+  "input": 101.0,
+  "output": "Rupees One Hundred One Only"
+ },
+ {
+  "input": 999.0,
+  "output": "Rupees Nine Hundred Ninety Nine Only"
+ },
+ {
+  "input": 1000.0,
+  "output": "Rupees One Thousand Only"
+ },
+ {
+  "input": 1001.0,
+  "output": "Rupees One Thousand One Only"
+ },
+ {
+  "input": 99999.0,
+  "output": "Rupees Ninety Nine Thousand Nine Hundred Ninety Nine Only"
+ },
+ {
+  "input": 100000.0,
+  "output": "Rupees One Lakh Only"
+ },
+ {
+  "input": 100001.0,
+  "output": "Rupees One Lakh One Only"
+ },
+ {
+  "input": 1234567.89,
+  "output": "Rupees Twelve Lakh Thirty Four Thousand Five Hundred Sixty Seven and Eighty Nine Paise Only"
+ },
+ {
+  "input": 9999999.0,
+  "output": "Rupees Ninety Nine Lakh Ninety Nine Thousand Nine Hundred Ninety Nine Only"
+ },
+ {
+  "input": 10000000.0,
+  "output": "Rupees One Crore Only"
+ },
+ {
+  "input": 10000001.0,
+  "output": "Rupees One Crore One Only"
+ },
+ {
+  "input": 123456789.12,
+  "output": "Rupees Twelve Crore Thirty Four Lakh Fifty Six Thousand Seven Hundred Eighty Nine and Twelve Paise Only"
+ },
+ {
+  "input": 1000000000.0,
+  "output": "Rupees One Hundred Crore Only"
+ },
+ {
+  "input": 25.29,
+  "output": "Rupees Twenty Five and Twenty Nine Paise Only"
+ },
+ {
+  "input": 0.07,
+  "output": "Rupees Zero and Seven Paise Only"
+ },
+ {
+  "input": 3641306.42,
+  "output": "Rupees Thirty Six Lakh Forty One Thousand Three Hundred Six and Forty Two Paise Only"
+ },
+ {
+  "input": 8418761.04,
+  "output": "Rupees Eighty Four Lakh Eighteen Thousand Seven Hundred Sixty One and Four Paise Only"
+ },
+ {
+  "input": 1536270.5,
+  "output": "Rupees Fifteen Lakh Thirty Six Thousand Two Hundred Seventy and Fifty Paise Only"
+ },
+ {
+  "input": 3401504.18,
+  "output": "Rupees Thirty Four Lakh One Thousand Five Hundred Four and Eighteen Paise Only"
+ },
+ {
+  "input": 5416731.85,
+  "output": "Rupees Fifty Four Lakh Sixteen Thousand Seven Hundred Thirty One and Eighty Five Paise Only"
+ },
+ {
+  "input": 8709673.18,
+  "output": "Rupees Eighty Seven Lakh Nine Thousand Six Hundred Seventy Three and Eighteen Paise Only"
+ },
+ {
+  "input": 2548839.6,
+  "output": "Rupees Twenty Five Lakh Forty Eight Thousand Eight Hundred Thirty Nine and Sixty Paise Only"
+ },
+ {
+  "input": 1215130.64,
+  "output": "Rupees Twelve Lakh Fifteen Thousand One Hundred Thirty and Sixty Four Paise Only"
+ },
+ {
+  "input": 7336337.62,
+  "output": "Rupees Seventy Three Lakh Thirty Six Thousand Three Hundred Thirty Seven and Sixty Two Paise Only"
+ },
+ {
+  "input": 6442687.22,
+  "output": "Rupees Sixty Four Lakh Forty Two Thousand Six Hundred Eighty Seven and Twenty Two Paise Only"
+ },
+ {
+  "input": 2543089.62,
+  "output": "Rupees Twenty Five Lakh Forty Three Thousand Eighty Nine and Sixty Two Paise Only"
+ },
+ {
+  "input": 7710064.4,
+  "output": "Rupees Seventy Seven Lakh Ten Thousand Sixty Four and Forty Paise Only"
+ },
+ {
+  "input": 64104.41,
+  "output": "Rupees Sixty Four Thousand One Hundred Four and Forty One Paise Only"
+ },
+ {
+  "input": 899099.02,
+  "output": "Rupees Eight Lakh Ninety Nine Thousand Ninety Nine and Two Paise Only"
+ },
+ {
+  "input": 9842112.04,
+  "output": "Rupees Ninety Eight Lakh Forty Two Thousand One Hundred Twelve and Four Paise Only"
+ },
+ {
+  "input": 7562689.34,
+  "output": "Rupees Seventy Five Lakh Sixty Two Thousand Six Hundred Eighty Nine and Thirty Four Paise Only"
+ },
+ {
+  "input": 8676376.08,
+  "output": "Rupees Eighty Six Lakh Seventy Six Thousand Three Hundred Seventy Six and Eight Paise Only"
+ },
+ {
+  "input": 8614935.11,
+  "output": "Rupees Eighty Six Lakh Fourteen Thousand Nine Hundred Thirty Five and Eleven Paise Only"
+ },
+ {
+  "input": 9454450.43,
+  "output": "Rupees Ninety Four Lakh Fifty Four Thousand Four Hundred Fifty and Forty Three Paise Only"
+ },
+ {
+  "input": 9276208.71,
+  "output": "Rupees Ninety Two Lakh Seventy Six Thousand Two Hundred Eight and Seventy One Paise Only"
+ },
+ {
+  "input": 7497997.96,
+  "output": "Rupees Seventy Four Lakh Ninety Seven Thousand Nine Hundred Ninety Seven and Ninety Six Paise Only"
+ },
+ {
+  "input": 6906326.32,
+  "output": "Rupees Sixty Nine Lakh Six Thousand Three Hundred Twenty Six and Thirty Two Paise Only"
+ },
+ {
+  "input": 995833.87,
+  "output": "Rupees Nine Lakh Ninety Five Thousand Eight Hundred Thirty Three and Eighty Seven Paise Only"
+ },
+ {
+  "input": 6257336.01,
+  "output": "Rupees Sixty Two Lakh Fifty Seven Thousand Three Hundred Thirty Six and One Paise Only"
+ },
+ {
+  "input": 4983814.94,
+  "output": "Rupees Forty Nine Lakh Eighty Three Thousand Eight Hundred Fourteen and Ninety Four Paise Only"
+ },
+ {
+  "input": 4153229.72,
+  "output": "Rupees Forty One Lakh Fifty Three Thousand Two Hundred Twenty Nine and Seventy Two Paise Only"
+ },
+ {
+  "input": 3823853.27,
+  "output": "Rupees Thirty Eight Lakh Twenty Three Thousand Eight Hundred Fifty Three and Twenty Seven Paise Only"
+ },
+ {
+  "input": 4492036.49,
+  "output": "Rupees Forty Four Lakh Ninety Two Thousand Thirty Six and Forty Nine Paise Only"
+ },
+ {
+  "input": 7457529.51,
+  "output": "Rupees Seventy Four Lakh Fifty Seven Thousand Five Hundred Twenty Nine and Fifty One Paise Only"
+ },
+ {
+  "input": 8994931.58,
+  "output": "Rupees Eighty Nine Lakh Ninety Four Thousand Nine Hundred Thirty One and Fifty Eight Paise Only"
+ },
+ {
+  "input": 6045029.3,
+  "output": "Rupees Sixty Lakh Forty Five Thousand Twenty Nine and Thirty Paise Only"
+ },
+ {
+  "input": 5407764.66,
+  "output": "Rupees Fifty Four Lakh Seven Thousand Seven Hundred Sixty Four and Sixty Six Paise Only"
+ },
+ {
+  "input": 4983607.24,
+  "output": "Rupees Forty Nine Lakh Eighty Three Thousand Six Hundred Seven and Twenty Four Paise Only"
+ },
+ {
+  "input": 2354323.59,
+  "output": "Rupees Twenty Three Lakh Fifty Four Thousand Three Hundred Twenty Three and Fifty Nine Paise Only"
+ },
+ {
+  "input": 7920378.81,
+  "output": "Rupees Seventy Nine Lakh Twenty Thousand Three Hundred Seventy Eight and Eighty One Paise Only"
+ },
+ {
+  "input": 9088401.76,
+  "output": "Rupees Ninety Lakh Eighty Eight Thousand Four Hundred One and Seventy Six Paise Only"
+ },
+ {
+  "input": 8956458.12,
+  "output": "Rupees Eighty Nine Lakh Fifty Six Thousand Four Hundred Fifty Eight and Twelve Paise Only"
+ },
+ {
+  "input": 1666756.94,
+  "output": "Rupees Sixteen Lakh Sixty Six Thousand Seven Hundred Fifty Six and Ninety Four Paise Only"
+ },
+ {
+  "input": 9597991.09,
+  "output": "Rupees Ninety Five Lakh Ninety Seven Thousand Nine Hundred Ninety One and Nine Paise Only"
+ },
+ {
+  "input": 6510450.21,
+  "output": "Rupees Sixty Five Lakh Ten Thousand Four Hundred Fifty and Twenty One Paise Only"
+ },
+ {
+  "input": 308004.02,
+  "output": "Rupees Three Lakh Eight Thousand Four and Two Paise Only"
+ },
+ {
+  "input": 6817884.71,
+  "output": "Rupees Sixty Eight Lakh Seventeen Thousand Eight Hundred Eighty Four and Seventy One Paise Only"
+ },
+ {
+  "input": 7310294.74,
+  "output": "Rupees Seventy Three Lakh Ten Thousand Two Hundred Ninety Four and Seventy Four Paise Only"
+ },
+ {
+  "input": 1999659.2,
+  "output": "Rupees Nineteen Lakh Ninety Nine Thousand Six Hundred Fifty Nine and Twenty Paise Only"
+ },
+ {
+  "input": 9329212.4,
+  "output": "Rupees Ninety Three Lakh Twenty Nine Thousand Two Hundred Twelve and Forty Paise Only"
+ },
+ {
+  "input": 3070817.79,
+  "output": "Rupees Thirty Lakh Seventy Thousand Eight Hundred Seventeen and Seventy Nine Paise Only"
+ },
+ {
+  "input": 5890951.03,
+  "output": "Rupees Fifty Eight Lakh Ninety Thousand Nine Hundred Fifty One and Three Paise Only"
+ },
+ {
+  "input": 6289378.2,
+  "output": "Rupees Sixty Two Lakh Eighty Nine Thousand Three Hundred Seventy Eight and Twenty Paise Only"
+ },
+ {
+  "input": 5095076.27,
+  "output": "Rupees Fifty Lakh Ninety Five Thousand Seventy Six and Twenty Seven Paise Only"
+ },
+ {
+  "input": 7085978.59,
+  "output": "Rupees Seventy Lakh Eighty Five Thousand Nine Hundred Seventy Eight and Fifty Nine Paise Only"
+ },
+ {
+  "input": 828809.57,
+  "output": "Rupees Eight Lakh Twenty Eight Thousand Eight Hundred Nine and Fifty Seven Paise Only"
+ },
+ {
+  "input": 5172932.18,
+  "output": "Rupees Fifty One Lakh Seventy Two Thousand Nine Hundred Thirty Two and Eighteen Paise Only"
+ },
+ {
+  "input": 5106347.21,
+  "output": "Rupees Fifty One Lakh Six Thousand Three Hundred Forty Seven and Twenty One Paise Only"
+ },
+ {
+  "input": 3318457.85,
+  "output": "Rupees Thirty Three Lakh Eighteen Thousand Four Hundred Fifty Seven and Eighty Five Paise Only"
+ },
+ {
+  "input": 5711913.93,
+  "output": "Rupees Fifty Seven Lakh Eleven Thousand Nine Hundred Thirteen and Ninety Three Paise Only"
+ },
+ {
+  "input": 9689655.51,
+  "output": "Rupees Ninety Six Lakh Eighty Nine Thousand Six Hundred Fifty Five and Fifty One Paise Only"
+ },
+ {
+  "input": 612534.18,
+  "output": "Rupees Six Lakh Twelve Thousand Five Hundred Thirty Four and Eighteen Paise Only"
+ },
+ {
+  "input": 4478096.88,
+  "output": "Rupees Forty Four Lakh Seventy Eight Thousand Ninety Six and Eighty Eight Paise Only"
+ },
+ {
+  "input": 9649582.65,
+  "output": "Rupees Ninety Six Lakh Forty Nine Thousand Five Hundred Eighty Two and Sixty Five Paise Only"
+ },
+ {
+  "input": 5606624.02,
+  "output": "Rupees Fifty Six Lakh Six Thousand Six Hundred Twenty Four and Two Paise Only"
+ },
+ {
+  "input": 9992512.69,
+  "output": "Rupees Ninety Nine Lakh Ninety Two Thousand Five Hundred Twelve and Sixty Nine Paise Only"
+ },
+ {
+  "input": 7933997.42,
+  "output": "Rupees Seventy Nine Lakh Thirty Three Thousand Nine Hundred Ninety Seven and Forty Two Paise Only"
+ },
+ {
+  "input": 1247983.38,
+  "output": "Rupees Twelve Lakh Forty Seven Thousand Nine Hundred Eighty Three and Thirty Eight Paise Only"
+ },
+ {
+  "input": 6964455.14,
+  "output": "Rupees Sixty Nine Lakh Sixty Four Thousand Four Hundred Fifty Five and Fourteen Paise Only"
+ },
+ {
+  "input": 7136399.81,
+  "output": "Rupees Seventy One Lakh Thirty Six Thousand Three Hundred Ninety Nine and Eighty One Paise Only"
+ },
+ {
+  "input": 5057808.59,
+  "output": "Rupees Fifty Lakh Fifty Seven Thousand Eight Hundred Eight and Fifty Nine Paise Only"
+ },
+ {
+  "input": 3477721.63,
+  "output": "Rupees Thirty Four Lakh Seventy Seven Thousand Seven Hundred Twenty One and Sixty Three Paise Only"
+ },
+ {
+  "input": 1865665.1,
+  "output": "Rupees Eighteen Lakh Sixty Five Thousand Six Hundred Sixty Five and Ten Paise Only"
+ },
+ {
+  "input": 2312685.55,
+  "output": "Rupees Twenty Three Lakh Twelve Thousand Six Hundred Eighty Five and Fifty Five Paise Only"
+ },
+ {
+  "input": 292445.47,
+  "output": "Rupees Two Lakh Ninety Two Thousand Four Hundred Forty Five and Forty Seven Paise Only"
+ },
+ {
+  "input": 8662082.12,
+  "output": "Rupees Eighty Six Lakh Sixty Two Thousand Eighty Two and Twelve Paise Only"
+ },
+ {
+  "input": 4044368.15,
+  "output": "Rupees Forty Lakh Forty Four Thousand Three Hundred Sixty Eight and Fifteen Paise Only"
+ },
+ {
+  "input": 8822234.05,
+  "output": "Rupees Eighty Eight Lakh Twenty Two Thousand Two Hundred Thirty Four and Five Paise Only"
+ },
+ {
+  "input": 6960990.86,
+  "output": "Rupees Sixty Nine Lakh Sixty Thousand Nine Hundred Ninety and Eighty Six Paise Only"
+ },
+ {
+  "input": 4408666.81,
+  "output": "Rupees Forty Four Lakh Eight Thousand Six Hundred Sixty Six and Eighty One Paise Only"
+ },
+ {
+  "input": 3817747.27,
+  "output": "Rupees Thirty Eight Lakh Seventeen Thousand Seven Hundred Forty Seven and Twenty Seven Paise Only"
+ },
+ {
+  "input": 604686.05,
+  "output": "Rupees Six Lakh Four Thousand Six Hundred Eighty Six and Five Paise Only"
+ },
+ {
+  "input": 3691915.64,
+  "output": "Rupees Thirty Six Lakh Ninety One Thousand Nine Hundred Fifteen and Sixty Four Paise Only"
+ },
+ {
+  "input": 9261075.78,
+  "output": "Rupees Ninety Two Lakh Sixty One Thousand Seventy Five and Seventy Eight Paise Only"
+ },
+ {
+  "input": 9908562.0,
+  "output": "Rupees Ninety Nine Lakh Eight Thousand Five Hundred Sixty Two Only"
+ },
+ {
+  "input": 4073727.71,
+  "output": "Rupees Forty Lakh Seventy Three Thousand Seven Hundred Twenty Seven and Seventy One Paise Only"
+ },
+ {
+  "input": 4000711.77,
+  "output": "Rupees Forty Lakh Seven Hundred Eleven and Seventy Seven Paise Only"
+ },
+ {
+  "input": 2456324.49,
+  "output": "Rupees Twenty Four Lakh Fifty Six Thousand Three Hundred Twenty Four and Forty Nine Paise Only"
+ },
+ {
+  "input": 2409295.73,
+  "output": "Rupees Twenty Four Lakh Nine Thousand Two Hundred Ninety Five and Seventy Three Paise Only"
+ },
+ {
+  "input": 6752216.63,
+  "output": "Rupees Sixty Seven Lakh Fifty Two Thousand Two Hundred Sixteen and Sixty Three Paise Only"
+ },
+ {
+  "input": 6898946.56,
+  "output": "Rupees Sixty Eight Lakh Ninety Eight Thousand Nine Hundred Forty Six and Fifty Six Paise Only"
+ },
+ {
+  "input": 8591908.32,
+  "output": "Rupees Eighty Five Lakh Ninety One Thousand Nine Hundred Eight and Thirty Two Paise Only"
+ },
+ {
+  "input": 5416404.14,
+  "output": "Rupees Fifty Four Lakh Sixteen Thousand Four Hundred Four and Fourteen Paise Only"
+ },
+ {
+  "input": 9506242.61,
+  "output": "Rupees Ninety Five Lakh Six Thousand Two Hundred Forty Two and Sixty One Paise Only"
+ },
+ {
+  "input": 5830051.17,
+  "output": "Rupees Fifty Eight Lakh Thirty Thousand Fifty One and Seventeen Paise Only"
+ },
+ {
+  "input": 119071.77,
+  "output": "Rupees One Lakh Nineteen Thousand Seventy One and Seventy Seven Paise Only"
+ },
+ {
+  "input": 1533552.94,
+  "output": "Rupees Fifteen Lakh Thirty Three Thousand Five Hundred Fifty Two and Ninety Four Paise Only"
+ },
+ {
+  "input": 1274653.89,
+  "output": "Rupees Twelve Lakh Seventy Four Thousand Six Hundred Fifty Three and Eighty Nine Paise Only"
+ },
+ {
+  "input": 1398380.96,
+  "output": "Rupees Thirteen Lakh Ninety Eight Thousand Three Hundred Eighty and Ninety Six Paise Only"
+ },
+ {
+  "input": 2831643.76,
+  "output": "Rupees Twenty Eight Lakh Thirty One Thousand Six Hundred Forty Three and Seventy Six Paise Only"
+ },
+ {
+  "input": 5329634.36,
+  "output": "Rupees Fifty Three Lakh Twenty Nine Thousand Six Hundred Thirty Four and Thirty Six Paise Only"
+ },
+ {
+  "input": 7982236.18,
+  "output": "Rupees Seventy Nine Lakh Eighty Two Thousand Two Hundred Thirty Six and Eighteen Paise Only"
+ },
+ {
+  "input": 7610796.83,
+  "output": "Rupees Seventy Six Lakh Ten Thousand Seven Hundred Ninety Six and Eighty Three Paise Only"
+ },
+ {
+  "input": 6656422.74,
+  "output": "Rupees Sixty Six Lakh Fifty Six Thousand Four Hundred Twenty Two and Seventy Four Paise Only"
+ },
+ {
+  "input": 3312467.84,
+  "output": "Rupees Thirty Three Lakh Twelve Thousand Four Hundred Sixty Seven and Eighty Four Paise Only"
+ },
+ {
+  "input": 1477778.62,
+  "output": "Rupees Fourteen Lakh Seventy Seven Thousand Seven Hundred Seventy Eight and Sixty Two Paise Only"
+ },
+ {
+  "input": 7168253.69,
+  "output": "Rupees Seventy One Lakh Sixty Eight Thousand Two Hundred Fifty Three and Sixty Nine Paise Only"
+ },
+ {
+  "input": 267382.92,
+  "output": "Rupees Two Lakh Sixty Seven Thousand Three Hundred Eighty Two and Ninety Two Paise Only"
+ },
+ {
+  "input": 2150466.59,
+  "output": "Rupees Twenty One Lakh Fifty Thousand Four Hundred Sixty Six and Fifty Nine Paise Only"
+ },
+ {
+  "input": 865998.33,
+  "output": "Rupees Eight Lakh Sixty Five Thousand Nine Hundred Ninety Eight and Thirty Three Paise Only"
+ },
+ {
+  "input": 6906772.74,
+  "output": "Rupees Sixty Nine Lakh Six Thousand Seven Hundred Seventy Two and Seventy Four Paise Only"
+ },
+ {
+  "input": 3231154.4,
+  "output": "Rupees Thirty Two Lakh Thirty One Thousand One Hundred Fifty Four and Forty Paise Only"
+ },
+ {
+  "input": 3221886.62,
+  "output": "Rupees Thirty Two Lakh Twenty One Thousand Eight Hundred Eighty Six and Sixty Two Paise Only"
+ },
+ {
+  "input": 9021436.34,
+  "output": "Rupees Ninety Lakh Twenty One Thousand Four Hundred Thirty Six and Thirty Four Paise Only"
+ },
+ {
+  "input": 4956864.51,
+  "output": "Rupees Forty Nine Lakh Fifty Six Thousand Eight Hundred Sixty Four and Fifty One Paise Only"
+ },
+ {
+  "input": 2662428.14,
+  "output": "Rupees Twenty Six Lakh Sixty Two Thousand Four Hundred Twenty Eight and Fourteen Paise Only"
+ },
+ {
+  "input": 3342302.37,
+  "output": "Rupees Thirty Three Lakh Forty Two Thousand Three Hundred Two and Thirty Seven Paise Only"
+ },
+ {
+  "input": 2223454.41,
+  "output": "Rupees Twenty Two Lakh Twenty Three Thousand Four Hundred Fifty Four and Forty One Paise Only"
+ },
+ {
+  "input": 4306388.26,
+  "output": "Rupees Forty Three Lakh Six Thousand Three Hundred Eighty Eight and Twenty Six Paise Only"
+ },
+ {
+  "input": 9232176.22,
+  "output": "Rupees Ninety Two Lakh Thirty Two Thousand One Hundred Seventy Six and Twenty Two Paise Only"
+ },
+ {
+  "input": 8206940.03,
+  "output": "Rupees Eighty Two Lakh Six Thousand Nine Hundred Forty and Three Paise Only"
+ },
+ {
+  "input": 5590950.57,
+  "output": "Rupees Fifty Five Lakh Ninety Thousand Nine Hundred Fifty and Fifty Seven Paise Only"
+ },
+ {
+  "input": 651873.8,
+  "output": "Rupees Six Lakh Fifty One Thousand Eight Hundred Seventy Three and Eighty Paise Only"
+ },
+ {
+  "input": 7329847.99,
+  "output": "Rupees Seventy Three Lakh Twenty Nine Thousand Eight Hundred Forty Seven and Ninety Nine Paise Only"
+ },
+ {
+  "input": 6148182.04,
+  "output": "Rupees Sixty One Lakh Forty Eight Thousand One Hundred Eighty Two and Four Paise Only"
+ },
+ {
+  "input": 4237618.07,
+  "output": "Rupees Forty Two Lakh Thirty Seven Thousand Six Hundred Eighteen and Seven Paise Only"
+ },
+ {
+  "input": 9004557.13,
+  "output": "Rupees Ninety Lakh Four Thousand Five Hundred Fifty Seven and Thirteen Paise Only"
+ },
+ {
+  "input": 6737573.36,
+  "output": "Rupees Sixty Seven Lakh Thirty Seven Thousand Five Hundred Seventy Three and Thirty Six Paise Only"
+ },
+ {
+  "input": 6391349.34,
+  "output": "Rupees Sixty Three Lakh Ninety One Thousand Three Hundred Forty Nine and Thirty Four Paise Only"
+ },
+ {
+  "input": 4649865.67,
+  "output": "Rupees Forty Six Lakh Forty Nine Thousand Eight Hundred Sixty Five and Sixty Seven Paise Only"
+ },
+ {
+  "input": 9327167.69,
+  "output": "Rupees Ninety Three Lakh Twenty Seven Thousand One Hundred Sixty Seven and Sixty Nine Paise Only"
+ },
+ {
+  "input": 7863622.24,
+  "output": "Rupees Seventy Eight Lakh Sixty Three Thousand Six Hundred Twenty Two and Twenty Four Paise Only"
+ },
+ {
+  "input": 7504716.46,
+  "output": "Rupees Seventy Five Lakh Four Thousand Seven Hundred Sixteen and Forty Six Paise Only"
+ },
+ {
+  "input": 7405679.08,
+  "output": "Rupees Seventy Four Lakh Five Thousand Six Hundred Seventy Nine and Eight Paise Only"
+ },
+ {
+  "input": 2323849.43,
+  "output": "Rupees Twenty Three Lakh Twenty Three Thousand Eight Hundred Forty Nine and Forty Three Paise Only"
+ },
+ {
+  "input": 1051903.64,
+  "output": "Rupees Ten Lakh Fifty One Thousand Nine Hundred Three and Sixty Four Paise Only"
+ },
+ {
+  "input": 6845909.12,
+  "output": "Rupees Sixty Eight Lakh Forty Five Thousand Nine Hundred Nine and Twelve Paise Only"
+ },
+ {
+  "input": 5132340.91,
+  "output": "Rupees Fifty One Lakh Thirty Two Thousand Three Hundred Forty and Ninety One Paise Only"
+ },
+ {
+  "input": 4398135.82,
+  "output": "Rupees Forty Three Lakh Ninety Eight Thousand One Hundred Thirty Five and Eighty Two Paise Only"
+ },
+ {
+  "input": 1558710.07,
+  "output": "Rupees Fifteen Lakh Fifty Eight Thousand Seven Hundred Ten and Seven Paise Only"
+ },
+ {
+  "input": 7296979.71,
+  "output": "Rupees Seventy Two Lakh Ninety Six Thousand Nine Hundred Seventy Nine and Seventy One Paise Only"
+ },
+ {
+  "input": 3178791.17,
+  "output": "Rupees Thirty One Lakh Seventy Eight Thousand Seven Hundred Ninety One and Seventeen Paise Only"
+ },
+ {
+  "input": 5476003.14,
+  "output": "Rupees Fifty Four Lakh Seventy Six Thousand Three and Fourteen Paise Only"
+ },
+ {
+  "input": 5274163.18,
+  "output": "Rupees Fifty Two Lakh Seventy Four Thousand One Hundred Sixty Three and Eighteen Paise Only"
+ },
+ {
+  "input": 2640247.43,
+  "output": "Rupees Twenty Six Lakh Forty Thousand Two Hundred Forty Seven and Forty Three Paise Only"
+ },
+ {
+  "input": 2540748.52,
+  "output": "Rupees Twenty Five Lakh Forty Thousand Seven Hundred Forty Eight and Fifty Two Paise Only"
+ },
+ {
+  "input": 338340.38,
+  "output": "Rupees Three Lakh Thirty Eight Thousand Three Hundred Forty and Thirty Eight Paise Only"
+ },
+ {
+  "input": 8159643.16,
+  "output": "Rupees Eighty One Lakh Fifty Nine Thousand Six Hundred Forty Three and Sixteen Paise Only"
+ },
+ {
+  "input": 1999808.06,
+  "output": "Rupees Nineteen Lakh Ninety Nine Thousand Eight Hundred Eight and Six Paise Only"
+ },
+ {
+  "input": 8744865.83,
+  "output": "Rupees Eighty Seven Lakh Forty Four Thousand Eight Hundred Sixty Five and Eighty Three Paise Only"
+ },
+ {
+  "input": 7672400.88,
+  "output": "Rupees Seventy Six Lakh Seventy Two Thousand Four Hundred and Eighty Eight Paise Only"
+ },
+ {
+  "input": 2080439.71,
+  "output": "Rupees Twenty Lakh Eighty Thousand Four Hundred Thirty Nine and Seventy One Paise Only"
+ },
+ {
+  "input": 9354995.91,
+  "output": "Rupees Ninety Three Lakh Fifty Four Thousand Nine Hundred Ninety Five and Ninety One Paise Only"
+ },
+ {
+  "input": 5304394.27,
+  "output": "Rupees Fifty Three Lakh Four Thousand Three Hundred Ninety Four and Twenty Seven Paise Only"
+ },
+ {
+  "input": 4801719.9,
+  "output": "Rupees Forty Eight Lakh One Thousand Seven Hundred Nineteen and Ninety Paise Only"
+ },
+ {
+  "input": 9904512.45,
+  "output": "Rupees Ninety Nine Lakh Four Thousand Five Hundred Twelve and Forty Five Paise Only"
+ },
+ {
+  "input": 4949150.52,
+  "output": "Rupees Forty Nine Lakh Forty Nine Thousand One Hundred Fifty and Fifty Two Paise Only"
+ },
+ {
+  "input": 5106325.51,
+  "output": "Rupees Fifty One Lakh Six Thousand Three Hundred Twenty Five and Fifty One Paise Only"
+ },
+ {
+  "input": 3303646.97,
+  "output": "Rupees Thirty Three Lakh Three Thousand Six Hundred Forty Six and Ninety Seven Paise Only"
+ },
+ {
+  "input": 2673234.95,
+  "output": "Rupees Twenty Six Lakh Seventy Three Thousand Two Hundred Thirty Four and Ninety Five Paise Only"
+ },
+ {
+  "input": 3515119.9,
+  "output": "Rupees Thirty Five Lakh Fifteen Thousand One Hundred Nineteen and Ninety Paise Only"
+ },
+ {
+  "input": 9012168.97,
+  "output": "Rupees Ninety Lakh Twelve Thousand One Hundred Sixty Eight and Ninety Seven Paise Only"
+ },
+ {
+  "input": 1054793.6,
+  "output": "Rupees Ten Lakh Fifty Four Thousand Seven Hundred Ninety Three and Sixty Paise Only"
+ },
+ {
+  "input": 8273433.66,
+  "output": "Rupees Eighty Two Lakh Seventy Three Thousand Four Hundred Thirty Three and Sixty Six Paise Only"
+ },
+ {
+  "input": 5904630.01,
+  "output": "Rupees Fifty Nine Lakh Four Thousand Six Hundred Thirty and One Paise Only"
+ },
+ {
+  "input": 6622133.52,
+  "output": "Rupees Sixty Six Lakh Twenty Two Thousand One Hundred Thirty Three and Fifty Two Paise Only"
+ },
+ {
+  "input": 7211536.32,
+  "output": "Rupees Seventy Two Lakh Eleven Thousand Five Hundred Thirty Six and Thirty Two Paise Only"
+ },
+ {
+  "input": 4386931.72,
+  "output": "Rupees Forty Three Lakh Eighty Six Thousand Nine Hundred Thirty One and Seventy Two Paise Only"
+ },
+ {
+  "input": 5483802.84,
+  "output": "Rupees Fifty Four Lakh Eighty Three Thousand Eight Hundred Two and Eighty Four Paise Only"
+ },
+ {
+  "input": 1146242.12,
+  "output": "Rupees Eleven Lakh Forty Six Thousand Two Hundred Forty Two and Twelve Paise Only"
+ },
+ {
+  "input": 3375086.72,
+  "output": "Rupees Thirty Three Lakh Seventy Five Thousand Eighty Six and Seventy Two Paise Only"
+ },
+ {
+  "input": 7871650.7,
+  "output": "Rupees Seventy Eight Lakh Seventy One Thousand Six Hundred Fifty and Seventy Paise Only"
+ },
+ {
+  "input": 129918.92,
+  "output": "Rupees One Lakh Twenty Nine Thousand Nine Hundred Eighteen and Ninety Two Paise Only"
+ },
+ {
+  "input": 5329739.42,
+  "output": "Rupees Fifty Three Lakh Twenty Nine Thousand Seven Hundred Thirty Nine and Forty Two Paise Only"
+ },
+ {
+  "input": 385178.67,
+  "output": "Rupees Three Lakh Eighty Five Thousand One Hundred Seventy Eight and Sixty Seven Paise Only"
+ },
+ {
+  "input": 4745483.71,
+  "output": "Rupees Forty Seven Lakh Forty Five Thousand Four Hundred Eighty Three and Seventy One Paise Only"
+ },
+ {
+  "input": 7533530.88,
+  "output": "Rupees Seventy Five Lakh Thirty Three Thousand Five Hundred Thirty and Eighty Eight Paise Only"
+ },
+ {
+  "input": 4473906.28,
+  "output": "Rupees Forty Four Lakh Seventy Three Thousand Nine Hundred Six and Twenty Eight Paise Only"
+ },
+ {
+  "input": 7864087.77,
+  "output": "Rupees Seventy Eight Lakh Sixty Four Thousand Eighty Seven and Seventy Seven Paise Only"
+ },
+ {
+  "input": 8667684.82,
+  "output": "Rupees Eighty Six Lakh Sixty Seven Thousand Six Hundred Eighty Four and Eighty Two Paise Only"
+ },
+ {
+  "input": 2839028.55,
+  "output": "Rupees Twenty Eight Lakh Thirty Nine Thousand Twenty Eight and Fifty Five Paise Only"
+ },
+ {
+  "input": 7375332.92,
+  "output": "Rupees Seventy Three Lakh Seventy Five Thousand Three Hundred Thirty Two and Ninety Two Paise Only"
+ },
+ {
+  "input": 2216680.15,
+  "output": "Rupees Twenty Two Lakh Sixteen Thousand Six Hundred Eighty and Fifteen Paise Only"
+ },
+ {
+  "input": 6966187.5,
+  "output": "Rupees Sixty Nine Lakh Sixty Six Thousand One Hundred Eighty Seven and Fifty Paise Only"
+ },
+ {
+  "input": 7537184.53,
+  "output": "Rupees Seventy Five Lakh Thirty Seven Thousand One Hundred Eighty Four and Fifty Three Paise Only"
+ },
+ {
+  "input": 3739222.92,
+  "output": "Rupees Thirty Seven Lakh Thirty Nine Thousand Two Hundred Twenty Two and Ninety Two Paise Only"
+ },
+ {
+  "input": 73874.64,
+  "output": "Rupees Seventy Three Thousand Eight Hundred Seventy Four and Sixty Four Paise Only"
+ },
+ {
+  "input": 2396974.6,
+  "output": "Rupees Twenty Three Lakh Ninety Six Thousand Nine Hundred Seventy Four and Sixty Paise Only"
+ },
+ {
+  "input": 4185556.27,
+  "output": "Rupees Forty One Lakh Eighty Five Thousand Five Hundred Fifty Six and Twenty Seven Paise Only"
+ },
+ {
+  "input": 4214151.34,
+  "output": "Rupees Forty Two Lakh Fourteen Thousand One Hundred Fifty One and Thirty Four Paise Only"
+ },
+ {
+  "input": 7584918.04,
+  "output": "Rupees Seventy Five Lakh Eighty Four Thousand Nine Hundred Eighteen and Four Paise Only"
+ },
+ {
+  "input": 5273709.37,
+  "output": "Rupees Fifty Two Lakh Seventy Three Thousand Seven Hundred Nine and Thirty Seven Paise Only"
+ },
+ {
+  "input": 5963765.66,
+  "output": "Rupees Fifty Nine Lakh Sixty Three Thousand Seven Hundred Sixty Five and Sixty Six Paise Only"
+ },
+ {
+  "input": 1242554.36,
+  "output": "Rupees Twelve Lakh Forty Two Thousand Five Hundred Fifty Four and Thirty Six Paise Only"
+ },
+ {
+  "input": 8214974.76,
+  "output": "Rupees Eighty Two Lakh Fourteen Thousand Nine Hundred Seventy Four and Seventy Six Paise Only"
+ },
+ {
+  "input": 6118185.49,
+  "output": "Rupees Sixty One Lakh Eighteen Thousand One Hundred Eighty Five and Forty Nine Paise Only"
+ },
+ {
+  "input": 7038252.55,
+  "output": "Rupees Seventy Lakh Thirty Eight Thousand Two Hundred Fifty Two and Fifty Five Paise Only"
+ },
+ {
+  "input": 537348.98,
+  "output": "Rupees Five Lakh Thirty Seven Thousand Three Hundred Forty Eight and Ninety Eight Paise Only"
+ },
+ {
+  "input": 2610859.95,
+  "output": "Rupees Twenty Six Lakh Ten Thousand Eight Hundred Fifty Nine and Ninety Five Paise Only"
+ },
+ {
+  "input": 3853501.47,
+  "output": "Rupees Thirty Eight Lakh Fifty Three Thousand Five Hundred One and Forty Seven Paise Only"
+ },
+ {
+  "input": 3455308.84,
+  "output": "Rupees Thirty Four Lakh Fifty Five Thousand Three Hundred Eight and Eighty Four Paise Only"
+ },
+ {
+  "input": 4220533.43,
+  "output": "Rupees Forty Two Lakh Twenty Thousand Five Hundred Thirty Three and Forty Three Paise Only"
+ },
+ {
+  "input": 8338391.57,
+  "output": "Rupees Eighty Three Lakh Thirty Eight Thousand Three Hundred Ninety One and Fifty Seven Paise Only"
+ },
+ {
+  "input": 110008.27,
+  "output": "Rupees One Lakh Ten Thousand Eight and Twenty Seven Paise Only"
+ },
+ {
+  "input": 2590548.51,
+  "output": "Rupees Twenty Five Lakh Ninety Thousand Five Hundred Forty Eight and Fifty One Paise Only"
+ }
+]

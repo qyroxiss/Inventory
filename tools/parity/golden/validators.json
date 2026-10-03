@@ -1,0 +1,3267 @@
+{
+ "gstin": [
+  {
+   "input": "",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "",
+   "required": true,
+   "output": "GSTIN is required"
+  },
+  {
+   "input": "27AAPFU0939F1ZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "27AAPFU0939F1ZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "27aapfu0939f1zv",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "27aapfu0939f1zv",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "27AAPFU0939F1Z",
+   "required": false,
+   "output": "GSTIN must be 15 characters"
+  },
+  {
+   "input": "27AAPFU0939F1Z",
+   "required": true,
+   "output": "GSTIN must be 15 characters"
+  },
+  {
+   "input": "27AAPFU0939F1ZX",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27AAPFU0939F1ZX",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29ABCDE1234F1Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29ABCDE1234F1Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "ABCDEFGHIJKLMNO",
+   "required": false,
+   "output": "Invalid GSTIN format"
+  },
+  {
+   "input": "ABCDEFGHIJKLMNO",
+   "required": true,
+   "output": "Invalid GSTIN format"
+  },
+  {
+   "input": "27AAPFU0939F0ZV",
+   "required": false,
+   "output": "Invalid GSTIN format"
+  },
+  {
+   "input": "27AAPFU0939F0ZV",
+   "required": true,
+   "output": "Invalid GSTIN format"
+  },
+  {
+   "input": "35WYPNX4080D1ZJ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35WYPNX4080D1ZJ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35WYPNX4080D1Z2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35WYPNX4080D1Z2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01MZJRP3254K1ZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "01MZJRP3254K1ZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "01MZJRP3254K1Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01MZJRP3254K1Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25UXPJA6439B6ZB",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25UXPJA6439B6ZB",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25UXPJA6439B6Z0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25UXPJA6439B6Z0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25QTVYH0365XXZR",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25QTVYH0365XXZR",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25QTVYH0365XXZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25QTVYH0365XXZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33YKBQB7113APZT",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "33YKBQB7113APZT",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "33YKBQB7113APZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33YKBQB7113APZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04GMHPX1841ADZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04GMHPX1841ADZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04GMHPX1841ADZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04GMHPX1841ADZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28FHKOZ6388SFZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "28FHKOZ6388SFZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "28FHKOZ6388SFZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28FHKOZ6388SFZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09AROSS4883HCZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09AROSS4883HCZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "09AROSS4883HCZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09AROSS4883HCZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03NYCDG2945GAZX",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03NYCDG2945GAZX",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03NYCDG2945GAZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03NYCDG2945GAZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34NUADL7137M3ZP",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "34NUADL7137M3ZP",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "34NUADL7137M3Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34NUADL7137M3Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12JWOKS4809AEZC",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "12JWOKS4809AEZC",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12JWOKS4809AEZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12JWOKS4809AEZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28DTMWU2761EMZ8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "28DTMWU2761EMZ8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "28DTMWU2761EMZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28DTMWU2761EMZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21DPVCM3478HFZR",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "21DPVCM3478HFZR",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "21DPVCM3478HFZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21DPVCM3478HFZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10JJYDZ0758ZUZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "10JJYDZ0758ZUZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "10JJYDZ0758ZUZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10JJYDZ0758ZUZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06PQLBQ0587ATZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "06PQLBQ0587ATZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "06PQLBQ0587ATZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06PQLBQ0587ATZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04WVXCX9468CDZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04WVXCX9468CDZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04WVXCX9468CDZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04WVXCX9468CDZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03EMDND8315B5ZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03EMDND8315B5ZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03EMDND8315B5Z4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03EMDND8315B5Z4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27BEGRE2071KLZW",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "27BEGRE2071KLZW",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "27BEGRE2071KLZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27BEGRE2071KLZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14HNWEA1074YGZ5",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "14HNWEA1074YGZ5",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "14HNWEA1074YGZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14HNWEA1074YGZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29YFWNS9696VHZ6",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "29YFWNS9696VHZ6",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "29YFWNS9696VHZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29YFWNS9696VHZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02CNLNQ4921ONZ2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "02CNLNQ4921ONZ2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "02CNLNQ4921ONZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02CNLNQ4921ONZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03ZUIVP8700Q4Z1",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03ZUIVP8700Q4Z1",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03ZUIVP8700Q4Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03ZUIVP8700Q4Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05VJZHV9037WNZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "05VJZHV9037WNZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "05VJZHV9037WNZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05VJZHV9037WNZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24IHZUV8388ROZE",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "24IHZUV8388ROZE",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "24IHZUV8388ROZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24IHZUV8388ROZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25SVWAD2403BUZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25SVWAD2403BUZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25SVWAD2403BUZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25SVWAD2403BUZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "11FSWXW1549TEZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "11FSWXW1549TEZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "11FSWXW1549TEZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "11FSWXW1549TEZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03ZWVEM9665R6Z0",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03ZWVEM9665R6Z0",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03ZWVEM9665R6Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03ZWVEM9665R6Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01LTWLV8087ICZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "01LTWLV8087ICZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "01LTWLV8087ICZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01LTWLV8087ICZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "13XNKSQ1877S8Z3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "13XNKSQ1877S8Z3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "13XNKSQ1877S8Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "13XNKSQ1877S8Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17PPEYR9218E9ZL",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "17PPEYR9218E9ZL",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "17PPEYR9218E9Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17PPEYR9218E9Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05UETHI1596SEZ2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "05UETHI1596SEZ2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "05UETHI1596SEZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05UETHI1596SEZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25EWKCU7096RFZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25EWKCU7096RFZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25EWKCU7096RFZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25EWKCU7096RFZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33VFQBT8066TRZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "33VFQBT8066TRZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "33VFQBT8066TRZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33VFQBT8066TRZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31PJNUZ7587NBZ1",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "31PJNUZ7587NBZ1",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "31PJNUZ7587NBZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31PJNUZ7587NBZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26EEXZF7603SOZA",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "26EEXZF7603SOZA",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "26EEXZF7603SOZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26EEXZF7603SOZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "18NMDMX9046C5ZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "18NMDMX9046C5ZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "18NMDMX9046C5Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "18NMDMX9046C5Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05GWCOI7585B8ZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "05GWCOI7585B8ZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "05GWCOI7585B8Z1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05GWCOI7585B8Z1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30VXYUB9037C1ZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "30VXYUB9037C1ZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "30VXYUB9037C1Z8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30VXYUB9037C1Z8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06KQCQT3850CKZ6",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "06KQCQT3850CKZ6",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "06KQCQT3850CKZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06KQCQT3850CKZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14BEDCN8208Z9Z3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "14BEDCN8208Z9Z3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "14BEDCN8208Z9Z0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14BEDCN8208Z9Z0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03NFSHS0225X6ZK",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03NFSHS0225X6ZK",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03NFSHS0225X6Z3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03NFSHS0225X6Z3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02AMJFH9389K8ZX",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "02AMJFH9389K8ZX",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "02AMJFH9389K8Z7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02AMJFH9389K8Z7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12QAWKK7182HTZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "12QAWKK7182HTZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12QAWKK7182HTZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12QAWKK7182HTZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17RINND7144RMZN",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "17RINND7144RMZN",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "17RINND7144RMZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17RINND7144RMZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15EAKRL7360F9Z8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15EAKRL7360F9Z8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15EAKRL7360F9Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15EAKRL7360F9Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29XFKCJ5000GGZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "29XFKCJ5000GGZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "29XFKCJ5000GGZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29XFKCJ5000GGZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "11EMYGN4151Z9Z2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "11EMYGN4151Z9Z2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "11EMYGN4151Z9Z2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "11EMYGN4151Z9Z2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12QXDRR8882CZZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "12QXDRR8882CZZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12QXDRR8882CZZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12QXDRR8882CZZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30VNBOX2043TWZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "30VNBOX2043TWZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "30VNBOX2043TWZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30VNBOX2043TWZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32VQXCV8213Y9Z9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "32VQXCV8213Y9Z9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "32VQXCV8213Y9Z4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32VQXCV8213Y9Z4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32WHAAM7785EQZW",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "32WHAAM7785EQZW",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "32WHAAM7785EQZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32WHAAM7785EQZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30KCARK4634U8ZS",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "30KCARK4634U8ZS",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "30KCARK4634U8Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30KCARK4634U8Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19QFALX3429QPZR",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "19QFALX3429QPZR",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "19QFALX3429QPZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19QFALX3429QPZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "16ZNWEC7216IGZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "16ZNWEC7216IGZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "16ZNWEC7216IGZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "16ZNWEC7216IGZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34WBWIG7287CTZB",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "34WBWIG7287CTZB",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "34WBWIG7287CTZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34WBWIG7287CTZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19JCTVB4120EOZN",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "19JCTVB4120EOZN",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "19JCTVB4120EOZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19JCTVB4120EOZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07VKTFK5795F4ZE",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "07VKTFK5795F4ZE",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "07VKTFK5795F4Z1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07VKTFK5795F4Z1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26WCTBR8520YOZN",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "26WCTBR8520YOZN",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "26WCTBR8520YOZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26WCTBR8520YOZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09KRBBH5008HAZC",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09KRBBH5008HAZC",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "09KRBBH5008HAZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09KRBBH5008HAZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31FKWFS0134GNZ0",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "31FKWFS0134GNZ0",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "31FKWFS0134GNZ0",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "31FKWFS0134GNZ0",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "32TUSXV9040POZ1",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "32TUSXV9040POZ1",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "32TUSXV9040POZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32TUSXV9040POZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03HSEFC6150LFZ0",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03HSEFC6150LFZ0",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03HSEFC6150LFZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03HSEFC6150LFZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15VWYPI7069VRZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15VWYPI7069VRZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15VWYPI7069VRZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15VWYPI7069VRZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07EFPLH3810MAZ3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "07EFPLH3810MAZ3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "07EFPLH3810MAZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07EFPLH3810MAZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03OMEYN0436JOZT",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03OMEYN0436JOZT",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03OMEYN0436JOZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03OMEYN0436JOZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20BKEXV9462XMZY",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "20BKEXV9462XMZY",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "20BKEXV9462XMZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20BKEXV9462XMZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34ZVJIY0430WQZP",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "34ZVJIY0430WQZP",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "34ZVJIY0430WQZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34ZVJIY0430WQZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27KHHKL4690V1Z8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "27KHHKL4690V1Z8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "27KHHKL4690V1Z1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27KHHKL4690V1Z1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20DYOSU7904UNZJ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "20DYOSU7904UNZJ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "20DYOSU7904UNZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20DYOSU7904UNZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12EHNZU4281ZHZX",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "12EHNZU4281ZHZX",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12EHNZU4281ZHZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12EHNZU4281ZHZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28NUBSF6206T3ZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "28NUBSF6206T3ZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "28NUBSF6206T3Z7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28NUBSF6206T3Z7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12VJKHU7756H3ZK",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "12VJKHU7756H3ZK",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "12VJKHU7756H3Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "12VJKHU7756H3Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24FKTDB1275TYZ5",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "24FKTDB1275TYZ5",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "24FKTDB1275TYZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24FKTDB1275TYZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10HMTUX7704WXZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "10HMTUX7704WXZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "10HMTUX7704WXZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10HMTUX7704WXZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33OMUJU6331TMZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "33OMUJU6331TMZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "33OMUJU6331TMZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33OMUJU6331TMZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10WKEVD7773LAZY",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "10WKEVD7773LAZY",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "10WKEVD7773LAZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10WKEVD7773LAZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24RBHGK5501JDZL",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "24RBHGK5501JDZL",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "24RBHGK5501JDZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "24RBHGK5501JDZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21EJXUI3720PUZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "21EJXUI3720PUZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "21EJXUI3720PUZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21EJXUI3720PUZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22NSQQB8872JWZ2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "22NSQQB8872JWZ2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "22NSQQB8872JWZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22NSQQB8872JWZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25QNRAR8519X5ZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25QNRAR8519X5ZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25QNRAR8519X5Z3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25QNRAR8519X5Z3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19AGHLB5553U5ZR",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "19AGHLB5553U5ZR",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "19AGHLB5553U5Z1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19AGHLB5553U5Z1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "13UWRIG9402DUZR",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "13UWRIG9402DUZR",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "13UWRIG9402DUZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "13UWRIG9402DUZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04ZWVUE9248DUZJ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04ZWVUE9248DUZJ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04ZWVUE9248DUZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04ZWVUE9248DUZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06HGRPA1741RJZC",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "06HGRPA1741RJZC",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "06HGRPA1741RJZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06HGRPA1741RJZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15DIMSJ3518E6Z3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15DIMSJ3518E6Z3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15DIMSJ3518E6Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15DIMSJ3518E6Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10DLXTC4791ZSZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "10DLXTC4791ZSZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "10DLXTC4791ZSZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10DLXTC4791ZSZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09YSSUA2356YRZY",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09YSSUA2356YRZY",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "09YSSUA2356YRZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09YSSUA2356YRZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09NBBQN1661S3ZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09NBBQN1661S3ZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "09NBBQN1661S3Z2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09NBBQN1661S3Z2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14MMIXM1897ELZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "14MMIXM1897ELZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "14MMIXM1897ELZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14MMIXM1897ELZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30GKGDR9905ELZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "30GKGDR9905ELZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "30GKGDR9905ELZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30GKGDR9905ELZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31JEELJ2641L9ZI",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "31JEELJ2641L9ZI",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "31JEELJ2641L9Z9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31JEELJ2641L9Z9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01HNSYP5732NKZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "01HNSYP5732NKZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "01HNSYP5732NKZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "01HNSYP5732NKZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "28VLRMQ6690YRZ3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "28VLRMQ6690YRZ3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "28VLRMQ6690YRZ3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "28VLRMQ6690YRZ3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04LHYKY5938YYZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04LHYKY5938YYZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04LHYKY5938YYZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04LHYKY5938YYZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03UXMQQ2217JGZF",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03UXMQQ2217JGZF",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03UXMQQ2217JGZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03UXMQQ2217JGZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22UCWFU2261G1ZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "22UCWFU2261G1ZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "22UCWFU2261G1Z8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22UCWFU2261G1Z8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19WWURJ3982OGZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "19WWURJ3982OGZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "19WWURJ3982OGZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19WWURJ3982OGZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35AMQDL5327TSZ1",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35AMQDL5327TSZ1",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35AMQDL5327TSZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35AMQDL5327TSZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02AJGUS9738EWZW",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "02AJGUS9738EWZW",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "02AJGUS9738EWZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02AJGUS9738EWZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22EVHPU8323VTZQ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "22EVHPU8323VTZQ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "22EVHPU8323VTZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22EVHPU8323VTZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10LXMUZ2355RJZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "10LXMUZ2355RJZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "10LXMUZ2355RJZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "10LXMUZ2355RJZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35JMKVX6940SNZN",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35JMKVX6940SNZN",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35JMKVX6940SNZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35JMKVX6940SNZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35JUCHD8466CEZP",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35JUCHD8466CEZP",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35JUCHD8466CEZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35JUCHD8466CEZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05WDYTP3487JLZA",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "05WDYTP3487JLZA",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "05WDYTP3487JLZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "05WDYTP3487JLZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33OVUXJ6420PNZJ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "33OVUXJ6420PNZJ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "33OVUXJ6420PNZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "33OVUXJ6420PNZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02MREFS8187EUZ2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "02MREFS8187EUZ2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "02MREFS8187EUZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02MREFS8187EUZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04JTZRM1277RUZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04JTZRM1277RUZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04JTZRM1277RUZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04JTZRM1277RUZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36EJONR5931VKZE",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "36EJONR5931VKZE",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "36EJONR5931VKZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36EJONR5931VKZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26LCMRI0386CSZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "26LCMRI0386CSZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "26LCMRI0386CSZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "26LCMRI0386CSZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22FXEPB7753VXZV",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "22FXEPB7753VXZV",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "22FXEPB7753VXZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "22FXEPB7753VXZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36ZFVOJ6851CHZ2",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "36ZFVOJ6851CHZ2",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "36ZFVOJ6851CHZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36ZFVOJ6851CHZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20CEBPL2468QDZY",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "20CEBPL2468QDZY",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "20CEBPL2468QDZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20CEBPL2468QDZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03LRJSE7452HLZW",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03LRJSE7452HLZW",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03LRJSE7452HLZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03LRJSE7452HLZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14WSKIR4383C4ZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "14WSKIR4383C4ZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "14WSKIR4383C4Z0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "14WSKIR4383C4Z0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29WZFDY7711IKZA",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "29WZFDY7711IKZA",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "29WZFDY7711IKZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29WZFDY7711IKZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21LNSTZ6351VPZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "21LNSTZ6351VPZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "21LNSTZ6351VPZ6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21LNSTZ6351VPZ6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21EANBH4234THZL",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "21EANBH4234THZL",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "21EANBH4234THZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21EANBH4234THZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29CTKPZ1903VJZW",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "29CTKPZ1903VJZW",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "29CTKPZ1903VJZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29CTKPZ1903VJZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15AQDNI2779DNZI",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15AQDNI2779DNZI",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15AQDNI2779DNZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "15AQDNI2779DNZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30OHFWA8609PDZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "30OHFWA8609PDZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "30OHFWA8609PDZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "30OHFWA8609PDZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32IEZOT6529AFZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "32IEZOT6529AFZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "32IEZOT6529AFZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "32IEZOT6529AFZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19CGUDA4224KLZ8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "19CGUDA4224KLZ8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "19CGUDA4224KLZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "19CGUDA4224KLZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17IDWXV6373WWZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "17IDWXV6373WWZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "17IDWXV6373WWZ9",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17IDWXV6373WWZ9",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34JFBNC2124J5ZU",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "34JFBNC2124J5ZU",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "34JFBNC2124J5Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "34JFBNC2124J5Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29TVETY2315R3ZY",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "29TVETY2315R3ZY",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "29TVETY2315R3Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "29TVETY2315R3Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36RJAGR4374OGZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "36RJAGR4374OGZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "36RJAGR4374OGZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36RJAGR4374OGZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "18RNCZF9922SXZD",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "18RNCZF9922SXZD",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "18RNCZF9922SXZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "18RNCZF9922SXZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04OVEEE4357O4ZL",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04OVEEE4357O4ZL",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04OVEEE4357O4Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04OVEEE4357O4Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "11KOOCC5785HJZU",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "11KOOCC5785HJZU",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "11KOOCC5785HJZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "11KOOCC5785HJZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36MZIUQ4327G4ZI",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "36MZIUQ4327G4ZI",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "36MZIUQ4327G4Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36MZIUQ4327G4Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17LAKIQ4597RZZM",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "17LAKIQ4597RZZM",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "17LAKIQ4597RZZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17LAKIQ4597RZZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "37TBZCY7216DOZI",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "37TBZCY7216DOZI",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "37TBZCY7216DOZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "37TBZCY7216DOZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35FJOCU5239RFZB",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35FJOCU5239RFZB",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35FJOCU5239RFZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35FJOCU5239RFZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35ERQDE4851C2ZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "35ERQDE4851C2ZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "35ERQDE4851C2Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "35ERQDE4851C2Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31DOGWX1156EIZ7",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "31DOGWX1156EIZ7",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "31DOGWX1156EIZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "31DOGWX1156EIZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02XUIGD6568BUZ3",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "02XUIGD6568BUZ3",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "02XUIGD6568BUZ5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "02XUIGD6568BUZ5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07XLHZN4602S7Z8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "07XLHZN4602S7Z8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "07XLHZN4602S7Z5",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "07XLHZN4602S7Z5",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20IXDVM8491FVZ4",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "20IXDVM8491FVZ4",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "20IXDVM8491FVZ1",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "20IXDVM8491FVZ1",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06UUXVL0018QPZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "06UUXVL0018QPZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "06UUXVL0018QPZ4",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "06UUXVL0018QPZ4",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "08SMVXX0510I1ZO",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "08SMVXX0510I1ZO",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "08SMVXX0510I1Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "08SMVXX0510I1Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04TBUSN5363IRZS",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "04TBUSN5363IRZS",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "04TBUSN5363IRZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "04TBUSN5363IRZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "09HVONF0690QNZ5",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09HVONF0690QNZ5",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "09HVONF0690QNZ5",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "09HVONF0690QNZ5",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15OZSUO7961IOZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15OZSUO7961IOZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "15OZSUO7961IOZ9",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "15OZSUO7961IOZ9",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03KWEGC6147VTZK",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "03KWEGC6147VTZK",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "03KWEGC6147VTZ3",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "03KWEGC6147VTZ3",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36LSDYP5886Y8Z8",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "36LSDYP5886Y8Z8",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "36LSDYP5886Y8Z6",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "36LSDYP5886Y8Z6",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27BQTJF2537FJZJ",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "27BQTJF2537FJZJ",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "27BQTJF2537FJZ2",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "27BQTJF2537FJZ2",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "37RNYSY0763LTZF",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "37RNYSY0763LTZF",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "37RNYSY0763LTZ7",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "37RNYSY0763LTZ7",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17YCQDS1893QZZH",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "17YCQDS1893QZZH",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "17YCQDS1893QZZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "17YCQDS1893QZZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21CRZFN6604KFZG",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "21CRZFN6604KFZG",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "21CRZFN6604KFZ8",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "21CRZFN6604KFZ8",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25FPBAH3947MYZI",
+   "required": false,
+   "output": null
+  },
+  {
+   "input": "25FPBAH3947MYZI",
+   "required": true,
+   "output": null
+  },
+  {
+   "input": "25FPBAH3947MYZ0",
+   "required": false,
+   "output": "Invalid GSTIN check digit"
+  },
+  {
+   "input": "25FPBAH3947MYZ0",
+   "required": true,
+   "output": "Invalid GSTIN check digit"
+  }
+ ],
+ "pan": [
+  {
+   "input": "",
+   "output": null,
+   "outputRequired": "PAN is required"
+  },
+  {
+   "input": "ABCDE1234F",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "abcde1234f",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "ABCD1234F",
+   "output": "PAN must look like AAAAA9999A",
+   "outputRequired": "PAN must look like AAAAA9999A"
+  },
+  {
+   "input": "ABCDE12345",
+   "output": "PAN must look like AAAAA9999A",
+   "outputRequired": "PAN must look like AAAAA9999A"
+  },
+  {
+   "input": " ABCDE1234F ",
+   "output": null,
+   "outputRequired": null
+  }
+ ],
+ "hsn": [
+  {
+   "input": "",
+   "output": null,
+   "outputRequired": "HSN/SAC is required"
+  },
+  {
+   "input": "1234",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "12345678",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "123",
+   "output": "HSN/SAC must be 4 to 8 digits",
+   "outputRequired": "HSN/SAC must be 4 to 8 digits"
+  },
+  {
+   "input": "123456789",
+   "output": "HSN/SAC must be 4 to 8 digits",
+   "outputRequired": "HSN/SAC must be 4 to 8 digits"
+  },
+  {
+   "input": "12AB",
+   "output": "HSN/SAC must be 4 to 8 digits",
+   "outputRequired": "HSN/SAC must be 4 to 8 digits"
+  },
+  {
+   "input": " 9988 ",
+   "output": null,
+   "outputRequired": null
+  }
+ ],
+ "mobile": [
+  {
+   "input": "",
+   "output": null,
+   "outputRequired": "Mobile is required"
+  },
+  {
+   "input": "9876543210",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "5876543210",
+   "output": "Enter a 10 digit mobile number",
+   "outputRequired": "Enter a 10 digit mobile number"
+  },
+  {
+   "input": "987654321",
+   "output": "Enter a 10 digit mobile number",
+   "outputRequired": "Enter a 10 digit mobile number"
+  },
+  {
+   "input": "98765432101",
+   "output": "Enter a 10 digit mobile number",
+   "outputRequired": "Enter a 10 digit mobile number"
+  },
+  {
+   "input": "+919876543210",
+   "output": "Enter a 10 digit mobile number",
+   "outputRequired": "Enter a 10 digit mobile number"
+  }
+ ],
+ "email": [
+  {
+   "input": "",
+   "output": null,
+   "outputRequired": "Email is required"
+  },
+  {
+   "input": "a@b.co",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "a@b",
+   "output": "Enter a valid email address",
+   "outputRequired": "Enter a valid email address"
+  },
+  {
+   "input": "a b@c.com",
+   "output": "Enter a valid email address",
+   "outputRequired": "Enter a valid email address"
+  },
+  {
+   "input": "x@y.z",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "@b.com",
+   "output": "Enter a valid email address",
+   "outputRequired": "Enter a valid email address"
+  }
+ ],
+ "pincode": [
+  {
+   "input": "",
+   "output": null,
+   "outputRequired": "PIN code is required"
+  },
+  {
+   "input": "411001",
+   "output": null,
+   "outputRequired": null
+  },
+  {
+   "input": "011001",
+   "output": "PIN code must be 6 digits",
+   "outputRequired": "PIN code must be 6 digits"
+  },
+  {
+   "input": "41100",
+   "output": "PIN code must be 6 digits",
+   "outputRequired": "PIN code must be 6 digits"
+  },
+  {
+   "input": "4110011",
+   "output": "PIN code must be 6 digits",
+   "outputRequired": "PIN code must be 6 digits"
+  },
+  {
+   "input": "ABCDEF",
+   "output": "PIN code must be 6 digits",
+   "outputRequired": "PIN code must be 6 digits"
+  }
+ ],
+ "stateCodeFromGstin": [
+  {
+   "input": "",
+   "output": null
+  },
+  {
+   "input": "2",
+   "output": null
+  },
+  {
+   "input": "27AAPFU0939F1ZV",
+   "output": "27"
+  },
+  {
+   "input": " 27",
+   "output": "27"
+  }
+ ]
+}

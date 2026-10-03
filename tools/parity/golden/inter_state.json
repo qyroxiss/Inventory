@@ -1,0 +1,42 @@
+[
+ {
+  "company": "27",
+  "party": "27",
+  "output": false
+ },
+ {
+  "company": "27",
+  "party": "29",
+  "output": true
+ },
+ {
+  "company": "",
+  "party": "27",
+  "output": false
+ },
+ {
+  "company": "27",
+  "party": "",
+  "output": false
+ },
+ {
+  "company": "",
+  "party": "",
+  "output": false
+ },
+ {
+  "company": " 27 ",
+  "party": "27",
+  "output": false
+ },
+ {
+  "company": "07",
+  "party": "7",
+  "output": true
+ },
+ {
+  "company": "27",
+  "party": " 29",
+  "output": true
+ }
+]

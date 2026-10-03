@@ -1,0 +1,18 @@
+{
+  "name": "@qi/spike-pglite",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 spike: same Drizzle code posting sale vouchers on PGlite (desktop) and Postgres 16 (cloud).",
+  "scripts": {
+    "spike": "tsx spike.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "drizzle-orm": "^0.45.3",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1"
+  }
+}

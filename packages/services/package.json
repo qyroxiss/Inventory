@@ -1,0 +1,19 @@
+{
+  "name": "@qi/services",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Use-cases: posting, sale, purchase, masters, dashboard, reports.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@qi/contract": "workspace:*",
+    "@qi/core": "workspace:*",
+    "@qi/db": "workspace:*"
+  }
+}

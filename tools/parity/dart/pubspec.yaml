@@ -1,0 +1,20 @@
+name: mda_parity
+description: Exports golden fixtures from the MDA-Inventory Dart code so the TypeScript port can be checked against it.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Read-only reference to the original app. Nothing in it is modified.
+  mda_inventory:
+    path: ../../../../MDA-Inventory
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
