@@ -16,3 +16,6 @@ tools/parity/dart/.dart_tool/
 tools/parity/dart/build/
 tools/parity/dart/pubspec.lock
 tools/parity/dart/.flutter-plugins-dependencies
+
+# Vercel CLI
+.vercel/
