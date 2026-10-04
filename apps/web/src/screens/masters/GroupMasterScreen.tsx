@@ -8,9 +8,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
-import { ConfirmDelete, ConfirmUpdate, Dialog } from '../../components/Dialog.tsx';
+import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
-import { toast } from '../../components/Toast.tsx';
 
 type Group = OkBody<Awaited<ReturnType<typeof api.api.groups.$get>>>[number];
 type Form = { name: string; type: GroupType | ''; isLedger: 'Yes' | 'No' };
@@ -33,6 +32,11 @@ export function GroupMasterScreen() {
   const [listOpen, setListOpen] = useState(false);
   const [updateConfirm, setUpdateConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [message, setMessage] = useState<{
+    kind: 'ok' | 'error';
+    title: [string, string];
+    text: string;
+  } | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const typeRef = useRef<HTMLSelectElement>(null);
@@ -64,7 +68,11 @@ export function GroupMasterScreen() {
       setErrors((e) => ({ ...e, name: err.body.fieldErrors!.name }));
       nameRef.current?.focus();
     } else {
-      toast(err instanceof Error ? err.message : String(err), 'error');
+      setMessage({
+        kind: 'error',
+        title: ['Group', 'Error'],
+        text: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 
@@ -78,7 +86,11 @@ export function GroupMasterScreen() {
         }),
       );
       await refresh();
-      toast(groupMessages.saved(g.grpName, g.grpCode));
+      setMessage({
+        kind: 'ok',
+        title: ['Group', 'Saved'],
+        text: groupMessages.saved(g.grpName, g.grpCode),
+      });
       clearForm();
     } catch (err) {
       failed(err);
@@ -98,7 +110,7 @@ export function GroupMasterScreen() {
       );
       setEditing(g);
       await refresh();
-      toast(groupMessages.updated(g.grpName));
+      setMessage({ kind: 'ok', title: ['Group', 'Updated'], text: groupMessages.updated(g.grpName) });
     } catch (err) {
       failed(err);
     }
@@ -112,7 +124,11 @@ export function GroupMasterScreen() {
     try {
       await unwrap(api.api.groups[':grpCode'].$delete({ param: { grpCode: editing.grpCode } }));
       await refresh();
-      toast(groupMessages.removed(editing.grpName));
+      setMessage({
+        kind: 'ok',
+        title: ['Group', 'Removed'],
+        text: groupMessages.removed(editing.grpName),
+      });
       setDeleteConfirm(false);
       clearForm();
     } catch (err) {
@@ -123,7 +139,10 @@ export function GroupMasterScreen() {
   }
 
   function view() {
-    if ((groups.data?.length ?? 0) === 0) return toast(groupMessages.noneFound, 'error');
+    if ((groups.data?.length ?? 0) === 0) {
+      setMessage({ kind: 'error', title: ['Group', 'Error'], text: groupMessages.noneFound });
+      return;
+    }
     setListOpen(true);
   }
 
@@ -306,6 +325,13 @@ export function GroupMasterScreen() {
         busy={busy}
       />
       <PrintSheet rows={groups.data ?? []} />
+      <MessageDialog
+        open={!!message}
+        kind={message?.kind}
+        title={message?.title ?? ['Group', '']}
+        text={message?.text ?? ''}
+        onClose={() => setMessage(null)}
+      />
     </>
   );
 }

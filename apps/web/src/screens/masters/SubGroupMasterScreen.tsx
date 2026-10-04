@@ -11,9 +11,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
-import { ConfirmDelete, ConfirmUpdate, Dialog } from '../../components/Dialog.tsx';
+import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
-import { toast } from '../../components/Toast.tsx';
 
 type Group = OkBody<Awaited<ReturnType<typeof api.api.groups.$get>>>[number];
 type SubGroup = OkBody<Awaited<ReturnType<(typeof api.api)['sub-groups']['$get']>>>[number];
@@ -41,6 +40,11 @@ export function SubGroupMasterScreen() {
   const [listOpen, setListOpen] = useState(false);
   const [updateConfirm, setUpdateConfirm] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [message, setMessage] = useState<{
+    kind: 'ok' | 'error';
+    title: [string, string];
+    text: string;
+  } | null>(null);
 
   const nameRef = useRef<HTMLInputElement>(null);
   const underRef = useRef<HTMLSelectElement>(null);
@@ -71,7 +75,11 @@ export function SubGroupMasterScreen() {
       setErrors((e) => ({ ...e, name: err.body.fieldErrors!.name }));
       nameRef.current?.focus();
     } else {
-      toast(err instanceof Error ? err.message : String(err), 'error');
+      setMessage({
+        kind: 'error',
+        title: ['Sub Group', 'Error'],
+        text: err instanceof Error ? err.message : String(err),
+      });
     }
   };
 
@@ -83,7 +91,11 @@ export function SubGroupMasterScreen() {
         api.api['sub-groups'].$post({ json: { name: form.name, under: form.under || undefined } }),
       );
       await refresh();
-      toast(subGroupMessages.saved(g.grpName, g.grpCode));
+      setMessage({
+        kind: 'ok',
+        title: ['Sub Group', 'Saved'],
+        text: subGroupMessages.saved(g.grpName, g.grpCode),
+      });
       clearForm();
     } catch (err) {
       failed(err);
@@ -103,7 +115,11 @@ export function SubGroupMasterScreen() {
       );
       setEditing({ ...g, parentGrpName: editing.parentGrpName });
       await refresh();
-      toast(subGroupMessages.updated(g.grpName));
+      setMessage({
+        kind: 'ok',
+        title: ['Sub Group', 'Updated'],
+        text: subGroupMessages.updated(g.grpName),
+      });
     } catch (err) {
       failed(err);
     }
@@ -119,8 +135,12 @@ export function SubGroupMasterScreen() {
         api.api['sub-groups'][':grpCode'].$delete({ param: { grpCode: editing.grpCode } }),
       );
       await refresh();
-      // MDA shows this removal toast with its error/red colour, even though it succeeded.
-      toast(subGroupMessages.removed(editing.grpName), 'error', 2000);
+      // MDA shows this one with its error/red colour, even though it succeeded — kept as a quirk.
+      setMessage({
+        kind: 'error',
+        title: ['Sub Group', 'Removed'],
+        text: subGroupMessages.removed(editing.grpName),
+      });
       setDeleteConfirm(false);
       clearForm();
     } catch (err) {
@@ -131,7 +151,10 @@ export function SubGroupMasterScreen() {
   }
 
   function view() {
-    if ((subGroups.data?.length ?? 0) === 0) return toast(subGroupMessages.noneFound, 'error');
+    if ((subGroups.data?.length ?? 0) === 0) {
+      setMessage({ kind: 'error', title: ['Sub Group', 'Error'], text: subGroupMessages.noneFound });
+      return;
+    }
     setListOpen(true);
   }
 
@@ -278,6 +301,13 @@ export function SubGroupMasterScreen() {
         busy={busy}
       />
       <PrintSheet rows={subGroups.data ?? []} />
+      <MessageDialog
+        open={!!message}
+        kind={message?.kind}
+        title={message?.title ?? ['Sub Group', '']}
+        text={message?.text ?? ''}
+        onClose={() => setMessage(null)}
+      />
     </>
   );
 }

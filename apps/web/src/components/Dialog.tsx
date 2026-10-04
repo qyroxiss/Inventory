@@ -95,6 +95,50 @@ export function ConfirmUpdate({
   );
 }
 
+/**
+ * A one-button popup for a result message (saved/updated/removed, or an error) — used in place
+ * of the bottom toast on screens that want every message as a dialog box instead.
+ */
+export function MessageDialog({
+  open,
+  kind = 'ok',
+  title,
+  text,
+  onClose,
+}: {
+  open: boolean;
+  kind?: 'ok' | 'error';
+  title: [string, string];
+  text: string;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog open={open} onClose={onClose} title={title} alert>
+      <div className="flex flex-col gap-[18px] px-[26px] pb-[26px] pt-[18px]">
+        <p
+          className={`m-0 whitespace-pre-line text-[15px] leading-[1.55] ${
+            kind === 'error' ? 'text-destructive' : 'text-foreground'
+          }`}
+        >
+          {text}
+        </p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            autoFocus
+            onClick={onClose}
+            className={`flex h-12 cursor-pointer items-center px-5 text-[15px] font-semibold ${
+              kind === 'error' ? 'bg-destructive text-card' : 'bg-primary text-primary-foreground'
+            }`}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
 /** MDA's Cancel / Delete confirmation. */
 export function ConfirmDelete({
   open,
