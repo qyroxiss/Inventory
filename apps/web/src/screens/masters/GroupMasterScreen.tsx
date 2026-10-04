@@ -5,9 +5,10 @@
 
 import { brand, GROUP_TYPES, LEDGER_OPTIONS, groupMessages, type GroupType } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
+import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
 
@@ -19,6 +20,7 @@ const BAR_BTN =
   'flex h-12 cursor-pointer items-center border-[1.5px] border-foreground px-5 text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
 
 export function GroupMasterScreen() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const groups = useQuery({
     queryKey: ['groups'],
@@ -168,12 +170,23 @@ export function GroupMasterScreen() {
 
   return (
     <>
-      <section className="ledger-paper relative flex min-h-full flex-col gap-6 border border-border pb-10 pl-[76px] pr-12 pt-8 print:hidden">
-        <div aria-hidden="true" className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin" />
-        <div aria-hidden="true" className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin" />
+      <section className="ledger-paper relative flex min-h-full flex-col gap-6 border border-border pb-8 pl-[76px] pr-12 pt-6 print:hidden max-md:px-4 max-md:pb-6 max-md:pt-4">
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin max-md:hidden"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin max-md:hidden"
+        />
 
         <div className="flex flex-col gap-2 border-b-2 border-foreground pb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4 max-md:gap-x-3 max-md:gap-y-2">
+            <BackButton
+              onClick={() =>
+                void navigate({ to: '/app/section/$section', params: { section: 'masters' } })
+              }
+            />
             <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               Masters&nbsp;&nbsp;›&nbsp;&nbsp;Group Master
             </span>
@@ -182,7 +195,7 @@ export function GroupMasterScreen() {
               Accounting Master
             </span>
           </div>
-          <Heading as="h1" lead="Group" tail="Master" className="text-[46px]" />
+          <Heading as="h1" lead="Group" tail="Master" className="text-[46px] max-md:text-[34px]" />
         </div>
 
         <div className="flex flex-col gap-6">
@@ -256,7 +269,7 @@ export function GroupMasterScreen() {
             </Row>
           </div>
 
-          <div className="flex max-w-[640px] flex-none items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5">
+          <div className="flex max-w-[640px] flex-none items-center gap-2.5 border-t-[3px] max-sm:flex-wrap border-double border-foreground bg-background py-3.5">
             {editing && (
               <button type="button" onClick={clearForm} className={BAR_BTN}>
                 Cancel
@@ -292,7 +305,7 @@ export function GroupMasterScreen() {
                 else void save();
               }}
               disabled={busy}
-              className={`flex h-12 min-w-[220px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait ${editingTopLevel ? 'opacity-60' : 'disabled:opacity-70'}`}
+              className={`flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait ${editingTopLevel ? 'opacity-60' : 'disabled:opacity-70'}`}
             >
               <span>{editing ? 'Update' : 'Save Group'}</span>
               <span aria-hidden="true" className="text-xl">
@@ -301,14 +314,6 @@ export function GroupMasterScreen() {
             </button>
           </div>
         </div>
-
-        <Link
-          to="/app/section/$section"
-          params={{ section: 'masters' }}
-          className="mt-2 flex min-h-11 items-center self-start text-sm underline underline-offset-4"
-        >
-          ← Masters
-        </Link>
       </section>
 
       <SelectGroup
@@ -358,15 +363,15 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[140px_14px_minmax(0,1fr)] items-start gap-1">
+    <div className="grid grid-cols-[140px_14px_minmax(0,1fr)] items-start gap-1 max-sm:grid-cols-1 max-sm:gap-0">
       <label
         htmlFor={`grp-${label.toLowerCase().replace(/\s+/g, '-')}`}
-        className="pt-3 text-sm text-muted-foreground"
+        className="pt-3 text-sm text-muted-foreground max-sm:pt-2"
       >
         {label}
         {required && <span className="text-destructive"> *</span>}
       </label>
-      <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground">
+      <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground max-sm:hidden">
         :
       </span>
       <div className="flex flex-col gap-1">
@@ -396,11 +401,11 @@ function SelectGroup({
       <span className="absolute right-[26px] top-[30px] font-mono text-xs text-muted-foreground">
         {n} record{n === 1 ? '' : 's'}
       </span>
-      <div className="mt-3.5 grid grid-cols-[90px_minmax(0,1fr)_110px_70px] gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+      <div className="mt-3.5 grid grid-cols-[90px_minmax(0,1fr)_110px_70px] max-sm:grid-cols-[64px_minmax(0,1fr)_84px] max-sm:gap-2.5 max-sm:px-4 gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
         <span>Code</span>
         <span>Group Name</span>
         <span>Type</span>
-        <span>Ledger</span>
+        <span className="max-sm:hidden">Ledger</span>
       </div>
       <div className="max-h-[50vh] overflow-y-auto">
         {rows.length === 0 && (
@@ -429,17 +434,17 @@ function SelectGroup({
                 onPick(g);
               }
             }}
-            className="grid min-h-[46px] w-full cursor-pointer grid-cols-[90px_minmax(0,1fr)_110px_70px] items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent focus-visible:bg-accent"
+            className="grid min-h-[46px] w-full cursor-pointer grid-cols-[90px_minmax(0,1fr)_110px_70px] max-sm:grid-cols-[64px_minmax(0,1fr)_84px] max-sm:gap-2.5 max-sm:px-4 items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent focus-visible:bg-accent"
           >
             <span className="font-mono text-xs text-muted-foreground">{g.grpCode}</span>
             <span className="truncate">{g.grpName}</span>
             <span className="text-sm text-muted-foreground">{g.grpType}</span>
-            <span className="text-sm text-muted-foreground">{g.isLedger}</span>
+            <span className="text-sm text-muted-foreground max-sm:hidden">{g.isLedger}</span>
           </button>
         ))}
       </div>
       <div className="flex items-center justify-between border-t border-border px-[26px] py-3">
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-muted-foreground pointer-coarse:hidden">
           ↑ ↓ to navigate&nbsp;&nbsp;•&nbsp;&nbsp;Enter to
           select&nbsp;&nbsp;•&nbsp;&nbsp;Double-click row
         </span>

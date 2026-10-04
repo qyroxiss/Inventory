@@ -7,8 +7,9 @@ than a new canvas round. All three reuse M1/M2's visual language: one form on ru
 dialog for the list, confirm dialogs, and a Print sheet. The remaining Inventory Masters (Stock
 Group, Stock Sub Group, Stock Item, Godown, Unit, Sale Type) are not built yet and follow next.
 
-Every screen's breadcrumb and heading follow MDA's own header exactly: "Masters › _Screen
-Name_" on the left, an "Accounting Master" pill badge on the right — not "Masters › Accounting
+Every screen's breadcrumb and heading follow MDA's own header exactly: **Back** first (top-left,
+see [MASTERS-SCREENS.md › Layout rules](MASTERS-SCREENS.md#layout-rules-every-inner-screen)),
+then "Masters › _Screen Name_", and an "Accounting Master" pill badge on the right — not "Masters › Accounting
 Masters" as Group Master and Sub Group Master originally had it (a layout assumption made before
 either screen's real header source was checked; corrected once Ledger Creation's own header was
 read directly from `ledger_creation_page.dart:1538-1566`).
@@ -92,22 +93,24 @@ end: re-parenting a sub group into a group of a different type leaves its type u
 
 Reached from the sidebar: **Masters → Accounting Masters → Ledger Creation**
 (`/app/ledger-creation`). Creates/edits actual accounts (ledgers) — customers, suppliers, cash,
-bank, expense accounts, and so on. The biggest Master screen so far: 14 fields across two
-responsive columns (stacking below 680px), plus an Opening Balance bar.
+bank, expense accounts, and so on. The biggest Master screen so far: 14 fields plus Opening
+Balance, in two responsive columns (stacking below 680px), kept in MDA's own field order but
+split 7 / 8 so both columns are used and the screen never scrolls (MDA itself splits 10 / 4 and
+puts Opening Balance in a bottom bar; changed on 2026-10-04 under the layout rules).
 
 - **Left column:** Name\*, Address (multiline), City\* (type-to-add, learns new entries), State\*
   (36 Indian states/UTs), Country (India/Others, default India), Pincode\* (6 digits, must not
-  start with 0), Mobile No., Email, PAN No., Aadhar No.
-- **Right column:** Under Group\* (every group _and_ sub group by name, unlike Sub Group Master's
-  own Under Group list, which is top-level groups only), Sales Executive, Reg. Type (default
-  Regular), GSTIN / UIN.
+  start with 0), Mobile No.
+- **Right column:** Email, PAN No., Aadhar No., Under Group\* (every group _and_ sub group by
+  name, unlike Sub Group Master's own Under Group list, which is top-level groups only), Sales
+  Executive, Reg. Type (default Regular), GSTIN / UIN, Opening Balance.
 - **Three fields are shown but MDA never saves them anywhere — Aadhar No., Sales Executive and
   Reg. Type** have no matching column in Maacct and are never read back, not sent to the API at
   all here. Kept in the form for look and feel only. Country is collected too but likewise never
   saved (no Country column on Maacct).
-- **Opening Balance bar:** amount + Dr/Cr toggle (green Dr, red Cr), labelled "(on _1-Apr-YY_)" —
+- **Opening Balance:** amount + Dr/Cr toggle (green Dr, red Cr), with "(on _1-Apr-YY_)" under it —
   computed live from today's date, not the open book's own financial year (MDA's own quirk, kept).
-- **Buttons:** Print · View · **Cancel (always shown, and always navigates back to Masters)** ·
+- **Buttons** (one row under the form): Print · View · **Cancel (always shown, and always navigates back to Masters)** ·
   Save Ledger / Update Ledger + Remove Ledger. Unlike Group/Sub Group Master, Cancel here is never
   a "clear the form" action — MDA's own `_cancel` is a bare `Navigator.pop()` for this screen only
   (`ledger_creation_page.dart:382,633`, checked directly against Group/Sub Group Master's own

@@ -121,6 +121,13 @@ html {
   zoom: var(--ui-scale);
 }
 
+/* Phones and tablets: full size, so text stays readable and buttons stay easy to tap. */
+@media (max-width: 1023px) {
+  :root {
+    --ui-scale: 1;
+  }
+}
+
 /* Full window height. Divided by the scale because zoom also shrinks viewport units. */
 @utility h-app-screen {
   height: calc(100dvh / var(--ui-scale));

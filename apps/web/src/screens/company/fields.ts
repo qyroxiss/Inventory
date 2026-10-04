@@ -40,7 +40,11 @@ export const BASE_CURRENCY: [string, string][] = [
   ['Decimal Word', 'Paise'],
 ];
 
-/** Left column, then right column. */
+/**
+ * Three columns, read top-to-bottom then left-to-right in MDA's own field order, so the whole
+ * form fits one screen. An empty title continues the previous column's section (Company
+ * Information runs on into the second column).
+ */
 export const COLUMNS: Section[][] = [
   [
     {
@@ -53,14 +57,19 @@ export const COLUMNS: Section[][] = [
         { key: 'country', label: 'Country', options: COUNTRIES },
         { key: 'pinCode', label: 'Pincode', hint: '000 000' },
         { key: 'phone', label: 'Telephone', hint: '+91 00000 00000' },
+      ],
+    },
+  ],
+  [
+    {
+      title: '',
+      fields: [
         { key: 'mobile', label: 'Mobile', hint: '+91 00000 00000' },
         { key: 'fax', label: 'Fax', hint: 'Fax number' },
         { key: 'email', label: 'E-mail', hint: 'company@example.com' },
         { key: 'website', label: 'Website', hint: 'www.example.com' },
       ],
     },
-  ],
-  [
     {
       title: 'STATUTORY DETAILS',
       fields: [
@@ -69,6 +78,8 @@ export const COLUMNS: Section[][] = [
         { key: 'cin', label: 'CIN', hint: 'Corporate Identity Number (optional)', upper: true },
       ],
     },
+  ],
+  [
     {
       title: 'BANK DETAILS (PRINTED ON INVOICES)',
       fields: [

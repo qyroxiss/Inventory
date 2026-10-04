@@ -24,6 +24,10 @@ export function MainShell() {
   });
   const account = useQuery({ queryKey: ['account'], queryFn: getAccount });
   const [findOpen, setFindOpen] = useState(false);
+  // Phones and tablets: the sidebar is a drawer behind ☰, closed again once a page opens.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  useEffect(() => setMenuOpen(false), [pathname]);
 
   // Ctrl K (⌘K on a Mac) opens Quick find from anywhere on the main screen.
   useEffect(() => {
@@ -52,16 +56,43 @@ export function MainShell() {
   return (
     <div className="flex h-app-screen min-h-[600px] flex-col">
       <div className="flex min-h-0 flex-1">
-        <Sidebar />
+        <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
+        {menuOpen && (
+          <div
+            aria-hidden="true"
+            onClick={() => setMenuOpen(false)}
+            className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          />
+        )}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <header className="flex h-16 flex-none items-center gap-4 border-b border-border pl-9 pr-8 print:hidden">
-            <div className="flex min-w-0 items-baseline gap-3.5">
-              <span className="truncate font-serif text-[26px] leading-none">
+          <header className="flex h-16 flex-none items-center gap-4 border-b border-border pl-9 pr-8 print:hidden max-lg:gap-2.5 max-lg:px-4 max-sm:px-3">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label="Open menu"
+              aria-expanded={menuOpen}
+              className="grid size-11 flex-none cursor-pointer place-items-center border-[1.5px] border-foreground lg:hidden"
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
+              >
+                <path d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            </button>
+            <div className="flex min-w-0 items-baseline gap-3.5 max-md:flex-col max-md:gap-1">
+              <span className="truncate font-serif text-[26px] leading-none max-md:max-w-full max-md:text-[20px]">
                 {me.data?.companyName}
               </span>
               {fy && (
-                <span className="whitespace-nowrap rounded-full border border-foreground px-2.5 py-1 font-mono text-xs">
+                <span className="whitespace-nowrap rounded-full border border-foreground px-2.5 py-1 font-mono text-xs max-md:border-0 max-md:p-0 max-md:text-[11px] max-md:text-muted-foreground">
                   {fy}
                 </span>
               )}
@@ -70,11 +101,12 @@ export function MainShell() {
             <button
               type="button"
               onClick={() => setFindOpen(true)}
-              className="flex h-10 w-[300px] cursor-pointer items-center gap-2.5 border border-border bg-card pl-3 pr-2 text-sm text-muted-foreground"
+              aria-label="Quick find"
+              className="flex h-10 w-[300px] flex-none cursor-pointer items-center gap-2.5 border border-border bg-card pl-3 pr-2 text-sm text-muted-foreground max-lg:size-11 max-lg:justify-center max-lg:p-0"
             >
               <SearchIcon size={15} />
-              <span className="flex-1 text-left">Quick find...</span>
-              <kbd className="border border-border px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+              <span className="flex-1 text-left max-lg:hidden">Quick find...</span>
+              <kbd className="border border-border px-1.5 py-0.5 font-mono text-[11px] text-foreground max-lg:hidden">
                 Ctrl K
               </kbd>
             </button>
@@ -82,12 +114,12 @@ export function MainShell() {
               type="button"
               onClick={() => setTheme(next)}
               aria-label={`Switch to ${next} theme`}
-              className="flex h-10 cursor-pointer items-center rounded-full border border-border px-3.5 text-[13px] text-muted-foreground"
+              className="flex h-10 cursor-pointer items-center rounded-full border border-border px-3.5 text-[13px] text-muted-foreground max-md:hidden"
             >
               {theme === 'dark' ? 'Light' : 'Dark'}
             </button>
             {me.data && (
-              <div className="flex items-center gap-2.5 pl-1.5">
+              <div className="flex items-center gap-2.5 pl-1.5 max-md:hidden">
                 <span
                   aria-hidden="true"
                   className="grid size-9 place-items-center bg-foreground font-serif text-xl text-card"
@@ -106,13 +138,13 @@ export function MainShell() {
               type="button"
               onClick={logout}
               title="Sign Out"
-              className="flex h-10 cursor-pointer items-center border-[1.5px] border-foreground px-4 text-sm font-semibold"
+              className="flex h-10 flex-none cursor-pointer items-center border-[1.5px] border-foreground px-4 text-sm font-semibold max-lg:h-11 max-sm:px-3"
             >
               Logout
             </button>
           </header>
 
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5">
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2">
             <Outlet />
           </main>
         </div>
@@ -125,7 +157,7 @@ export function MainShell() {
         </span>
         <span>{brand.appName}</span>
         <span className="flex-1" />
-        {account.data && <span>{account.data.email}</span>}
+        {account.data && <span className="truncate max-md:hidden">{account.data.email}</span>}
         <span>
           {fy}&nbsp;&nbsp;·&nbsp;&nbsp;v{brand.version}
         </span>
@@ -147,12 +179,15 @@ export function MainShell() {
  * MDA's NAVIGATION sidebar on ruled paper. The section you are in is highlighted and opens
  * its items underneath; MDA's own placeholders carry "Not built yet".
  */
-function Sidebar() {
+function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   // Read the current screen/section from the URL itself, not route params — Group Master and
   // Sub Group Master are their own routes (not the generic /app/$screen placeholder), so they
   // never populate a `screen` param, and relying on it left the sidebar stuck on "Dashboard".
   const location = useLocation();
-  const segments = location.pathname.replace(/^\/app\/?/, '').split('/').filter(Boolean);
+  const segments = location.pathname
+    .replace(/^\/app\/?/, '')
+    .split('/')
+    .filter(Boolean);
   const screenSlug = segments[0] === 'section' ? undefined : segments[0];
   const sectionSlug = segments[0] === 'section' ? segments[1] : undefined;
   const here = sectionSlug
@@ -164,17 +199,42 @@ function Sidebar() {
   return (
     <nav
       aria-label="Navigation"
-      className="relative flex min-h-0 flex-[0_0_272px] flex-col border-r border-border bg-card bg-[repeating-linear-gradient(to_bottom,transparent_0_39px,var(--ledger-ruled)_39px_40px)] print:hidden"
+      // Tapping any link closes the drawer, even one to the page already open.
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('a')) onClose();
+      }}
+      className={`relative flex min-h-0 flex-[0_0_272px] flex-col border-r border-border bg-card bg-[repeating-linear-gradient(to_bottom,transparent_0_39px,var(--ledger-ruled)_39px_40px)] print:hidden max-lg:fixed max-lg:inset-y-0 max-lg:left-0 max-lg:z-40 max-lg:w-[288px] max-lg:max-w-[85vw] max-lg:shadow-2xl max-lg:transition-transform ${
+        open ? '' : 'max-lg:invisible max-lg:-translate-x-full'
+      }`}
     >
       <div aria-hidden="true" className="absolute inset-y-0 left-11 w-px bg-ledger-margin" />
       <div aria-hidden="true" className="absolute inset-y-0 left-12 w-px bg-ledger-margin" />
-      <div className="flex h-16 flex-none items-center border-b border-border pl-16 pr-5">
-        <span className="font-serif text-[28px] leading-none">
+      <div className="flex h-16 flex-none items-center border-b border-border pl-16 pr-5 max-lg:pr-3">
+        <span className="flex-1 font-serif text-[28px] leading-none">
           {brand.appName.slice(0, Math.ceil(brand.appName.length / 2))}
           <span className="italic">
             {brand.appName.slice(Math.ceil(brand.appName.length / 2))}.
           </span>
         </span>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close menu"
+          className="grid size-11 cursor-pointer place-items-center border-[1.5px] border-foreground lg:hidden"
+        >
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            aria-hidden="true"
+          >
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
       </div>
       <span className="pb-2 pl-16 pr-5 pt-5 font-mono text-[11px] tracking-[0.14em] text-muted-foreground">
         NAVIGATION
@@ -395,7 +455,7 @@ function QuickFind({
           <p className="m-0 px-[26px] py-4 text-sm text-muted-foreground">Nothing matches “{q}”.</p>
         )}
       </div>
-      <div className="px-[26px] py-2.5 font-mono text-[11px] text-muted-foreground">
+      <div className="px-[26px] py-2.5 font-mono text-[11px] text-muted-foreground pointer-coarse:hidden">
         ↑↓ Navigate&nbsp;&nbsp;•&nbsp;&nbsp;Enter Open&nbsp;&nbsp;•&nbsp;&nbsp;Esc Close
       </div>
     </Dialog>

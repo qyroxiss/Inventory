@@ -22,7 +22,9 @@ export function SectionPage() {
         <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
           Navigation&nbsp;&nbsp;›&nbsp;&nbsp;{s.label}
         </span>
-        <h1 className="m-0 font-serif text-[46px] font-normal leading-none">{s.label}</h1>
+        <h1 className="m-0 font-serif text-[46px] font-normal leading-none max-md:text-[34px]">
+          {s.label}
+        </h1>
         <span className="whitespace-pre font-mono text-xs text-muted-foreground">{subtitle}</span>
       </div>
       {s.groups.map((g) => (
@@ -32,7 +34,7 @@ export function SectionPage() {
               {g.label}
             </h2>
           )}
-          <div className="grid grid-cols-4 gap-3.5">
+          <div className="grid grid-cols-4 gap-3.5 max-lg:grid-cols-3 max-md:grid-cols-2 max-md:gap-2.5">
             {g.items.map((label) => {
               const item = findItem(slug(label))!;
               return (
@@ -40,7 +42,7 @@ export function SectionPage() {
                   key={label}
                   to="/app/$screen"
                   params={{ screen: item.slug }}
-                  className={`flex min-h-[128px] flex-col justify-between gap-3 border border-border bg-card px-[18px] py-4 hover:border-foreground ${
+                  className={`flex min-h-[128px] min-w-0 flex-col justify-between gap-3 border border-border bg-card px-[18px] py-4 hover:border-foreground max-md:min-h-[112px] max-md:px-3.5 ${
                     item.built ? '' : 'text-muted-foreground'
                   }`}
                 >

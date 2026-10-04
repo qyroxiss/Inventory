@@ -34,7 +34,7 @@ export function Toaster() {
     <div
       key={t.id}
       role={t.kind === 'error' ? 'alert' : 'status'}
-      className={`fixed bottom-24 right-12 z-50 max-w-[460px] border px-[18px] py-3.5 text-sm print:hidden ${
+      className={`fixed bottom-24 right-12 z-50 max-w-[460px] max-sm:bottom-6 max-sm:left-3 max-sm:right-3 max-sm:max-w-none border px-[18px] py-3.5 text-sm print:hidden ${
         t.kind === 'error'
           ? 'border-destructive bg-destructive-bg text-destructive'
           : 'border-primary-text bg-accent text-primary-text'

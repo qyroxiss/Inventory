@@ -7,7 +7,8 @@ import { InkButton, OutlineButton, Heading } from '../../components/ledger.tsx';
 import { yearRange, type IndexCompany } from './types.ts';
 
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const COLS = 'grid grid-cols-[56px_minmax(0,1fr)_150px_56px] gap-4';
+const COLS =
+  'grid grid-cols-[56px_minmax(0,1fr)_150px_56px] gap-4 max-sm:grid-cols-[36px_minmax(0,1fr)_44px] max-sm:gap-3';
 
 /** MDA's company form records State, never City; show City when present, else State. */
 const placeOf = (c: IndexCompany) => {
@@ -144,18 +145,29 @@ export function BookIndex({
   return (
     <section
       aria-label="Company & Year Setup"
-      className="ledger-paper relative flex min-h-0 min-w-0 flex-1 flex-col gap-[22px] border-r border-border pb-6 pl-[120px] pr-12 pt-9"
+      className="ledger-paper relative flex min-h-0 min-w-0 flex-1 flex-col gap-[22px] border-r border-border pb-6 pl-[120px] pr-12 pt-9 max-lg:flex-none max-lg:border-b max-lg:border-r-0 max-lg:px-6 max-lg:pt-6 max-sm:px-4"
     >
       {/* Red double margin line, as on ledger paper */}
-      <div aria-hidden="true" className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin" />
-      <div aria-hidden="true" className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin max-lg:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin max-lg:hidden"
+      />
 
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div className="flex flex-col gap-2">
           <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {count}
           </span>
-          <Heading as="h1" lead="Company & Year" tail="Setup" className="text-[52px]" />
+          <Heading
+            as="h1"
+            lead="Company & Year"
+            tail="Setup"
+            className="text-[52px] max-md:text-[36px]"
+          />
         </div>
         <div className="flex flex-wrap gap-3">
           <InkButton type="button" onClick={onNewCompany}>
@@ -249,18 +261,22 @@ export function BookIndex({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 gap-4">
+      <div className="flex min-h-0 flex-1 gap-4 max-lg:flex-none">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div
             className={`${COLS} border-b-2 border-foreground px-3 pb-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground`}
           >
             <span>No.</span>
             <span>Company Name</span>
-            <span>State</span>
+            <span className="max-sm:hidden">State</span>
             <span className="text-right">Years</span>
           </div>
 
-          <div ref={listRef} role="list" className="min-h-0 flex-1 overflow-y-auto">
+          <div
+            ref={listRef}
+            role="list"
+            className="min-h-0 flex-1 overflow-y-auto max-lg:max-h-[55vh] max-lg:flex-none"
+          >
             {shown.map(({ c, no }, k) => {
               const selected = c.id === companyId;
               const at = needle ? c.compName.toLowerCase().indexOf(needle) : -1;
@@ -298,7 +314,9 @@ export function BookIndex({
                         c.compName
                       )}
                     </span>
-                    <span className="truncate text-sm text-muted-foreground">{placeOf(c)}</span>
+                    <span className="truncate text-sm text-muted-foreground max-sm:hidden">
+                      {placeOf(c)}
+                    </span>
                     <span className="text-right font-mono text-[13px] text-muted-foreground">
                       {c.years.length}
                     </span>
@@ -308,7 +326,7 @@ export function BookIndex({
                     <div
                       role="group"
                       aria-label="Financial year"
-                      className="flex flex-wrap gap-2.5 pb-4 pl-[84px] pr-3 pt-0.5"
+                      className="flex flex-wrap gap-2.5 pb-4 pl-[84px] pr-3 pt-0.5 max-sm:pl-3"
                     >
                       {c.years.length === 0 ? (
                         <p className="m-0 py-2 text-sm text-muted-foreground">
@@ -376,7 +394,7 @@ export function BookIndex({
 
         <nav
           aria-label="Jump to letter"
-          className="flex min-h-0 w-7 flex-none flex-col justify-between pt-[34px]"
+          className="flex min-h-0 w-7 flex-none flex-col justify-between pt-[34px] max-lg:hidden"
         >
           {ALPHA.map((ch) => {
             const on = initials.has(ch);
@@ -396,7 +414,7 @@ export function BookIndex({
         </nav>
       </div>
 
-      <div className="flex min-h-7 flex-none items-center">
+      <div className="flex min-h-7 flex-none items-center max-lg:hidden">
         <span className="ml-auto font-mono text-xs text-muted-foreground">
           Type a letter to jump · ↑ ↓ move · Enter open
         </span>

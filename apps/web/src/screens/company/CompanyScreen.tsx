@@ -8,6 +8,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { AppHeader } from '../../components/AppHeader.tsx';
+import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
 import { toast } from '../../components/Toast.tsx';
@@ -169,29 +170,32 @@ export function CompanyScreen() {
         <main className="ledger-paper relative flex min-h-0 flex-1 flex-col">
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin max-lg:hidden"
           />
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin max-lg:hidden"
           />
 
-          <div className="flex flex-none items-end justify-between gap-5 border-b-2 border-foreground pb-[18px] pl-[120px] pr-12 pt-7">
-            <div className="flex flex-col gap-2">
+          <div className="flex flex-none flex-col gap-2 border-b-2 border-foreground pb-4 pl-[120px] pr-12 pt-6 max-lg:px-6 max-sm:px-4 max-sm:pt-4">
+            <div className="flex flex-wrap items-center gap-4 max-md:gap-x-3 max-md:gap-y-2">
+              <BackButton onClick={back} />
               <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
                 Masters&nbsp;&nbsp;›&nbsp;&nbsp;Company {word}
               </span>
-              <Heading as="h1" lead="Company" tail={word} className="text-[52px]" />
             </div>
-            <button type="button" onClick={back} className={`${BAR_BTN} h-11 px-[18px]`}>
-              ← Back
-            </button>
+            <Heading
+              as="h1"
+              lead="Company"
+              tail={word}
+              className="text-[46px] max-md:text-[34px]"
+            />
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pb-[26px] pl-[120px] pr-12 pt-[26px]">
-            <div className="grid grid-cols-[minmax(0,55fr)_minmax(0,45fr)] items-start gap-14">
+          <div className="min-h-0 flex-1 overflow-y-auto pb-[18px] pl-[120px] pr-12 pt-[18px] max-lg:px-6 max-sm:px-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(360px,100%),1fr))] items-start gap-x-12 gap-y-[30px]">
               {COLUMNS.map((sections, i) => (
-                <div key={i} className="flex flex-col gap-[30px]">
+                <div key={i} className="flex flex-col gap-[22px]">
                   {sections.map((sec) => (
                     <FormSection
                       key={sec.title}
@@ -204,13 +208,13 @@ export function CompanyScreen() {
                       refs={refs.current}
                     />
                   ))}
-                  {i === 1 && <BaseCurrency />}
+                  {i === COLUMNS.length - 1 && <BaseCurrency />}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="flex flex-none items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5 pl-[120px] pr-12">
+          <div className="flex flex-none items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5 pl-[120px] pr-12 max-lg:px-6 max-sm:flex-wrap max-sm:px-4">
             <button type="button" onClick={back} className={BAR_BTN}>
               Cancel
             </button>
@@ -241,7 +245,7 @@ export function CompanyScreen() {
               type="button"
               onClick={editing ? update : save}
               disabled={busy}
-              className="flex h-12 min-w-[220px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
+              className="flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
             >
               <span>{editing ? 'Update Company' : 'Save Company'}</span>
               <span aria-hidden="true" className="text-xl">
@@ -285,7 +289,11 @@ function FormSection({
 }) {
   return (
     <section className="flex flex-col gap-1">
-      <h2 className="m-0 mb-1.5 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
+      {/* An untitled section continues the one before it; the blank line keeps rows aligned. */}
+      <h2
+        aria-hidden={title ? undefined : true}
+        className="m-0 mb-1.5 min-h-[18px] font-mono text-xs font-medium tracking-[0.12em] text-primary-text"
+      >
         {title}
       </h2>
       {fields.map((f) => {
@@ -310,12 +318,15 @@ function FormSection({
           }
         };
         return (
-          <div key={f.key} className="grid grid-cols-[140px_14px_minmax(0,1fr)] items-start gap-1">
-            <label htmlFor={id} className="pt-3 text-sm text-muted-foreground">
+          <div
+            key={f.key}
+            className="grid grid-cols-[140px_14px_minmax(0,1fr)] items-start gap-1 max-sm:grid-cols-1 max-sm:gap-0"
+          >
+            <label htmlFor={id} className="pt-3 text-sm text-muted-foreground max-sm:pt-2">
               {f.label}
               {f.required && <span className="text-destructive"> *</span>}
             </label>
-            <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground">
+            <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground max-sm:hidden">
               :
             </span>
             <div className="flex flex-col gap-1">
@@ -369,17 +380,18 @@ function BaseCurrency() {
       <h2 className="m-0 mb-1.5 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
         BASE CURRENCY
       </h2>
-      {BASE_CURRENCY.map(([k, v]) => (
-        <div key={k} className="grid grid-cols-[140px_14px_minmax(0,1fr)] items-center gap-1">
-          <span className="text-sm text-muted-foreground">{k}</span>
-          <span aria-hidden="true" className="text-sm text-muted-foreground">
-            :
-          </span>
-          <span className="flex h-[42px] items-center border-b border-dashed border-border px-0.5 font-mono text-sm text-muted-foreground">
-            {v}
-          </span>
-        </div>
-      ))}
+      {/* Read-only, so two to a row — it needs no input-sized lines. */}
+      <dl className="m-0 grid grid-cols-2 gap-x-4">
+        {BASE_CURRENCY.map(([k, v]) => (
+          <div
+            key={k}
+            className="flex h-8 min-w-0 items-center justify-between gap-3 border-b border-dashed border-border text-[13px] text-muted-foreground"
+          >
+            <dt className="whitespace-nowrap">{k}</dt>
+            <dd className="m-0 truncate font-mono">{v}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
@@ -401,8 +413,8 @@ function SelectCompany({
       <span className="absolute right-[26px] top-[30px] font-mono text-xs text-muted-foreground">
         {n} record(s)
       </span>
-      <div className="mt-3.5 grid grid-cols-[120px_minmax(0,1fr)_180px] gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
-        <span>Code</span>
+      <div className="mt-3.5 grid grid-cols-[120px_minmax(0,1fr)_180px] max-sm:grid-cols-[minmax(0,1fr)_110px] max-sm:gap-2.5 max-sm:px-4 gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="max-sm:hidden">Code</span>
         <span>Company Name</span>
         <span>State</span>
       </div>
@@ -425,16 +437,18 @@ function SelectCompany({
                 refs.current[Math.max(k - 1, 0)]?.focus();
               }
             }}
-            className="grid min-h-[46px] w-full cursor-pointer grid-cols-[120px_minmax(0,1fr)_180px] items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent focus-visible:bg-accent"
+            className="grid min-h-[46px] w-full cursor-pointer grid-cols-[120px_minmax(0,1fr)_180px] max-sm:grid-cols-[minmax(0,1fr)_110px] max-sm:gap-2.5 max-sm:px-4 items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent focus-visible:bg-accent"
           >
-            <span className="font-mono text-xs text-muted-foreground">{shortCode(c.compCode)}</span>
+            <span className="font-mono text-xs text-muted-foreground max-sm:hidden">
+              {shortCode(c.compCode)}
+            </span>
             <span className="truncate">{c.compName}</span>
             <span className="text-sm text-muted-foreground">{c.state}</span>
           </button>
         ))}
       </div>
       <div className="flex items-center justify-between border-t border-border px-[26px] py-3">
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-muted-foreground pointer-coarse:hidden">
           ↑↓ Navigate&nbsp;&nbsp;•&nbsp;&nbsp;Enter Select&nbsp;&nbsp;•&nbsp;&nbsp;Esc Close
         </span>
         <button

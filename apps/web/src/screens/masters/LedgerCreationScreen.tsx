@@ -21,9 +21,10 @@ import {
   type DrCr,
 } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
+import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
 import { SearchSelect, type SearchOption } from '../../components/SearchSelect.tsx';
@@ -273,12 +274,19 @@ export function LedgerCreationScreen() {
 
   return (
     <>
-      <section className="ledger-paper relative flex min-h-full flex-col gap-6 border border-border pb-10 pl-[76px] pr-12 pt-8 print:hidden">
-        <div aria-hidden="true" className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin" />
-        <div aria-hidden="true" className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin" />
+      <section className="ledger-paper relative flex min-h-full flex-col gap-6 border border-border pb-8 pl-[76px] pr-12 pt-6 print:hidden max-md:px-4 max-md:pb-6 max-md:pt-4">
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin max-md:hidden"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin max-md:hidden"
+        />
 
         <div className="flex flex-col gap-2 border-b-2 border-foreground pb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-4 max-md:gap-x-3 max-md:gap-y-2">
+            <BackButton onClick={cancel} />
             <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
               Masters&nbsp;&nbsp;›&nbsp;&nbsp;Ledger Creation
             </span>
@@ -287,11 +295,17 @@ export function LedgerCreationScreen() {
               Accounting Master
             </span>
           </div>
-          <Heading as="h1" lead="Ledger" tail="Creation" className="text-[46px]" />
+          <Heading
+            as="h1"
+            lead="Ledger"
+            tail="Creation"
+            className="text-[46px] max-md:text-[34px]"
+          />
         </div>
 
-        <div className="grid grid-cols-1 gap-8 min-[680px]:grid-cols-2">
-          {/* Left column: Name, Address, City, State, Country, Pincode, Mobile, Email, PAN, Aadhar */}
+        <div className="grid grid-cols-1 gap-8 max-lg:gap-1 lg:grid-cols-2">
+          {/* MDA's field order, split 7 / 8 so both columns are used and nothing scrolls:
+              left Name…Mobile No., right Email…GSTIN, then Opening Balance. */}
           <div className="flex max-w-[460px] flex-col gap-1">
             <Row label="Name" required error={errors.name}>
               <input
@@ -320,7 +334,7 @@ export function LedgerCreationScreen() {
                 id="ledger-address"
                 value={form.address}
                 placeholder="Address"
-                rows={3}
+                rows={2}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                 className="w-full resize-none rounded-none border-0 border-b-[1.5px] border-input bg-transparent px-0.5 py-1.5 text-base text-foreground outline-none focus-visible:outline-none"
               />
@@ -415,7 +429,9 @@ export function LedgerCreationScreen() {
                 className={fieldClass(false)}
               />
             </Row>
+          </div>
 
+          <div className="flex max-w-[460px] flex-col gap-1">
             <Row label="Email">
               <input
                 id="ledger-email"
@@ -471,10 +487,7 @@ export function LedgerCreationScreen() {
                 className={fieldClass(false)}
               />
             </Row>
-          </div>
 
-          {/* Right column: Under Group, Sales Executive, Reg. Type, GSTIN/UIN */}
-          <div className="flex max-w-[460px] flex-col gap-1">
             <Row label="Under Group" required error={errors.under}>
               <SearchSelect
                 id="ledger-under"
@@ -536,49 +549,51 @@ export function LedgerCreationScreen() {
                 className={fieldClass(false)}
               />
             </Row>
+
+            <Row label="Opening Balance">
+              <div className="flex items-center gap-3">
+                <input
+                  id="ledger-opening-balance"
+                  ref={openingBalRef}
+                  value={form.openingBalance}
+                  placeholder="0.00"
+                  inputMode="decimal"
+                  autoComplete="off"
+                  onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveRef.current?.focus();
+                    }
+                  }}
+                  className={`${fieldClass(false)} min-w-0 flex-1`}
+                />
+                <select
+                  aria-label="Dr / Cr"
+                  value={form.drCr}
+                  onChange={(e) => setForm((f) => ({ ...f, drCr: e.target.value as DrCr }))}
+                  className={`h-[42px] w-[72px] flex-none cursor-pointer rounded-none border-[1.5px] border-input bg-transparent px-1.5 text-base font-semibold outline-none focus-visible:outline-none ${form.drCr === 'Dr' ? 'text-primary-text' : 'text-destructive'}`}
+                >
+                  {DR_CR.map((o) => (
+                    <option key={o} value={o} className="bg-card text-foreground">
+                      {o}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <span className="text-[12px] text-muted-foreground">
+                (on {openingBalanceFyLabel()})
+              </span>
+            </Row>
           </div>
         </div>
 
-        {/* Opening Balance bar */}
-        <div className="flex max-w-[900px] flex-wrap items-center gap-3 border-t-[3px] border-double border-foreground bg-background py-3.5">
-          <span className="text-sm font-semibold text-foreground">Opening Balance</span>
-          <span className="text-[13px] text-muted-foreground">
-            (on {openingBalanceFyLabel()}) :
-          </span>
-          <input
-            id="ledger-opening-balance"
-            ref={openingBalRef}
-            value={form.openingBalance}
-            placeholder="0.00"
-            inputMode="decimal"
-            autoComplete="off"
-            onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                saveRef.current?.focus();
-              }
-            }}
-            className="h-10 w-[140px] rounded-none border-0 border-b-[1.5px] border-input bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none"
-          />
-          <select
-            value={form.drCr}
-            onChange={(e) => setForm((f) => ({ ...f, drCr: e.target.value as DrCr }))}
-            className={`h-10 w-[76px] cursor-pointer rounded-none border-[1.5px] border-input bg-transparent px-1.5 text-base font-semibold outline-none focus-visible:outline-none ${form.drCr === 'Dr' ? 'text-primary-text' : 'text-destructive'}`}
-          >
-            {DR_CR.map((o) => (
-              <option key={o} value={o} className="bg-card text-foreground">
-                {o}
-              </option>
-            ))}
-          </select>
-
-          <span className="flex-1" />
-          <button type="button" onClick={view} className={BAR_BTN}>
-            View
-          </button>
+        <div className="flex flex-none items-center gap-2.5 border-t-[3px] max-sm:flex-wrap border-double border-foreground bg-background py-3.5">
           <button type="button" onClick={() => window.print()} className={BAR_BTN}>
             Print
+          </button>
+          <button type="button" onClick={view} className={BAR_BTN}>
+            View
           </button>
           <span className="flex-1" />
           {/* Cancel always leaves the screen in MDA, and is always shown, unlike Group/Sub Group Master. */}
@@ -599,7 +614,7 @@ export function LedgerCreationScreen() {
             ref={saveRef}
             onClick={() => (editing ? setUpdateConfirm(true) : void save())}
             disabled={busy}
-            className="flex h-12 min-w-[180px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
+            className="flex h-12 min-w-[180px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
           >
             <span>{editing ? 'Update Ledger' : 'Save Ledger'}</span>
             <span aria-hidden="true" className="text-xl">
@@ -607,14 +622,6 @@ export function LedgerCreationScreen() {
             </span>
           </button>
         </div>
-
-        <Link
-          to="/app/section/$section"
-          params={{ section: 'masters' }}
-          className="mt-2 flex min-h-11 items-center self-start text-sm underline underline-offset-4"
-        >
-          ← Masters
-        </Link>
       </section>
 
       <SelectLedger
@@ -678,12 +685,12 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid grid-cols-[120px_14px_minmax(0,1fr)] items-start gap-1">
-      <label className="pt-3 text-sm text-muted-foreground">
+    <div className="grid grid-cols-[120px_14px_minmax(0,1fr)] items-start gap-1 max-sm:grid-cols-1 max-sm:gap-0">
+      <label className="pt-3 text-sm text-muted-foreground max-sm:pt-2">
         {label}
         {required && <span className="text-destructive"> *</span>}
       </label>
-      <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground">
+      <span aria-hidden="true" className="pt-3 text-sm text-muted-foreground max-sm:hidden">
         :
       </span>
       <div className="flex flex-col gap-1">
@@ -718,7 +725,7 @@ function SelectLedger({
         {n} record{n === 1 ? '' : 's'}
       </span>
       <div
-        className="mt-3.5 grid grid-cols-[90px_minmax(0,1fr)_170px_90px_55px] gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground"
+        className="mt-3.5 grid grid-cols-[90px_minmax(0,1fr)_170px_90px_55px] max-sm:grid-cols-[minmax(0,1fr)_88px_32px] max-sm:gap-2.5 max-sm:px-4 gap-4 border-y border-border px-[26px] py-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground"
         tabIndex={0}
         autoFocus
         onKeyDown={(e) => {
@@ -733,9 +740,9 @@ function SelectLedger({
           }
         }}
       >
-        <span>Code</span>
+        <span className="max-sm:hidden">Code</span>
         <span>Ledger Name</span>
-        <span>Under Group</span>
+        <span className="max-sm:hidden">Under Group</span>
         <span>Op. Bal</span>
         <span>Dr/Cr</span>
       </div>
@@ -750,18 +757,26 @@ function SelectLedger({
             key={l.id}
             onClick={() => setHi(k)}
             onDoubleClick={() => onPick(l)}
-            className={`grid min-h-[46px] w-full cursor-pointer grid-cols-[90px_minmax(0,1fr)_170px_90px_55px] items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent ${k === hi ? 'bg-accent' : ''}`}
+            // Touch screens: tapping the highlighted row again stands in for the double-click.
+            onPointerUp={(e) => {
+              if (e.pointerType === 'touch' && k === hi) onPick(l);
+            }}
+            className={`grid min-h-[46px] w-full cursor-pointer grid-cols-[90px_minmax(0,1fr)_170px_90px_55px] max-sm:grid-cols-[minmax(0,1fr)_88px_32px] max-sm:gap-2.5 max-sm:px-4 items-center gap-4 border-b border-border px-[26px] text-left text-[15px] hover:bg-accent ${k === hi ? 'bg-accent' : ''}`}
           >
-            <span className="font-mono text-xs text-muted-foreground">{l.accCode}</span>
+            <span className="font-mono text-xs text-muted-foreground max-sm:hidden">
+              {l.accCode}
+            </span>
             <span className="truncate">{l.accName}</span>
-            <span className="truncate text-sm text-muted-foreground">{l.grpName ?? '—'}</span>
+            <span className="truncate text-sm text-muted-foreground max-sm:hidden">
+              {l.grpName ?? '—'}
+            </span>
             <span className="text-sm text-muted-foreground">{Number(l.opBal).toFixed(2)}</span>
             <span className="text-sm text-muted-foreground">{l.drCr}</span>
           </div>
         ))}
       </div>
       <div className="flex items-center justify-between border-t border-border px-[26px] py-3">
-        <span className="font-mono text-xs text-muted-foreground">
+        <span className="font-mono text-xs text-muted-foreground pointer-coarse:hidden">
           ↑ ↓ to navigate&nbsp;&nbsp;•&nbsp;&nbsp;Esc to close
         </span>
         <button

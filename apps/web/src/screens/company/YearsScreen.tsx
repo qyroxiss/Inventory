@@ -7,6 +7,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap } from '../../api.ts';
 import { AppHeader } from '../../components/AppHeader.tsx';
+import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
 import { toast } from '../../components/Toast.tsx';
@@ -95,22 +96,28 @@ export function YearsScreen() {
   return (
     <div className="flex h-app-screen min-h-[600px] flex-col">
       <AppHeader />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 max-lg:flex-col max-lg:overflow-y-auto">
         <section
           aria-label="Select Company"
-          className="ledger-paper relative flex min-h-0 flex-[0_0_520px] flex-col gap-[18px] border-r border-border pb-6 pl-[120px] pr-10 pt-7"
+          className="ledger-paper relative flex min-h-0 flex-[0_0_520px] flex-col gap-[18px] border-r border-border pb-6 pl-[120px] pr-10 pt-7 max-lg:flex-none max-lg:border-b max-lg:border-r-0 max-lg:px-6 max-sm:px-4 max-sm:pt-4"
         >
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin max-lg:hidden"
           />
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin max-lg:hidden"
           />
+          <BackButton onClick={() => void navigate({ to: '/' })} />
           <div className="flex flex-col gap-2">
             <span className={SECTION}>SELECT COMPANY</span>
-            <Heading as="h1" lead="Manage Company" tail="Years" className="text-[38px]" />
+            <Heading
+              as="h1"
+              lead="Manage Company"
+              tail="Years"
+              className="text-[38px] max-md:text-[32px]"
+            />
           </div>
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="grid grid-cols-[28px_minmax(0,1fr)_48px] gap-2.5 border-b-2 border-foreground px-2.5 pb-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
@@ -118,7 +125,10 @@ export function YearsScreen() {
               <span>Company Name</span>
               <span className="text-right">Years</span>
             </div>
-            <div role="list" className="min-h-0 flex-1 overflow-y-auto">
+            <div
+              role="list"
+              className="min-h-0 flex-1 overflow-y-auto max-lg:max-h-[40vh] max-lg:flex-none"
+            >
               {index.isPending && (
                 <p className="m-0 px-2.5 py-6 text-[15px] text-muted-foreground">Loading…</p>
               )}
@@ -170,27 +180,18 @@ export function YearsScreen() {
 
         <section
           aria-label="Financial years"
-          className="flex min-h-0 min-w-0 flex-1 flex-col gap-[26px] pl-14 pr-12 pt-7"
+          className="flex min-h-0 min-w-0 flex-1 flex-col gap-[26px] pl-14 pr-12 pt-7 max-lg:flex-none max-lg:px-6 max-lg:pb-8 max-sm:px-4"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-                {sel ? 'Managing:' : 'Select a company to manage its financial years'}
-              </span>
-              {sel && <span className="font-serif text-[34px] leading-[1.1]">{sel.compName}</span>}
-            </div>
-            <button
-              type="button"
-              onClick={() => void navigate({ to: '/' })}
-              className="flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-[18px] text-[15px] font-semibold"
-            >
-              ← Back
-            </button>
+          <div className="flex flex-col gap-2">
+            <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              {sel ? 'Managing:' : 'Select a company to manage its financial years'}
+            </span>
+            {sel && <span className="font-serif text-[34px] leading-[1.1]">{sel.compName}</span>}
           </div>
 
           <div className="flex flex-col gap-3.5 border-b-[3px] border-double border-foreground pb-[22px]">
             <span className={SECTION}>ADD FINANCIAL YEAR</span>
-            <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-6">
+            <div className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_minmax(0,1fr)_auto] items-start gap-6 max-md:grid-cols-1 max-md:gap-4">
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="y-name" className={LABEL}>
                   Year Name
@@ -243,7 +244,7 @@ export function YearsScreen() {
                 type="button"
                 onClick={save}
                 disabled={busy}
-                className="mt-[18px] flex h-12 cursor-pointer items-center gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
+                className="mt-[18px] flex h-12 cursor-pointer items-center gap-4 max-md:mt-0 max-md:justify-between bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
               >
                 <span>Save Year</span>
                 <span aria-hidden="true" className="text-xl">
@@ -253,23 +254,23 @@ export function YearsScreen() {
             </div>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3 max-lg:flex-none">
             <span className={SECTION}>FINANCIAL YEARS</span>
             {sel ? (
               <>
-                <div className="grid grid-cols-[minmax(0,1fr)_180px_180px_56px] gap-4 border-b-2 border-foreground px-2.5 pb-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                <div className="grid grid-cols-[minmax(0,1fr)_180px_180px_56px] gap-4 border-b-2 max-md:grid-cols-[minmax(0,1fr)_96px_96px_44px] max-md:gap-2 border-foreground px-2.5 pb-2.5 font-mono text-xs uppercase tracking-[0.08em] text-muted-foreground">
                   <span>Year</span>
                   <span>From</span>
                   <span>To</span>
                   <span />
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-y-auto max-lg:flex-none">
                   {sel.years.map((y) => (
                     <div
                       key={y.id}
-                      className="grid min-h-[50px] grid-cols-[minmax(0,1fr)_180px_180px_56px] items-center gap-4 border-b border-border px-2.5"
+                      className="grid min-h-[50px] grid-cols-[minmax(0,1fr)_180px_180px_56px] items-center gap-4 border-b max-md:grid-cols-[minmax(0,1fr)_96px_96px_44px] max-md:gap-2 border-border px-2.5"
                     >
-                      <span className="text-base font-semibold">{y.yearName}</span>
+                      <span className="truncate text-base font-semibold">{y.yearName}</span>
                       <span className="font-mono text-sm">{formatDmy(y.fromDate)}</span>
                       <span className="font-mono text-sm">{formatDmy(y.toDate)}</span>
                       <button

@@ -1,25 +1,43 @@
 // What a menu item opens until its screen is built: the screen's name and its place in MDA's
 // menu, on ruled paper. MDA's own placeholders keep MDA's "Not built yet".
 
-import { Link, useParams } from '@tanstack/react-router';
+import { useNavigate, useParams } from '@tanstack/react-router';
+import { BackButton } from '../../components/BackButton.tsx';
 import { NotBuiltTag } from './MainShell.tsx';
 import { findItem, slug } from './nav.ts';
 
 export function ScreenPlaceholder() {
+  const navigate = useNavigate();
   const { screen } = useParams({ strict: false }) as { screen: string };
   const item = findItem(screen);
 
   return (
-    <section className="ledger-paper relative flex min-h-full flex-col gap-5 border border-border pb-10 pl-[76px] pr-12 pt-8">
-      <div aria-hidden="true" className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin" />
-      <div aria-hidden="true" className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin" />
+    <section className="ledger-paper relative flex min-h-full flex-col gap-5 border border-border pb-10 pl-[76px] pr-12 pt-6 max-md:px-4 max-md:pt-4">
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-[46px] w-px bg-ledger-margin max-md:hidden"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin max-md:hidden"
+      />
       {item ? (
         <>
-          <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            {item.section}
-            {item.group && <>&nbsp;&nbsp;›&nbsp;&nbsp;{item.group}</>}
-          </span>
-          <h1 className="m-0 border-b-2 border-foreground pb-4 font-serif text-[52px] font-normal leading-none">
+          <div className="flex flex-wrap items-center gap-4 max-md:gap-x-3 max-md:gap-y-2">
+            <BackButton
+              onClick={() =>
+                void navigate({
+                  to: '/app/section/$section',
+                  params: { section: slug(item.section) },
+                })
+              }
+            />
+            <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              {item.section}
+              {item.group && <>&nbsp;&nbsp;›&nbsp;&nbsp;{item.group}</>}
+            </span>
+          </div>
+          <h1 className="m-0 border-b-2 border-foreground pb-4 font-serif text-[52px] font-normal leading-none max-md:text-[36px]">
             {item.label}
           </h1>
           {item.built ? (
@@ -36,23 +54,11 @@ export function ScreenPlaceholder() {
               </p>
             </div>
           )}
-          <Link
-            to="/app/section/$section"
-            params={{ section: slug(item.section) }}
-            className="mt-2 flex min-h-11 items-center self-start text-sm underline underline-offset-4"
-          >
-            ← {item.section}
-          </Link>
         </>
       ) : (
         <>
+          <BackButton onClick={() => void navigate({ to: '/app' })} />
           <h1 className="m-0 font-serif text-[42px] font-normal leading-none">No such screen</h1>
-          <Link
-            to="/app"
-            className="flex min-h-11 items-center self-start text-sm underline underline-offset-4"
-          >
-            ← Dashboard
-          </Link>
         </>
       )}
     </section>

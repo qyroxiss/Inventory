@@ -166,7 +166,7 @@ Rules:
 | Grids | TanStack Table + TanStack Virtual (item grids, registers, View lists) |
 | Lookups | `LookupBox` built on cmdk. It reproduces the Dart `_SearchDD` commit rules ([LOGIC-SPEC §10](LOGIC-SPEC.md#10-keyboard-and-entry-behaviour)). |
 | Keyboard | `useEnterNav()`: Enter moves to the next field, Enter on Save commits, ↑/↓/Enter/Esc in lists. A real Ctrl+K command palette (it was decorative in MDA). |
-| Responsive | The desktop-first data-entry layout collapses to a single column under 800 px. MDA used the same breakpoint for its drawer. |
+| Responsive | Laptop layout at 1024px and wider. Below that the sidebar becomes a ☰ drawer and panels stack; under 768px forms go to one column with labels above the fields. Details and the checked sizes: [design/MASTERS-SCREENS.md › Layout rules](design/MASTERS-SCREENS.md#layout-rules-every-inner-screen). |
 | Theming | Tokens in Tailwind config. The new visual design comes from Phase 4; MDA's palette is not carried over. |
 
 ### 3.6 `packages/print`

@@ -45,14 +45,16 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="flex h-full min-h-[540px] flex-col gap-4">
-      <div className="flex flex-none items-end justify-between gap-5">
+    // Laptop: one screen, no scrolling. Phones/tablets: one column that scrolls, with Quick
+    // Actions moved up above the charts so they're reachable straight away.
+    <div className="flex h-full min-h-[540px] flex-col gap-4 max-lg:h-auto max-lg:min-h-0">
+      <div className="flex flex-none flex-wrap items-end justify-between gap-5 max-md:gap-3">
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
             {DAYS[now.getDay()]}, {String(now.getDate()).padStart(2, '0')} {MONTHS[now.getMonth()]}{' '}
             {now.getFullYear()}
           </span>
-          <h1 className="m-0 font-serif text-[40px] font-normal leading-none">
+          <h1 className="m-0 font-serif text-[40px] font-normal leading-none max-md:text-[30px]">
             {greeting(now.getHours())}, <span className="italic">{me.data?.userName}</span>
           </h1>
           <p className="m-0 text-sm text-muted-foreground">
@@ -60,22 +62,26 @@ export function Dashboard() {
           </p>
         </div>
         {me.data && (
-          <span className="rounded-full border border-foreground px-3 py-[5px] font-mono text-xs">
+          <span className="rounded-full border border-foreground px-3 py-[5px] font-mono text-xs max-md:hidden">
             FY {me.data.yearName}
           </span>
         )}
       </div>
 
-      <dl className="m-0 grid flex-none grid-cols-4 border-b-[3px] border-t-2 border-double border-b-foreground border-t-foreground bg-card [border-top-style:solid]">
+      <dl className="m-0 grid flex-none grid-cols-4 border-b-[3px] border-t-2 border-double border-b-foreground border-t-foreground bg-card [border-top-style:solid] max-lg:grid-cols-2">
         {figures.map(([title, value, t], i) => (
           <div
             key={title}
-            className={`flex flex-col gap-1.5 px-5 pb-[11px] pt-[13px] ${i ? 'border-l border-border' : ''}`}
+            className={`flex min-w-0 flex-col gap-1.5 px-5 pb-[11px] pt-[13px] max-sm:px-3 ${
+              i % 2 ? 'border-l border-border' : i ? 'border-border lg:border-l' : ''
+            } ${i >= 2 ? 'border-border max-lg:border-t' : ''}`}
           >
             <dt className="font-mono text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
               {title}
             </dt>
-            <dd className="m-0 font-serif text-[34px] leading-none">{value}</dd>
+            <dd className="m-0 truncate font-serif text-[34px] leading-none max-sm:text-[26px]">
+              {value}
+            </dd>
             <span
               className={`font-mono text-xs ${t?.up === false ? 'text-destructive' : 'text-primary-text'}`}
             >
@@ -98,11 +104,13 @@ export function Dashboard() {
         </p>
       )}
 
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-5">
-        <section className={`${PANEL} gap-2.5 px-[22px] pb-3.5 pt-4`}>
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-5 max-lg:order-1 max-lg:flex-none max-lg:grid-cols-1 max-lg:gap-4">
+        <section
+          className={`${PANEL} gap-2.5 px-[22px] pb-3.5 pt-4 max-lg:h-[280px] max-sm:px-3.5`}
+        >
           <div className="flex flex-none items-start justify-between">
-            <div className="flex flex-col gap-[3px]">
-              <h2 className="m-0 font-serif text-2xl font-normal leading-none">
+            <div className="flex min-w-0 flex-col gap-[3px]">
+              <h2 className="m-0 font-serif text-2xl font-normal leading-none max-sm:text-xl">
                 Sales — Last 7 Days
               </h2>
               <span className="text-xs text-muted-foreground">in Indian Rupees (₹)</span>
@@ -124,7 +132,7 @@ export function Dashboard() {
           </div>
         </section>
 
-        <section className={`${PANEL} px-[22px] pb-2 pt-4`}>
+        <section className={`${PANEL} px-[22px] pb-2 pt-4 max-lg:min-h-[200px] max-sm:px-3.5`}>
           <div className="flex flex-none items-baseline justify-between border-b-2 border-foreground pb-2.5">
             <h2 className="m-0 font-serif text-2xl font-normal leading-none">
               Recent Transactions
@@ -168,11 +176,12 @@ export function Dashboard() {
 
       <section
         aria-label="Quick Actions"
-        className="grid flex-none grid-cols-[auto_repeat(6,minmax(0,1fr))] gap-2.5"
+        className="grid flex-none grid-cols-[auto_repeat(6,minmax(0,1fr))] gap-2.5 max-lg:grid-cols-3 max-sm:grid-cols-2"
       >
-        <h2 className="m-0 self-center pr-1.5 font-mono text-[11px] font-medium leading-normal tracking-[0.12em] text-primary-text">
+        <h2 className="m-0 self-center pr-1.5 font-mono text-[11px] font-medium leading-normal tracking-[0.12em] text-primary-text max-lg:col-span-full">
           QUICK
-          <br />
+          <br className="max-lg:hidden" />
+          <span className="lg:hidden"> </span>
           ACTIONS
         </h2>
         {QUICK_ACTIONS.map((a) => {

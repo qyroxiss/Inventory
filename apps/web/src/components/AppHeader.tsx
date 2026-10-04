@@ -34,8 +34,10 @@ function AccountChip() {
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <span className="font-mono text-[13px] text-muted-foreground">{account.data.email}</span>
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="truncate font-mono text-[13px] text-muted-foreground max-md:hidden">
+        {account.data.email}
+      </span>
       <button
         type="button"
         onClick={logout}
@@ -51,12 +53,12 @@ export function AppHeader() {
   const theme = useTheme();
   const next = theme === 'dark' ? 'light' : 'dark';
   return (
-    <header className="grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-12">
+    <header className="grid h-16 flex-none grid-cols-[1fr_auto_1fr] items-center gap-4 border-b border-border px-12 max-lg:px-6 max-md:flex max-md:justify-between max-md:px-4">
       <span className="font-mono text-[13px] font-medium uppercase tracking-[0.14em]">
         {brand.appName}
       </span>
-      <span className="font-mono text-[13px] text-muted-foreground">{today()}</span>
-      <div className="flex items-center justify-end gap-3">
+      <span className="font-mono text-[13px] text-muted-foreground max-md:hidden">{today()}</span>
+      <div className="flex min-w-0 items-center justify-end gap-3">
         <AccountChip />
         <button
           type="button"
@@ -93,7 +95,7 @@ export function AppHeader() {
               <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
             </svg>
           )}
-          <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
+          <span className="max-sm:hidden">{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
       </div>
     </header>

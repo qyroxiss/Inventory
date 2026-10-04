@@ -48,7 +48,7 @@ export function BooksScreen() {
   return (
     <div className="flex h-app-screen min-h-[600px] flex-col">
       <AppHeader />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 max-lg:flex-col max-lg:overflow-y-auto">
         {index.isPending ? (
           <p className="m-auto font-mono text-sm text-muted-foreground">Loading…</p>
         ) : index.isError ? (

@@ -29,7 +29,7 @@ function Wordmark() {
   const name = brand.appName;
   const cut = Math.ceil(name.length / 2);
   return (
-    <span className="font-serif text-[160px] leading-[0.85] tracking-[-0.01em]">
+    <span className="font-serif text-[160px] leading-[0.85] tracking-[-0.01em] max-lg:text-[88px] max-sm:text-[64px]">
       {name.slice(0, cut)}
       <span className="italic">{name.slice(cut)}.</span>
     </span>
@@ -125,18 +125,18 @@ export function AccountScreen() {
   return (
     <div className="flex h-app-screen min-h-[600px] flex-col">
       <AppHeader />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 max-lg:flex-col-reverse max-lg:justify-end max-lg:overflow-y-auto">
         <section
           aria-label={brand.appName}
-          className="ledger-paper relative flex min-w-0 flex-1 flex-col border-r border-border pb-12 pl-[120px] pr-16 pt-[72px]"
+          className="ledger-paper relative flex min-w-0 flex-1 flex-col border-r border-border pb-12 pl-[120px] pr-16 pt-[72px] max-lg:flex-none max-lg:border-r-0 max-lg:border-t max-lg:px-6 max-lg:py-8 max-sm:px-4"
         >
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[84px] w-px bg-ledger-margin max-lg:hidden"
           />
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin"
+            className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin max-lg:hidden"
           />
           <div className="mt-auto flex flex-col gap-3.5">
             <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -148,7 +148,7 @@ export function AccountScreen() {
 
         <section
           aria-label="Account"
-          className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10"
+          className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10 max-lg:flex-none max-lg:overflow-visible max-lg:px-6 max-lg:py-8 max-sm:px-4"
         >
           <div className="flex w-full max-w-[420px] flex-col gap-7">
             <div

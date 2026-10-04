@@ -38,7 +38,7 @@ export function Dialog({
         e.preventDefault();
         onClose();
       }}
-      className={`relative m-auto max-w-[calc(100%-48px)] border-[1.5px] border-foreground bg-card p-0 text-foreground backdrop:bg-black/50 ${className}`}
+      className={`relative m-auto max-w-[calc(100%-48px)] max-sm:max-w-[calc(100%-20px)] border-[1.5px] border-foreground bg-card p-0 text-foreground backdrop:bg-black/50 ${className}`}
     >
       {open && (
         <div className="flex flex-col">

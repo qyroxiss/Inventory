@@ -137,7 +137,7 @@ export function SignInPanel({
   return (
     <section
       aria-label="Sign in"
-      className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10"
+      className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10 max-lg:flex-none max-lg:overflow-visible max-lg:px-6 max-lg:py-8 max-sm:px-4"
     >
       <div className="flex w-full max-w-[420px] flex-col gap-8">
         <div className="flex flex-col gap-2 border-b-[3px] border-double border-foreground pb-[18px]">
@@ -297,7 +297,7 @@ export function NothingToOpen({
   return (
     <section
       aria-label="Sign in"
-      className="flex min-w-0 flex-[0_0_540px] items-center justify-center px-16 py-10"
+      className="flex min-w-0 flex-[0_0_540px] items-center justify-center px-16 py-10 max-lg:flex-none max-lg:px-6 max-lg:py-8 max-sm:px-4"
     >
       <div className="flex w-full max-w-[420px] flex-col gap-4">
         <Heading lead={title[0]} tail={title[1]} className="text-[42px]" />
