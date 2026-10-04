@@ -10,6 +10,7 @@ import { ApiError, api, unwrap } from '../../api.ts';
 import { AppHeader } from '../../components/AppHeader.tsx';
 import { BookIndex } from './BookIndex.tsx';
 import { NothingToOpen, SignInPanel } from './SignInPanel.tsx';
+import { SIGN_IN_ID } from './types.ts';
 
 export function BooksScreen() {
   const navigate = useNavigate();
@@ -42,11 +43,16 @@ export function BooksScreen() {
   const pickYear = (id: string) => {
     if (!company) return;
     setPicked({ companyId: company.id, yearId: id });
-    setTimeout(() => passRef.current?.focus(), 0);
+    setTimeout(() => {
+      // Phones and tablets: back up to the sign-in form above the list, company name in view.
+      if (!matchMedia('(min-width: 1024px)').matches)
+        document.getElementById(SIGN_IN_ID)?.scrollIntoView({ block: 'start' });
+      passRef.current?.focus({ preventScroll: true });
+    }, 0);
   };
 
   return (
-    <div className="flex h-app-screen min-h-[600px] flex-col">
+    <div className="flex h-app-screen min-h-[600px] flex-col max-sm:min-h-0">
       <AppHeader />
       <div className="flex min-h-0 flex-1 max-lg:flex-col max-lg:overflow-y-auto">
         {index.isPending ? (

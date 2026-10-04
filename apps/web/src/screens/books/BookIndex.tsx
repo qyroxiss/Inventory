@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { InkButton, OutlineButton, Heading } from '../../components/ledger.tsx';
-import { yearRange, type IndexCompany } from './types.ts';
+import { BOOK_INDEX_ID, yearRange, type IndexCompany } from './types.ts';
 
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const COLS =
@@ -66,6 +66,9 @@ export function BookIndex({
   useEffect(() => {
     if (started.current || shown.length === 0) return;
     started.current = true;
+    // Not on phones and tablets: the list sits below Sign In there, and focusing it would scroll
+    // the page away from the form.
+    if (!matchMedia('(min-width: 1024px)').matches) return;
     const k = shown.findIndex(({ c }) => c.id === companyId);
     focusRow(Math.max(k, 0));
   }, [shown, companyId]);
@@ -144,8 +147,9 @@ export function BookIndex({
 
   return (
     <section
+      id={BOOK_INDEX_ID}
       aria-label="Company & Year Setup"
-      className="ledger-paper relative flex min-h-0 min-w-0 flex-1 flex-col gap-[22px] border-r border-border pb-6 pl-[120px] pr-12 pt-9 max-lg:flex-none max-lg:border-b max-lg:border-r-0 max-lg:px-6 max-lg:pt-6 max-sm:px-4"
+      className="ledger-paper relative flex min-h-0 min-w-0 flex-1 flex-col gap-[22px] border-r border-border pb-6 pl-[120px] pr-12 pt-9 max-lg:flex-none max-lg:border-r-0 max-lg:px-6 max-lg:pt-6 max-sm:px-4"
     >
       {/* Red double margin line, as on ledger paper */}
       <div
