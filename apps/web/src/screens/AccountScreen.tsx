@@ -29,7 +29,7 @@ function Wordmark() {
   const name = brand.appName;
   const cut = Math.ceil(name.length / 2);
   return (
-    <span className="font-serif text-[160px] leading-[0.85] tracking-[-0.01em] max-lg:text-[88px] max-sm:text-[64px]">
+    <span className="font-serif text-[160px] leading-[0.85] tracking-[-0.01em] max-lg:text-[88px]">
       {name.slice(0, cut)}
       <span className="italic">{name.slice(cut)}.</span>
     </span>
@@ -105,7 +105,7 @@ export function AccountScreen() {
       type="button"
       onClick={() => switchTo(m)}
       aria-pressed={mode === m}
-      className={`flex h-[52px] flex-1 cursor-pointer items-center justify-center font-mono text-[13px] uppercase tracking-[0.08em] ${
+      className={`flex h-[52px] flex-1 max-sm:h-11 cursor-pointer items-center justify-center font-mono text-[13px] uppercase tracking-[0.08em] ${
         mode === m ? 'bg-foreground text-card' : 'text-foreground'
       }`}
     >
@@ -123,12 +123,12 @@ export function AccountScreen() {
   );
 
   return (
-    <div className="flex h-app-screen min-h-[600px] flex-col">
+    <div className="flex h-app-screen min-h-[600px] flex-col max-sm:min-h-0">
       <AppHeader />
       <div className="flex min-h-0 flex-1 max-lg:flex-col-reverse max-lg:justify-end max-lg:overflow-y-auto">
         <section
           aria-label={brand.appName}
-          className="ledger-paper relative flex min-w-0 flex-1 flex-col border-r border-border pb-12 pl-[120px] pr-16 pt-[72px] max-lg:flex-none max-lg:border-r-0 max-lg:border-t max-lg:px-6 max-lg:py-8 max-sm:px-4"
+          className="ledger-paper relative flex min-w-0 flex-1 flex-col border-r border-border pb-12 pl-[120px] pr-16 pt-[72px] max-lg:flex-none max-lg:border-r-0 max-lg:border-t max-lg:px-6 max-lg:py-8 max-sm:hidden"
         >
           <div
             aria-hidden="true"
@@ -148,9 +148,9 @@ export function AccountScreen() {
 
         <section
           aria-label="Account"
-          className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10 max-lg:flex-none max-lg:overflow-visible max-lg:px-6 max-lg:py-8 max-sm:px-4"
+          className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10 max-lg:flex-none max-lg:overflow-visible max-lg:px-6 max-lg:py-8 max-sm:px-4 max-sm:pb-6 max-sm:pt-5"
         >
-          <div className="flex w-full max-w-[420px] flex-col gap-7">
+          <div className="flex w-full max-w-[420px] flex-col gap-7 max-sm:gap-5">
             <div
               role="group"
               aria-label="Sign In or Create Account"
@@ -161,10 +161,10 @@ export function AccountScreen() {
             </div>
 
             {mode === 'signin' ? (
-              <form onSubmit={submitSignIn} noValidate className="flex flex-col gap-6">
+              <form onSubmit={submitSignIn} noValidate className="flex flex-col gap-6 max-sm:gap-4">
                 <div className="flex flex-col gap-2">
-                  <Heading lead="Sign" tail="In" className="text-[42px]" />
-                  <p className="m-0 text-[15px] text-muted-foreground">
+                  <Heading lead="Sign" tail="In" className="text-[42px] max-sm:text-[32px]" />
+                  <p className="m-0 text-[15px] text-muted-foreground max-sm:text-sm">
                     Enter your credentials to continue
                   </p>
                 </div>
@@ -221,13 +221,13 @@ export function AccountScreen() {
                   Remember me
                 </label>
                 {alert}
-                <PrimaryButton type="submit" disabled={busy}>
+                <PrimaryButton type="submit" disabled={busy} className="max-sm:h-12">
                   {busy ? 'Signing in…' : 'Sign In'}
                 </PrimaryButton>
               </form>
             ) : (
-              <form onSubmit={submitCreate} noValidate className="flex flex-col gap-[22px]">
-                <Heading lead="Create" tail="Account" className="text-[42px]" />
+              <form onSubmit={submitCreate} noValidate className="flex flex-col gap-[22px] max-sm:gap-4">
+                <Heading lead="Create" tail="Account" className="text-[42px] max-sm:text-[32px]" />
                 <UnderlineField
                   id="new-name"
                   label="Name"
@@ -285,7 +285,7 @@ export function AccountScreen() {
                   </span>
                 </div>
                 {alert}
-                <PrimaryButton type="submit" disabled={busy}>
+                <PrimaryButton type="submit" disabled={busy} className="max-sm:h-12">
                   {busy ? 'Creating…' : 'Create Account'}
                 </PrimaryButton>
               </form>
