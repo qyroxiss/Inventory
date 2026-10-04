@@ -42,6 +42,21 @@ async function nameClash(
   return !!clash;
 }
 
+/**
+ * Every group AND sub group by name, unfiltered — what Ledger Creation's own Under Group list
+ * actually queries (`SELECT GrpName FROM Maacct2 ORDER BY GrpName`, ledger_creation_page.dart:
+ * 129-140), unlike Sub Group Master's own Under Group list, which is top-level groups only.
+ */
+export const listAllGroups = (
+  db: Db,
+  bookId: string,
+): Promise<{ grpCode: string; grpName: string }[]> =>
+  db
+    .select({ grpCode: accountGroups.grpCode, grpName: accountGroups.grpName })
+    .from(accountGroups)
+    .where(eq(accountGroups.bookId, bookId))
+    .orderBy(asc(accountGroups.grpName));
+
 /** Top-level groups only, as MDA's View dialog lists them (group_master_page.dart:206-210). */
 export const listGroups = (db: Db, bookId: string): Promise<AccountGroup[]> =>
   db

@@ -58,12 +58,36 @@ export const subGroupCreate = z.object({
   under: z.string().optional(),
 });
 
+/** Only the fields Maacct actually stores — Aadhar/Sales Executive/Reg. Type/Country are shown
+ * in Ledger Creation's form but MDA never saves them, so they're never sent here either. */
+export const ledgerCreate = z.object({
+  name: z.string(),
+  address: opt,
+  city: opt,
+  state: opt,
+  pincode: opt,
+  mobile: opt,
+  email: opt,
+  pan: opt,
+  under: opt,
+  gstin: opt,
+  openingBalance: opt,
+  drCr: z.enum(['Dr', 'Cr']).optional(),
+});
+
+export const miscListAdd = z.object({
+  type: z.string(),
+  name: z.string(),
+});
+
 export type CompanyCreate = z.infer<typeof companyCreate>;
 export type YearCreate = z.infer<typeof yearCreate>;
 export type BookLoginInput = z.infer<typeof bookLogin>;
 export type ChangePasswordInput = z.infer<typeof changePassword>;
 export type GroupCreate = z.infer<typeof groupCreate>;
 export type SubGroupCreate = z.infer<typeof subGroupCreate>;
+export type LedgerCreate = z.infer<typeof ledgerCreate>;
+export type MiscListAdd = z.infer<typeof miscListAdd>;
 
 /** Body of every 422 response. */
 export type ErrorBody = { message: string; fieldErrors?: Record<string, string> };

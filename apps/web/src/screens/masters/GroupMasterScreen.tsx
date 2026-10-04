@@ -110,7 +110,11 @@ export function GroupMasterScreen() {
       );
       setEditing(g);
       await refresh();
-      setMessage({ kind: 'ok', title: ['Group', 'Updated'], text: groupMessages.updated(g.grpName) });
+      setMessage({
+        kind: 'ok',
+        title: ['Group', 'Updated'],
+        text: groupMessages.updated(g.grpName),
+      });
     } catch (err) {
       failed(err);
     }
@@ -169,9 +173,15 @@ export function GroupMasterScreen() {
         <div aria-hidden="true" className="absolute inset-y-0 left-[50px] w-px bg-ledger-margin" />
 
         <div className="flex flex-col gap-2 border-b-2 border-foreground pb-4">
-          <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            Masters&nbsp;&nbsp;›&nbsp;&nbsp;Accounting Masters
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
+              Masters&nbsp;&nbsp;›&nbsp;&nbsp;Group Master
+            </span>
+            <span className="flex-1" />
+            <span className="rounded-full border border-primary-text/30 bg-accent px-2.5 py-1 text-[11px] font-semibold text-primary-text">
+              Accounting Master
+            </span>
+          </div>
           <Heading as="h1" lead="Group" tail="Master" className="text-[46px]" />
         </div>
 

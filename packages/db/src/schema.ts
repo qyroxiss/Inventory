@@ -14,6 +14,7 @@ import {
   boolean,
   date,
   index,
+  numeric,
   pgTable,
   text,
   timestamp,
@@ -22,7 +23,10 @@ import {
 } from 'drizzle-orm/pg-core';
 import { v7 as uuidv7 } from 'uuid';
 
-const id = () => uuid('id').primaryKey().$defaultFn(() => uuidv7());
+const id = () =>
+  uuid('id')
+    .primaryKey()
+    .$defaultFn(() => uuidv7());
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow();
 
 // ── Account layer (better-auth). Web/mobile only; desktop uses accountId 'local'. ──
@@ -196,6 +200,67 @@ export const accountGroups = pgTable(
     uniqueIndex('account_groups_book_code').on(t.bookId, t.grpCode),
     // Case-sensitive, like MDA's SQLite UNIQUE (docs/LOGIC-SPEC.md Q-15).
     uniqueIndex('account_groups_book_name').on(t.bookId, t.grpName),
+  ],
+);
+
+/** Maacct: ledgers (actual accounts — customers, suppliers, cash, bank, expense, ...). */
+export const ledgers = pgTable(
+  'ledgers',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    accCode: text('acc_code').notNull(),
+    accName: text('acc_name').notNull(),
+    /** The owning group or sub group's grpCode (account_groups), resolved from its name. */
+    grpCode: text('grp_code').notNull(),
+    opBal: numeric('op_bal', { precision: 14, scale: 2 }).notNull().default('0'),
+    drCr: text('dr_cr').notNull().default('Dr'),
+    add1: text('add1'),
+    /** In the schema like MDA's Maacct, but no screen has ever written to it. */
+    add2: text('add2'),
+    city: text('city'),
+    state: text('state'),
+    stateCode: text('state_code'),
+    pinCode: text('pin_code'),
+    /** In the schema like MDA's Maacct, but no screen has ever written to it. */
+    phone: text('phone'),
+    mobile: text('mobile'),
+    email: text('email'),
+    gstin: text('gstin'),
+    pan: text('pan'),
+    creditDays: bigint('credit_days', { mode: 'number' }).notNull().default(0),
+    creditLimit: numeric('credit_limit', { precision: 14, scale: 2 }).notNull().default('0'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('ledgers_book_code').on(t.bookId, t.accCode),
+    // Case-sensitive, like MDA's SQLite UNIQUE on AccName.
+    uniqueIndex('ledgers_book_name').on(t.bookId, t.accName),
+  ],
+);
+
+/** Misc_Master: small name lists that learn new entries as they're typed (City first; later
+ *  Unit, Godown, Stock Group and Sale Type share this same table, as MDA's does). */
+export const miscList = pgTable(
+  'misc_list',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    miscCode: text('misc_code').notNull(),
+    miscName: text('misc_name').notNull(),
+    miscType: text('misc_type').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('misc_list_book_code').on(t.bookId, t.miscCode),
+    // No DB constraint on the name itself, as in MDA's Misc_Master: addIfNew() does its own
+    // case-insensitive lookup before inserting, so duplicates never reach this table.
+    index('misc_list_book_type_name').on(t.bookId, t.miscType, t.miscName),
   ],
 );
 

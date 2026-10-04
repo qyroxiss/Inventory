@@ -51,3 +51,18 @@ export {
   type GroupType,
   type DefaultGroup,
 } from './groups.ts';
+export {
+  INDIAN_STATES,
+  COUNTRIES,
+  REG_TYPES,
+  SALES_EXECUTIVES,
+  DR_CR,
+  LEDGER_CODE_PREFIX,
+  LEDGER_CODE_WIDTH,
+  MISC_TYPE_CITY,
+  MISC_CITY_CODE_PREFIX,
+  MISC_CODE_WIDTH,
+  ledgerMessages,
+  ledgerFieldErrors,
+  type DrCr,
+} from './ledgers.ts';

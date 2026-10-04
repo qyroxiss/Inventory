@@ -15,6 +15,13 @@
       "when": 1791040205784,
       "tag": "0001_hesitant_maelstrom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791106780836,
+      "tag": "0002_productive_patriot",
+      "breakpoints": true
     }
   ]
 }

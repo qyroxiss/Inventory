@@ -29,6 +29,7 @@ import { MainShell } from './screens/main/MainShell.tsx';
 import { ScreenPlaceholder } from './screens/main/ScreenPlaceholder.tsx';
 import { SectionPage } from './screens/main/SectionPage.tsx';
 import { GroupMasterScreen } from './screens/masters/GroupMasterScreen.tsx';
+import { LedgerCreationScreen } from './screens/masters/LedgerCreationScreen.tsx';
 import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
 
 export const queryClient = new QueryClient();
@@ -120,6 +121,12 @@ const subGroupMasterRoute = createRoute({
   component: SubGroupMasterScreen,
 });
 
+const ledgerCreationRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'ledger-creation',
+  component: LedgerCreationScreen,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -137,6 +144,7 @@ export const router = createRouter({
       sectionRoute,
       groupMasterRoute,
       subGroupMasterRoute,
+      ledgerCreationRoute,
       screenRoute,
     ]),
   ]),
