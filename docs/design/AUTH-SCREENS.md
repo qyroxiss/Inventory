@@ -81,6 +81,16 @@ A full-screen split. The left side is the company & year list on ruled paper; th
 - **Forced change "Set a new password":** the MDA rules (6+ characters, not `admin`, must match). Cancel shows `Password change is required to continue.`
 - **Header strip:** the plain "Inventory" name (unbranded), today's date, and a Light/Dark switch.
 
+**Phones and tablets (added 2026-10-04):** the sign-in comes first and the company list sits below it, since the first company and year are already chosen. A ▾ button beside the company name jumps to the list, and picking a year scrolls back up to the password. On phones the FY line drops its date range and a long company name stays on one line.
+
+**Import from MDA (added 2026-10-05; MDA has no such button):** the third button beside the heading. It opens a folder picker for MDA-Inventory's data folder, the one holding `MDA_Registry.db`. Usually that's `%APPDATA%\MDA Inventory\Data`, or the `data` folder beside MDA's program file.
+- The browser reads MDA's files (sql.js) and never changes them. The server copies each company, its years, and per year its users, groups, ledgers, Misc_Master lists and audit log into the signed-in account (`packages/services/src/mda-import.ts`).
+- MDA's passwords work unchanged (same `pbkdf2$20000$…` format).
+- A company whose CompCode the account already has is skipped (`Company "X" already exists`), so importing twice changes nothing.
+- A year whose file is missing gets a fresh book, as MDA would create one.
+- Messages: `Company "X" imported (1 year)`, `Company "X" already exists`, `MDA_Registry.db not found in the selected folder`, `No MDA companies found in the selected folder`.
+- Not carried yet: stock items, purchases, sales, vouchers and the other transaction tables. Each is added to the import when its screen is built.
+
 ## Visual system
 
 | Token (in styles.css) | Light | Dark | Used for |

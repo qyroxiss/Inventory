@@ -25,6 +25,7 @@ import {
   deleteSubGroup,
   deleteYear,
   getDashboard,
+  importMda,
   listAllGroups,
   listGroups,
   listLedgers,
@@ -142,6 +143,9 @@ export function createApp(opts: AppOptions) {
         await createYear(db, c.get('accountId'), c.req.param('companyId'), c.req.valid('json')),
         201,
       ),
+    )
+    .post('/api/import/mda', json(contract.mdaImport), async (c) =>
+      c.json(await importMda(db, c.get('accountId'), c.req.valid('json')), 201),
     )
 
     // ── Layer 2: book login (MDA's login) ───────────────────────────────────────

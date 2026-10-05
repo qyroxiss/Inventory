@@ -194,6 +194,8 @@ export const accountGroups = pgTable(
     parentGrp: text('parent_grp').notNull(),
     isLedger: text('is_ledger').notNull().default('No'),
     sortOrder: bigint('sort_order', { mode: 'number' }).notNull().default(0),
+    /** MDA's Clr column: stored and carried over on import, never read by any screen. */
+    clr: text('clr'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -254,6 +256,18 @@ export const miscList = pgTable(
     miscCode: text('misc_code').notNull(),
     miscName: text('misc_name').notNull(),
     miscType: text('misc_type').notNull(),
+    // The rest of MDA's Misc_Master columns. What each holds depends on the type (Unit: full
+    // name in Pname; Stock Sub Group: its group's code in Pname; Sale Type: short name in Pname,
+    // Sname, ...); their screens read them as they're built.
+    miscPname: text('misc_pname'),
+    miscSname: text('misc_sname'),
+    miscGen1: text('misc_gen1'),
+    miscGen2: text('misc_gen2'),
+    miscGen3: text('misc_gen3'),
+    miscGen4: text('misc_gen4'),
+    miscGen5: text('misc_gen5'),
+    miscGen6: text('misc_gen6'),
+    miscDate: text('misc_date'),
     createdAt: createdAt(),
   },
   (t) => [

@@ -90,4 +90,31 @@ export type LedgerCreate = z.infer<typeof ledgerCreate>;
 export type MiscListAdd = z.infer<typeof miscListAdd>;
 
 /** Body of every 422 response. */
+export type MdaImportBody = z.infer<typeof mdaImport>;
+
 export type ErrorBody = { message: string; fieldErrors?: Record<string, string> };
+
+/** Import from MDA: rows of MDA's SQLite tables exactly as the browser read them (MDA's own
+ *  column names). Mapping and checks are in @qi/services (mda-import.ts). */
+const mdaRows = z.array(z.record(z.string(), z.unknown())).optional();
+export const mdaImport = z.object({
+  companies: z.array(
+    z.object({
+      company: z.record(z.string(), z.unknown()),
+      years: z.array(
+        z.object({
+          year: z.record(z.string(), z.unknown()),
+          book: z
+            .object({
+              User: mdaRows,
+              Maacct2: mdaRows,
+              Maacct: mdaRows,
+              Misc_Master: mdaRows,
+              AuditLog: mdaRows,
+            })
+            .nullable(),
+        }),
+      ),
+    }),
+  ),
+});

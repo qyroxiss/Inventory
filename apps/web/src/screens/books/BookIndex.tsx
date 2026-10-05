@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { InkButton, OutlineButton, Heading } from '../../components/ledger.tsx';
+import { ImportFromMda } from './ImportFromMda.tsx';
 import { BOOK_INDEX_ID, yearRange, type IndexCompany } from './types.ts';
 
 const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
@@ -206,6 +207,7 @@ export function BookIndex({
             </svg>
             Manage Years
           </OutlineButton>
+          <ImportFromMda />
         </div>
       </div>
 

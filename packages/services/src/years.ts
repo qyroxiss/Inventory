@@ -96,7 +96,7 @@ export async function createYear(
  * tax ledgers, states, tax rates, voucher series) are added here as their own tables land —
  * see docs/LOGIC-SPEC.md §3.
  */
-async function seedBook(db: Db, bookId: string, adminPasswordHash: string): Promise<void> {
+export async function seedBook(db: Db, bookId: string, adminPasswordHash: string): Promise<void> {
   await db.insert(bookUsers).values({
     bookId,
     userCode: SEED_ADMIN.userCode,
