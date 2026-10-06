@@ -336,7 +336,7 @@ export function LedgerCreationScreen() {
                 placeholder="Address"
                 rows={2}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-                className="w-full resize-none rounded-none border-0 border-b-[1.5px] border-input bg-transparent px-0.5 py-1.5 text-base text-foreground outline-none focus-visible:outline-none"
+                className="w-full resize-none field-box px-3 py-1.5 text-base text-foreground outline-none focus-visible:outline-none"
               />
             </Row>
 
@@ -660,10 +660,10 @@ export function LedgerCreationScreen() {
 }
 
 const fieldClass = (error: boolean) =>
-  `h-[42px] w-full rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${error ? 'border-destructive' : 'border-input'}`;
+  `h-[42px] w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${error ? 'field-error' : ''}`;
 
 const selectClass = () =>
-  'h-[42px] w-full cursor-pointer rounded-none border-0 border-b-[1.5px] border-input bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none';
+  'h-[42px] w-full cursor-pointer field-box px-3 text-base text-foreground outline-none focus-visible:outline-none';
 
 /** "1-Apr-26" — MDA computes this live from today's date, independent of the open book's own
  * financial year (ledger_creation_page.dart:1288-1292), kept as is. */

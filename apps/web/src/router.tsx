@@ -31,6 +31,7 @@ import { SectionPage } from './screens/main/SectionPage.tsx';
 import { GroupMasterScreen } from './screens/masters/GroupMasterScreen.tsx';
 import { LedgerCreationScreen } from './screens/masters/LedgerCreationScreen.tsx';
 import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
+import { MiscMasterScreen } from './screens/masters/MiscMasterScreen.tsx';
 
 export const queryClient = new QueryClient();
 
@@ -127,6 +128,19 @@ const ledgerCreationRoute = createRoute({
   component: LedgerCreationScreen,
 });
 
+const unitMasterRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'unit-master',
+  // Same screen as Godown: the key gives each its own fresh form when switching between them.
+  component: () => <MiscMasterScreen key="unit" kind="unit" />,
+});
+
+const godownRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'godown',
+  component: () => <MiscMasterScreen key="godown" kind="godown" />,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -145,6 +159,8 @@ export const router = createRouter({
       groupMasterRoute,
       subGroupMasterRoute,
       ledgerCreationRoute,
+      unitMasterRoute,
+      godownRoute,
       screenRoute,
     ]),
   ]),

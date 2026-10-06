@@ -299,8 +299,8 @@ function FormSection({
       {fields.map((f) => {
         const id = `co-${f.key}`;
         const err = errors[f.key];
-        const line = `w-full rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${
-          err ? 'border-destructive' : 'border-input'
+        const line = `w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${
+          err ? 'field-error' : ''
         }`;
         const common = {
           id,

@@ -44,8 +44,10 @@
   --destructive: #b42318; /* error text and borders */
 
   --border: #ded8c9; /* thin rules between rows */
-  --input: #1c1b18; /* underline of text fields */
+  --input: #1c1b18; /* ink of a field in use */
   --ring: #1c1b18; /* keyboard focus outline */
+  --field: #ffffff; /* inside of text fields, drop-downs and text areas */
+  --field-border: #a39c8c; /* their border at rest */
 
   /* Ledger details used by the design */
   --ledger-ruled: rgb(48 72 110 / 0.07); /* faint horizontal paper lines */
@@ -76,6 +78,8 @@
   --border: #2c2d31;
   --input: #ece8de;
   --ring: #ece8de;
+  --field: #1d1e22;
+  --field-border: #55534d;
 
   --ledger-ruled: rgb(190 205 230 / 0.05);
   --ledger-margin: rgb(214 112 92 / 0.45);
@@ -141,6 +145,27 @@ html {
     transparent 0 47px,
     var(--ledger-ruled) 47px 48px
   );
+}
+
+/* Every text field, drop-down and text area is a bordered box (owner, 2026-10-06). The border
+   turns ink while the field is in use. Put it on the <input> itself, or on a wrapper that holds
+   the input plus something beside it (Show/Hide, a search icon). Add field-error for a red box. */
+@utility field-box {
+  border: 1.5px solid var(--field-border);
+  background-color: var(--field);
+  border-radius: 0;
+  &:focus,
+  &:focus-within {
+    border-color: var(--input);
+    box-shadow: 0 0 0 1px var(--input);
+  }
+}
+@utility field-error {
+  border-color: var(--destructive) !important;
+  &:focus,
+  &:focus-within {
+    box-shadow: 0 0 0 1px var(--destructive);
+  }
 }
 
 /* Small capitals label in mono ("USERNAME", "FIND A COMPANY"). */

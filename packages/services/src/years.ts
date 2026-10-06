@@ -13,6 +13,7 @@ import { and, asc, eq, schema, type Db } from '@qi/db';
 import { getCompany } from './companies.ts';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 import { seedDefaultGroups } from './groups.ts';
+import { seedDefaultUnits } from './misc-masters.ts';
 
 const { books, bookUsers, financialYears } = schema;
 
@@ -92,8 +93,8 @@ export async function createYear(
 }
 
 /**
- * Seeds a new book: the admin user and the 28 default groups. The rest MDA also seeds (units,
- * tax ledgers, states, tax rates, voucher series) are added here as their own tables land —
+ * Seeds a new book: the admin user, the 28 default groups and the 18 units. The rest MDA also
+ * seeds (tax ledgers, states, tax rates, voucher series) are added here as their own tables land —
  * see docs/LOGIC-SPEC.md §3.
  */
 export async function seedBook(db: Db, bookId: string, adminPasswordHash: string): Promise<void> {
@@ -107,6 +108,7 @@ export async function seedBook(db: Db, bookId: string, adminPasswordHash: string
     mustChangePassword: SEED_ADMIN.mustChangePassword,
   });
   await seedDefaultGroups(db, bookId);
+  await seedDefaultUnits(db, bookId);
 }
 
 /**

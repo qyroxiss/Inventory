@@ -59,6 +59,7 @@ Set by the owner on 2026-10-04, for every screen built so far and every one afte
    - Keyboard hints are hidden on touch screens. Where MDA needs a double-click (Ledger List), tapping a highlighted row again opens it.
    - Checked on every screen at 360, 390, 768, 820 and 1024px wide: nothing past the screen edge, and the drawer opens and closes.
 3. **Back is always in the same place: top-left, first thing in the page header**, before the breadcrumb, as in MDA's own page header. It's a bordered button with an arrow and the word "Back" (`apps/web/src/components/BackButton.tsx`), so someone who isn't used to computers can find it without hunting. The Masters screens' old underlined "← Masters" link at the bottom of the page is gone.
+4. **Every field is a bordered box** (owner, 2026-10-06): text fields, drop-downs, text areas and search boxes, never a single underline. One style everywhere: `field-box` in [packages/ui/src/styles.css](../../packages/ui/src/styles.css), with `field-error` for the red error box. A field has a soft border at rest and an ink border while in use, on a slightly brighter background than the paper (`--field`, `--field-border`, light and dark).
 
 ## How to change it
 

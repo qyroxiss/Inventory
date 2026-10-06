@@ -30,7 +30,7 @@ The other directions on the canvas (A–A5, B, C) are kept for reference only.
 | Left half: index of books, search, A–Z, keyboard | `apps/web/src/screens/books/BookIndex.tsx` |
 | Right half: sign in, forced password change | `apps/web/src/screens/books/SignInPanel.tsx` |
 | Header strip (name, date, Light/Dark) | `apps/web/src/components/AppHeader.tsx` |
-| Shared pieces (underline field, buttons, serif heading) | `apps/web/src/components/ledger.tsx` |
+| Shared pieces (labelled boxed field, buttons, serif heading) | `apps/web/src/components/ledger.tsx` |
 | Remember me (username only) / theme choice | `apps/web/src/lib/remember.ts`, `apps/web/src/lib/theme.ts` |
 | Data for the index: every company with its years | `GET /api/book-index` (`packages/services/src/book-index.ts`) |
 
@@ -97,7 +97,7 @@ A full-screen split. The left side is the company & year list on ruled paper; th
 |---|---|---|---|
 | `--background` (desk) | `#F1EEE6` | `#0F1012` | page, header strip |
 | `--card` (paper) | `#FBF9F3` | `#16171A` | ruled index panel |
-| `--foreground` (ink) | `#1C1B18` | `#ECE8DE` | text, field underlines, dark button |
+| `--foreground` (ink) | `#1C1B18` | `#ECE8DE` | text, the border of a field in use, dark button |
 | `--muted-foreground` | `#5C5850` | `#A6A194` | labels, hints |
 | `--primary` (green) | `oklch(0.42 0.09 160)` | `oklch(0.78 0.1 160)` | main action |
 | `--accent` | `oklch(0.95 0.03 160)` | `oklch(0.27 0.035 160)` | selected row |

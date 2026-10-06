@@ -272,7 +272,14 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
           return (
             <div key={s.label} className="flex flex-col">
               {i === 0 ? (
-                <Link to="/app" aria-current={on ? 'page' : undefined} className={row}>
+                // exact: otherwise the router counts every /app/... page as Dashboard's own and
+                // marks it current for screen readers too.
+                <Link
+                  to="/app"
+                  activeOptions={{ exact: true }}
+                  aria-current={on ? 'page' : undefined}
+                  className={row}
+                >
                   {inner}
                 </Link>
               ) : (

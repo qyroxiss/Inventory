@@ -213,7 +213,7 @@ export function YearsScreen() {
                       fromRef.current?.focus();
                     }
                   }}
-                  className={`h-11 border-0 border-b-[1.5px] bg-transparent px-0.5 text-[17px] outline-none focus-visible:outline-none ${errors.yearName ? 'border-destructive' : 'border-input'}`}
+                  className={`h-11 field-box px-3 text-[17px] outline-none focus-visible:outline-none ${errors.yearName ? 'field-error' : ''}`}
                 />
                 {errors.yearName && (
                   <span className="text-[13px] text-destructive">{errors.yearName}</span>
@@ -375,7 +375,7 @@ function DateField({
             open();
           }
         }}
-        className={`h-11 cursor-pointer border-0 border-b-[1.5px] bg-transparent px-0.5 font-mono text-base outline-none focus-visible:outline-none ${error ? 'border-destructive' : 'border-input'}`}
+        className={`h-11 cursor-pointer field-box px-3 font-mono text-base outline-none focus-visible:outline-none ${error ? 'field-error' : ''}`}
       />
       <input
         ref={picker}

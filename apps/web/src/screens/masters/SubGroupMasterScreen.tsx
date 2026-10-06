@@ -231,7 +231,7 @@ export function SubGroupMasterScreen() {
                     underRef.current?.focus();
                   }
                 }}
-                className={`h-[42px] w-full rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${errors.name ? 'border-destructive' : 'border-input'}`}
+                className={`h-[42px] w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${errors.name ? 'field-error' : ''}`}
               />
             </Row>
 
@@ -245,7 +245,7 @@ export function SubGroupMasterScreen() {
                   setErrors((er) => ({ ...er, under: undefined }));
                   saveRef.current?.focus();
                 }}
-                className={`h-[42px] w-full cursor-pointer rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${errors.under ? 'border-destructive' : 'border-input'}`}
+                className={`h-[42px] w-full cursor-pointer field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${errors.under ? 'field-error' : ''}`}
               >
                 <option value="" disabled>
                   Type to search group...

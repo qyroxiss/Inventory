@@ -75,6 +75,9 @@ export const ledgerCreate = z.object({
   drCr: z.enum(['Dr', 'Cr']).optional(),
 });
 
+/** Unit Master and Godown (one field each). */
+export const miscMasterSave = z.object({ name: z.string() });
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),

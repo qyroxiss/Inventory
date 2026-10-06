@@ -595,6 +595,9 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-34 | The ledger opening-balance label uses today's date, not the open FY |
 | Q-35 | Purchase line Location comes last in the Tab order (reachable by mouse or by picking) |
 | Q-36 | Dashboard "View all →" (Recent Transactions) looks like a link but opens nothing; shown as plain text |
+| Q-37 | Unit Master's and Godown's Update has no duplicate-name check, so two can share a name; its "This Name Already Exists" never appears |
+| Q-38 | Unit Master's and Godown's Save and Update write the name into Misc_Pname too, so updating a seeded unit replaces its long name ("Numbers" becomes "Nos") |
+| Q-39 | Unit Master's and Godown's Remove doesn't check whether a stock item or purchase uses it |
 
 ## 15. Branding
 

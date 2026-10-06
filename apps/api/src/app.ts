@@ -7,7 +7,7 @@
 import { zValidator } from '@hono/zod-validator';
 import type { AccountAuth } from '@qi/auth';
 import * as contract from '@qi/contract';
-import { MISC_CITY_CODE_PREFIX, loginMessages } from '@qi/core';
+import { MISC_CITY_CODE_PREFIX, MISC_MASTER_KINDS, loginMessages } from '@qi/core';
 import type { Db } from '@qi/db';
 import {
   UserError,
@@ -18,6 +18,7 @@ import {
   createGroup,
   createLedger,
   createSubGroup,
+  createMiscMaster,
   createYear,
   deleteCompany,
   deleteGroup,
@@ -31,10 +32,13 @@ import {
   listLedgers,
   listMisc,
   listSubGroups,
+  listMiscMaster,
+  removeMiscMaster,
   updateCompany,
   updateGroup,
   updateLedger,
   updateSubGroup,
+  updateMiscMaster,
   listBookIndex,
   listCompanies,
   listYears,
@@ -58,6 +62,14 @@ type Env = { Variables: { accountId: string } };
 
 const BOOK_COOKIE = 'qi_book';
 type StoredBook = BookSession & { accountId: string };
+
+/** `:kind` (and `:code`) of /api/misc-masters: 'unit' or 'godown'; any other kind is a 404. */
+const params = <T extends z.ZodRawShape>(shape: T) =>
+  zValidator('param', z.object(shape), (result, c) => {
+    if (!result.success) return c.json({ message: 'Not found' }, 404);
+  });
+const kindParam = params({ kind: z.enum(MISC_MASTER_KINDS) });
+const kindCodeParam = params({ kind: z.enum(MISC_MASTER_KINDS), code: z.string() });
 
 const json = <T extends ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
@@ -253,6 +265,37 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await deleteLedger(db, book.bookId, c.req.param('accCode'));
+      return c.json({ ok: true });
+    })
+
+    // ── Unit Master and Godown (Misc_Master rows of type 'Unit' / 'Godown') ────────
+    .get('/api/misc-masters/:kind', kindParam, async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listMiscMaster(db, book.bookId, c.req.valid('param').kind));
+    })
+    .post('/api/misc-masters/:kind', kindParam, json(contract.miscMasterSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const { kind } = c.req.valid('param');
+      return c.json(await createMiscMaster(db, book.bookId, kind, c.req.valid('json')), 201);
+    })
+    .put(
+      '/api/misc-masters/:kind/:code',
+      kindCodeParam,
+      json(contract.miscMasterSave),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { kind, code } = c.req.valid('param');
+        return c.json(await updateMiscMaster(db, book.bookId, kind, code, c.req.valid('json')));
+      },
+    )
+    .delete('/api/misc-masters/:kind/:code', kindCodeParam, async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const { kind, code } = c.req.valid('param');
+      await removeMiscMaster(db, book.bookId, kind, code);
       return c.json({ ok: true });
     })
 

@@ -6,7 +6,7 @@ import { loginFieldErrors, loginMessages, newPasswordErrors } from '@qi/core';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
 import { ApiError, api, unwrap } from '../../api.ts';
-import { Heading, OutlineButton, PrimaryButton, UnderlineField } from '../../components/ledger.tsx';
+import { Heading, OutlineButton, PrimaryButton, LabeledField } from '../../components/ledger.tsx';
 import { loadRemembered, saveRemembered } from '../../lib/remember.ts';
 import { BOOK_INDEX_ID, SIGN_IN_ID, yearRange, type IndexCompany, type IndexYear } from './types.ts';
 
@@ -189,7 +189,7 @@ export function SignInPanel({
                 Enter your credentials to continue
               </p>
             </div>
-            <UnderlineField
+            <LabeledField
               id="book-user"
               label="User Name"
               placeholder="Enter username"
@@ -208,7 +208,7 @@ export function SignInPanel({
                 }
               }}
             />
-            <UnderlineField
+            <LabeledField
               id="book-pass"
               label="Password"
               placeholder="Enter password"
@@ -260,7 +260,7 @@ export function SignInPanel({
             <p className="m-0 text-[15px] leading-[1.55] text-muted-foreground">
               {loginMessages.changePrompt(signedInAs)}
             </p>
-            <UnderlineField
+            <LabeledField
               id="new-pass"
               label="New password"
               inputRef={npRef}
@@ -279,7 +279,7 @@ export function SignInPanel({
                 }
               }}
             />
-            <UnderlineField
+            <LabeledField
               id="confirm-pass"
               label="Confirm password"
               inputRef={cpRef}

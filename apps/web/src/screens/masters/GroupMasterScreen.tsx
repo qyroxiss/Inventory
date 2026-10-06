@@ -222,7 +222,7 @@ export function GroupMasterScreen() {
                     typeRef.current?.focus();
                   }
                 }}
-                className={`h-[42px] w-full rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${errors.name ? 'border-destructive' : 'border-input'}`}
+                className={`h-[42px] w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${errors.name ? 'field-error' : ''}`}
               />
             </Row>
 
@@ -236,7 +236,7 @@ export function GroupMasterScreen() {
                   setErrors((er) => ({ ...er, type: undefined }));
                   ledgerRef.current?.focus();
                 }}
-                className={`h-[42px] w-full cursor-pointer rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${errors.type ? 'border-destructive' : 'border-input'}`}
+                className={`h-[42px] w-full cursor-pointer field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${errors.type ? 'field-error' : ''}`}
               >
                 <option value="" disabled>
                   Select group type
@@ -258,7 +258,7 @@ export function GroupMasterScreen() {
                   setForm((f) => ({ ...f, isLedger: e.target.value as 'Yes' | 'No' }));
                   saveRef.current?.focus();
                 }}
-                className="h-[42px] w-full cursor-pointer rounded-none border-0 border-b-[1.5px] border-input bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none"
+                className="h-[42px] w-full cursor-pointer field-box px-3 text-base text-foreground outline-none focus-visible:outline-none"
               >
                 {LEDGER_OPTIONS.map((o) => (
                   <option key={o} value={o} className="bg-card text-foreground">

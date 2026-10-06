@@ -119,8 +119,8 @@ export function SearchSelect({
             setOpen(false);
           }
         }}
-        className={`h-[42px] w-full rounded-none border-0 border-b-[1.5px] bg-transparent px-0.5 text-base text-foreground outline-none focus-visible:outline-none ${
-          error ? 'border-destructive' : 'border-input'
+        className={`h-[42px] w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${
+          error ? 'field-error' : ''
         }`}
       />
       {open && matches.length > 0 && (

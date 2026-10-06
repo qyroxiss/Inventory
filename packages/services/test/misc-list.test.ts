@@ -38,7 +38,8 @@ describe('addMiscIfNew', () => {
 
   test('keeps separate lists per type', async () => {
     await addMiscIfNew(db, bookId, 'City', 'CT', 'Pune');
-    expect(await listMisc(db, bookId, 'Unit')).toEqual([]);
+    expect(await listMisc(db, bookId, 'Unit')).not.toContain('Pune');
+    expect(await listMisc(db, bookId, 'City')).toEqual(['Pune']);
   });
 
   test('empty input adds nothing', async () => {

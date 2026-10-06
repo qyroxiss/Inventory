@@ -4,8 +4,8 @@
 Creation shortly after — all three directly from docs/LOGIC-SPEC.md §7 and the MDA source
 (`group_master_page.dart`, `sub_group_master_page.dart`, `ledger_creation_page.dart`), rather
 than a new canvas round. All three reuse M1/M2's visual language: one form on ruled paper, a View
-dialog for the list, confirm dialogs, and a Print sheet. The remaining Inventory Masters (Stock
-Group, Stock Sub Group, Stock Item, Godown, Unit, Sale Type) are not built yet and follow next.
+dialog for the list, confirm dialogs, and a Print sheet. The Inventory Masters follow one screen at a time;
+see [INVENTORY-MASTERS.md](INVENTORY-MASTERS.md).
 
 Every screen's breadcrumb and heading follow MDA's own header exactly: **Back** first (top-left,
 see [MASTERS-SCREENS.md › Layout rules](MASTERS-SCREENS.md#layout-rules-every-inner-screen)),

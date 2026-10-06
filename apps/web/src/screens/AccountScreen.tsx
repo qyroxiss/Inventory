@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState, type FormEvent } from 'react';
 import { AppHeader } from '../components/AppHeader.tsx';
-import { Heading, PrimaryButton, UnderlineField } from '../components/ledger.tsx';
+import { Heading, PrimaryButton, LabeledField } from '../components/ledger.tsx';
 import {
   AccountError,
   MIN_PASSWORD,
@@ -168,7 +168,7 @@ export function AccountScreen() {
                     Enter your credentials to continue
                   </p>
                 </div>
-                <UnderlineField
+                <LabeledField
                   id="acc-email"
                   label="Email"
                   type="email"
@@ -188,7 +188,7 @@ export function AccountScreen() {
                     }
                   }}
                 />
-                <UnderlineField
+                <LabeledField
                   id="acc-pass"
                   label="Password"
                   inputRef={passRef}
@@ -228,7 +228,7 @@ export function AccountScreen() {
             ) : (
               <form onSubmit={submitCreate} noValidate className="flex flex-col gap-[22px] max-sm:gap-4">
                 <Heading lead="Create" tail="Account" className="text-[42px] max-sm:text-[32px]" />
-                <UnderlineField
+                <LabeledField
                   id="new-name"
                   label="Name"
                   autoComplete="name"
@@ -240,7 +240,7 @@ export function AccountScreen() {
                     clearError('name');
                   }}
                 />
-                <UnderlineField
+                <LabeledField
                   id="new-email"
                   label="Email"
                   type="email"
@@ -255,7 +255,7 @@ export function AccountScreen() {
                 />
                 <div className="flex flex-col gap-1.5">
                   <div className="grid grid-cols-2 gap-5">
-                    <UnderlineField
+                    <LabeledField
                       id="new-pass"
                       label="Password"
                       type="password"
@@ -267,7 +267,7 @@ export function AccountScreen() {
                         clearError('password');
                       }}
                     />
-                    <UnderlineField
+                    <LabeledField
                       id="new-confirm"
                       label="Confirm"
                       type="password"

@@ -21,8 +21,9 @@ export const Heading = ({
   </Tag>
 );
 
-/** A labelled text field drawn as a single underline, with MDA's error under it. */
-export function UnderlineField({
+/** A labelled text field in a bordered box (with an optional Show/Hide beside the text inside
+ *  the box), and MDA's error under it. */
+export function LabeledField({
   id,
   label,
   error,
@@ -42,17 +43,14 @@ export function UnderlineField({
         {label}
       </label>
       <div
-        className={cn(
-          'flex items-center border-b-[1.5px]',
-          error ? 'border-destructive' : 'border-input',
-        )}
+        className={cn('flex items-center field-box pr-1.5', error && 'field-error')}
       >
         <input
           id={id}
           ref={inputRef}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${id}-err` : undefined}
-          className="h-[46px] min-w-0 flex-1 rounded-none border-0 bg-transparent px-0.5 text-lg text-foreground outline-none focus-visible:outline-none"
+          className="h-[46px] min-w-0 flex-1 rounded-none border-0 bg-transparent px-3 text-lg text-foreground outline-none focus-visible:outline-none"
           {...input}
         />
         {trailing}

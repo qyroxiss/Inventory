@@ -215,7 +215,7 @@ export function BookIndex({
         <label htmlFor="find-company" className="ledger-label">
           Search Company
         </label>
-        <div className="flex items-center gap-2.5 border-b-[1.5px] border-input">
+        <div className="flex items-center gap-2.5 field-box px-3">
           <svg
             width="16"
             height="16"
