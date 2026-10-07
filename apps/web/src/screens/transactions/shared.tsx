@@ -6,6 +6,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { useState, type KeyboardEvent, type ReactNode } from 'react';
 import { BackButton } from '../../components/BackButton.tsx';
 import { Dialog } from '../../components/Dialog.tsx';
+import { whenToastClosed } from '../../components/Toast.tsx';
 import { Heading } from '../../components/ledger.tsx';
 
 /** A field box on these screens: the bordered box, a little tighter than on the masters so a
@@ -151,10 +152,10 @@ export function NumBox({
 
 /** Focuses the field with MDA's order number `n` (deferred a frame, as `_advanceTo`). */
 export const focusNav = (n: number) =>
-  requestAnimationFrame(() => {
-    const el = document.querySelector<HTMLElement>(`[data-nav="${n}"]`);
-    el?.focus();
-  });
+  requestAnimationFrame(() =>
+    // A message popup holds the focus; the cursor moves once it's closed.
+    whenToastClosed(() => document.querySelector<HTMLElement>(`[data-nav="${n}"]`)?.focus()),
+  );
 
 /**
  * Enter moves to the next field in MDA's order (each field's `data-nav`), on the form's own
