@@ -33,6 +33,9 @@ import { LedgerCreationScreen } from './screens/masters/LedgerCreationScreen.tsx
 import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
 import { MiscMasterScreen } from './screens/masters/MiscMasterScreen.tsx';
 import { SaleTypeScreen } from './screens/masters/SaleTypeScreen.tsx';
+import { CashBankTab } from './screens/vouchers/CashBankTab.tsx';
+import { JournalTab } from './screens/vouchers/JournalTab.tsx';
+import { NoteTab } from './screens/vouchers/NoteTab.tsx';
 import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
 import { StockItemScreen } from './screens/masters/StockItemScreen.tsx';
 import { StockSubGroupScreen } from './screens/masters/StockSubGroupScreen.tsx';
@@ -169,6 +172,15 @@ const saleTypeRoute = createRoute({
   component: SaleTypeScreen,
 });
 
+// Accounting Vouchers: MDA's one page with five tabs; each tab has the menu item's own address.
+const voucherRoute = (path: string, component: () => React.JSX.Element) =>
+  createRoute({ getParentRoute: () => appRoute, path, component });
+const receiptRoute = voucherRoute('receipt', () => <CashBankTab key="receipt" kind="receipt" />);
+const paymentRoute = voucherRoute('payment', () => <CashBankTab key="payment" kind="payment" />);
+const journalRoute = voucherRoute('journal-voucher', () => <JournalTab />);
+const debitNoteRoute = voucherRoute('debit-note', () => <NoteTab key="debit" kind="debit" />);
+const creditNoteRoute = voucherRoute('credit-note', () => <NoteTab key="credit" kind="credit" />);
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -193,6 +205,11 @@ export const router = createRouter({
       stockSubGroupRoute,
       stockItemRoute,
       saleTypeRoute,
+      receiptRoute,
+      paymentRoute,
+      journalRoute,
+      debitNoteRoute,
+      creditNoteRoute,
       screenRoute,
     ]),
   ]),

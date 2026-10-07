@@ -601,6 +601,12 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-40 | Stock Group's Remove doesn't check whether a stock sub group sits under it |
 | Q-41 | Stock Sub Group's Remove doesn't check whether a stock item uses it |
 | Q-42 | Stock Item's Remove doesn't check purchases, sales or stock |
+| Q-43 | Updating a receipt, payment or note rewrites its ledger lines but writes no bill reference, so its reference is dropped |
+| Q-44 | After "Voucher number … is already used. Save again to take the next free number." the screen still shows the same number, so saving again fails the same way until Clear |
+| Q-45 | A cancelled voucher opens with its details and the Save button; saving it tries its old number and is refused as already used |
+| Q-46 | Reopening a debit or credit note doesn't bring its reason back; it has to be chosen again to update |
+| Q-47 | A bank payment prints "By Cash" (receipts print "By Cash/Bank") |
+| Q-48 | The Receipt and Payment lists show the date as stored (yyyy-MM-dd); the Journal and note lists show dd/MM/yyyy |
 
 ## 15. Branding
 

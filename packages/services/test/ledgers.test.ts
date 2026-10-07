@@ -106,10 +106,10 @@ describe('updateLedger', () => {
 });
 
 describe('deleteLedger', () => {
-  test('removes outright, since no voucher has used it yet', async () => {
+  test('removes outright when no voucher uses it', async () => {
     const l = await createLedger(db, bookId, valid);
     await deleteLedger(db, bookId, l.accCode);
-    expect(await listLedgers(db, bookId)).toHaveLength(0);
+    expect((await listLedgers(db, bookId)).map((r) => r.accCode)).not.toContain(l.accCode);
   });
 });
 
@@ -117,7 +117,8 @@ describe('listLedgers', () => {
   test('joins the group name in, ordered by ledger name', async () => {
     await createLedger(db, bookId, { ...valid, name: 'Zed Traders' });
     await createLedger(db, bookId, { ...valid, name: 'Alpha Traders' });
-    const rows = await listLedgers(db, bookId);
+    // Only the two made here; a new book also has MDA's system ledgers (TAX…, SAL001, PUR001).
+    const rows = (await listLedgers(db, bookId)).filter((r) => r.accCode.startsWith('AC'));
     expect(rows.map((r) => r.accName)).toEqual(['Alpha Traders', 'Zed Traders']);
     expect(rows[0]!.grpName).toBe('Current Assets');
   });

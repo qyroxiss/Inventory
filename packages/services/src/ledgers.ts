@@ -12,6 +12,7 @@ import {
 } from '@qi/core';
 import { and, asc, eq, ne, schema, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
+import { ledgerVoucherLineCount } from './vouchers.ts';
 
 const { ledgers, accountGroups } = schema;
 
@@ -46,15 +47,6 @@ async function nameClash(
     .from(ledgers)
     .where(and(...clauses));
   return !!clash;
-}
-
-/**
- * How many voucher lines reference this ledger. Vouchers aren't built yet (Phase 1), so this
- * always reports none in the meantime — deleteLedger is already shaped for the real count to
- * drop in later without touching its callers.
- */
-async function voucherUsageCount(): Promise<number> {
-  return 0;
 }
 
 /** The View dialog's list: every ledger with its group's name joined in, by ledger name
@@ -176,7 +168,8 @@ export async function deleteLedger(db: Db, bookId: string, accCode: string): Pro
     .where(and(eq(ledgers.bookId, bookId), eq(ledgers.accCode, accCode)));
   if (!row) return;
 
-  const used = await voucherUsageCount();
+  // How many voucher lines use it, cancelled vouchers included (ledger_creation_page.dart:323).
+  const used = await ledgerVoucherLineCount(db, bookId, accCode);
   if (used > 0) {
     throw new UserError(ledgerMessages.removeBlocked(row.accName, used));
   }

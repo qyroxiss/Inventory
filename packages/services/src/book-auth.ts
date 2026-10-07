@@ -12,6 +12,7 @@ import {
 import { and, eq, schema, type Db } from '@qi/db';
 import { getCompany } from './companies.ts';
 import { UserError, assertNoFieldErrors } from './errors.ts';
+import { ensureBookSeeds } from './vouchers.ts';
 import { getYear } from './years.ts';
 
 const { bookUsers } = schema;
@@ -66,6 +67,10 @@ export async function bookLogin(
       .set({ password: await hashPassword(input.password) })
       .where(eq(bookUsers.id, row.id));
   }
+
+  // Books made before vouchers existed get their series and system ledgers now (MDA's upgrade
+  // step when an older year file is opened, db_service.dart:300-306). Nothing changes if present.
+  await ensureBookSeeds(db, year.bookId);
 
   // Company state code: stored value, else the GSTIN prefix (db_service.dart:106-123).
   const stored = (company.stateCode ?? '').trim();

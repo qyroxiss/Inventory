@@ -17,6 +17,10 @@ const BOOK_TABLES = [
   'Maacct',
   'Misc_Master',
   'Part_Master',
+  'VchrSeries',
+  'VchrHdr',
+  'VchrAcct',
+  'BillRef',
   'AuditLog',
 ] as const;
 

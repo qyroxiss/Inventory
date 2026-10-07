@@ -98,6 +98,35 @@ export const stockItemSave = z.object({
   hsn: opt,
 });
 
+/** A voucher as the tabs build it (receiptDraft, journalDraft, …). Rules are checked in @qi/core. */
+const voucherLine = z.object({
+  accCode: z.string(),
+  dr: z.number(),
+  cr: z.number(),
+  narration: z.string().optional(),
+});
+export const voucherSave = z.object({
+  vchrType: z.string(),
+  vchrNo: opt,
+  /** yyyy-MM-dd */
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  partyCode: z.string().nullable().optional(),
+  refNo: opt,
+  narration: opt,
+  lines: z.array(voucherLine),
+  bills: z
+    .array(
+      z.object({
+        accCode: z.string(),
+        billNo: z.string(),
+        refType: z.string(),
+        amount: z.number(),
+      }),
+    )
+    .optional(),
+});
+export const voucherUpdate = voucherSave.omit({ vchrType: true, vchrNo: true, bills: true });
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),
@@ -134,6 +163,10 @@ export const mdaImport = z.object({
               Maacct: mdaRows,
               Misc_Master: mdaRows,
               Part_Master: mdaRows,
+              VchrSeries: mdaRows,
+              VchrHdr: mdaRows,
+              VchrAcct: mdaRows,
+              BillRef: mdaRows,
               AuditLog: mdaRows,
             })
             .nullable(),

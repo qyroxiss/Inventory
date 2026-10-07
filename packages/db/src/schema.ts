@@ -322,6 +322,101 @@ export const stockItems = pgTable(
   ],
 );
 
+// ── Vouchers (posting_service.dart; docs/LOGIC-SPEC.md §6) ──────────────────────
+
+/** VchrHdr: one row per voucher of any type (RCP, BNK, PAY, BPAY, JNL, DRN, CRN, PUR, SAL, …).
+ *  Never deleted: cancelling sets Status 'Cancelled' and keeps the rows for audit. Ids are
+ *  UUIDv7, so ordering by id is ordering by creation, like MDA's VchrId. */
+export const vouchers = pgTable(
+  'vouchers',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    vchrNo: text('vchr_no').notNull(),
+    vchrType: text('vchr_type').notNull(),
+    vchrDate: date('vchr_date').notNull(),
+    partyCode: text('party_code'),
+    refNo: text('ref_no'),
+    refDate: text('ref_date'),
+    narration: text('narration'),
+    placeOfSupply: text('place_of_supply'),
+    taxableAmt: numeric('taxable_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstAmt: numeric('sgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cessAmt: numeric('cess_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    otherChrg: numeric('other_chrg', { precision: 14, scale: 2 }).notNull().default('0'),
+    roundOff: numeric('round_off', { precision: 14, scale: 2 }).notNull().default('0'),
+    netAmount: numeric('net_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    /** 'Active' or 'Cancelled'. */
+    status: text('status').notNull().default('Active'),
+    createdBy: text('created_by'),
+    createdAt: createdAt(),
+    modifiedBy: text('modified_by'),
+    modifiedAt: timestamp('modified_at', { withTimezone: true }),
+    cancelledBy: text('cancelled_by'),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('vouchers_book_type_no').on(t.bookId, t.vchrType, t.vchrNo),
+    index('vouchers_book_date').on(t.bookId, t.vchrDate),
+  ],
+);
+
+/** VchrAcct: the double entry. ΣDr equals ΣCr for every voucher (the posting gate checks). */
+export const voucherLines = pgTable(
+  'voucher_lines',
+  {
+    id: id(),
+    voucherId: uuid('voucher_id')
+      .notNull()
+      .references(() => vouchers.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    accCode: text('acc_code').notNull(),
+    drAmount: numeric('dr_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    crAmount: numeric('cr_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    narration: text('narration'),
+  },
+  (t) => [index('voucher_lines_voucher').on(t.voucherId), index('voucher_lines_acc').on(t.accCode)],
+);
+
+/** BillRef: bill-wise references (New / Against / On Account / Advance). */
+export const billRefs = pgTable(
+  'bill_refs',
+  {
+    id: id(),
+    voucherId: uuid('voucher_id')
+      .notNull()
+      .references(() => vouchers.id, { onDelete: 'cascade' }),
+    accCode: text('acc_code').notNull(),
+    billNo: text('bill_no').notNull(),
+    refType: text('ref_type').notNull().default('New'),
+    billDate: text('bill_date'),
+    dueDate: text('due_date'),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [index('bill_refs_voucher').on(t.voucherId)],
+);
+
+/** VchrSeries: each voucher type's prefix, width and last number used. */
+export const voucherSeries = pgTable(
+  'voucher_series',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    vchrType: text('vchr_type').notNull(),
+    vchrName: text('vchr_name'),
+    prefix: text('prefix'),
+    width: bigint('width', { mode: 'number' }).notNull().default(3),
+    lastNo: bigint('last_no', { mode: 'number' }).notNull().default(0),
+  },
+  (t) => [uniqueIndex('voucher_series_book_type').on(t.bookId, t.vchrType)],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {

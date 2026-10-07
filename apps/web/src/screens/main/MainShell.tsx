@@ -144,7 +144,9 @@ export function MainShell() {
             </button>
           </header>
 
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2">
+          {/* Pages never shrink below their content ([&>*]:shrink-0): a page taller than the
+              window (long forms on a phone) scrolls here instead of spilling past its paper. */}
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2 [&>*]:shrink-0">
             <Outlet />
           </main>
         </div>

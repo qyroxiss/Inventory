@@ -80,4 +80,19 @@ export {
   updateStockItem,
   type StockItem,
 } from './stock-items.ts';
+export {
+  cancelVoucher,
+  ensureBookSeeds,
+  listVouchers,
+  nextVoucherNo,
+  saveVoucher,
+  updateVoucher,
+  voucherForPrint,
+  voucherLinesOf,
+  type PostingContext,
+  type VoucherInput,
+  type VoucherLineRow,
+  type VoucherPrint,
+  type VoucherRow,
+} from './vouchers.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

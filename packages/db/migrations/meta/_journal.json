@@ -36,6 +36,13 @@
       "when": 1791365004615,
       "tag": "0004_open_kang",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791367048923,
+      "tag": "0005_open_zuras",
+      "breakpoints": true
     }
   ]
 }

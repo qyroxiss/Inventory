@@ -23,6 +23,13 @@ import {
   createStockSubGroup,
   createSaleType,
   createStockItem,
+  cancelVoucher,
+  listVouchers,
+  nextVoucherNo,
+  saveVoucher,
+  updateVoucher,
+  voucherForPrint,
+  voucherLinesOf,
   createYear,
   deleteCompany,
   deleteGroup,
@@ -86,6 +93,15 @@ const params = <T extends z.ZodRawShape>(shape: T) =>
   });
 const kindParam = params({ kind: z.enum(MISC_MASTER_KINDS) });
 const kindCodeParam = params({ kind: z.enum(MISC_MASTER_KINDS), code: z.string() });
+
+/** Who is posting and the open year, for the posting gate. */
+const postingContext = (book: BookSession) => ({
+  bookId: book.bookId,
+  userName: book.userName,
+  fyFrom: book.fyFrom,
+  fyTo: book.fyTo,
+  financialYearLabel: book.financialYearLabel,
+});
 
 const json = <T extends ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
@@ -412,6 +428,66 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await removeStockItem(db, book.bookId, c.req.param('code'));
+      return c.json({ ok: true });
+    })
+
+    // ── Accounting Vouchers (posting_service.dart) ──────────────────────────────
+    .get(
+      '/api/vouchers',
+      zValidator('query', z.object({ types: z.string(), cancelled: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { types, cancelled } = c.req.valid('query');
+        return c.json(
+          await listVouchers(db, book.bookId, types.split(',').filter(Boolean), cancelled === '1'),
+        );
+      },
+    )
+    .get('/api/vouchers/next', zValidator('query', z.object({ type: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ vchrNo: await nextVoucherNo(db, book.bookId, c.req.valid('query').type) });
+    })
+    .get(
+      '/api/vouchers/print',
+      zValidator('query', z.object({ no: z.string(), kind: z.enum(['receipt', 'payment']) })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { no, kind } = c.req.valid('query');
+        const receipt = kind === 'receipt';
+        const v = await voucherForPrint(
+          db,
+          book.bookId,
+          no.trim(),
+          receipt ? ['RCP', 'BNK'] : ['PAY', 'BPAY'],
+          receipt ? 'cr' : 'dr',
+        );
+        return c.json({ voucher: v });
+      },
+    )
+    .get('/api/vouchers/:id/lines', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await voucherLinesOf(db, book.bookId, c.req.param('id')));
+    })
+    .post('/api/vouchers', json(contract.voucherSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await saveVoucher(db, postingContext(book), c.req.valid('json')), 201);
+    })
+    .put('/api/vouchers/:id', json(contract.voucherUpdate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateVoucher(db, postingContext(book), c.req.param('id'), c.req.valid('json')),
+      );
+    })
+    .post('/api/vouchers/:id/cancel', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await cancelVoucher(db, postingContext(book), c.req.param('id'));
       return c.json({ ok: true });
     })
 

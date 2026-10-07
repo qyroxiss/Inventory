@@ -89,8 +89,8 @@ A full-screen split. The left side is the company & year list on ruled paper; th
 - A company whose CompCode the account already has is skipped (`Company "X" already exists`), so importing twice changes nothing.
 - A year whose file is missing gets a fresh book, as MDA would create one.
 - Messages: `Company "X" imported (1 year)`, `Company "X" already exists`, `MDA_Registry.db not found in the selected folder`, `No MDA companies found in the selected folder`.
-- Also carried: every Inventory Master, stock items (Part_Master) included.
-- Not carried yet: purchases, sales, vouchers and the other transaction tables. Each is added to the import when its screen is built.
+- Also carried: every Inventory Master, stock items (Part_Master) included, and the vouchers (VchrSeries, VchrHdr, VchrAcct, BillRef).
+- Not carried yet: the purchase and sale bills and their item and stock lines. Each is added to the import when its screen is built.
 
 ## Visual system
 

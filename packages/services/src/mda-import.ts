@@ -3,8 +3,9 @@
 // MDA's own column names; this file maps them onto our tables.
 //
 // Covered today: CompanyMaster, Company_Year, and per year User, Maacct2, Maacct, Misc_Master,
-// Part_Master and AuditLog. The purchase, sale and voucher tables are added here as their
-// screens land. A company whose CompCode this account already has is skipped, so importing the same
+// Part_Master, VchrSeries, VchrHdr, VchrAcct, BillRef and AuditLog. The purchase, sale and stock
+// tables (PurcMaster/Detail, SaleMaster/Detail, VchrItem, StockTrn) are added here as the
+// Transactions screens land. A company whose CompCode this account already has is skipped, so importing the same
 // folder twice changes nothing.
 
 import { SEED_ADMIN, hashPassword, importMessages, parseDate } from '@qi/core';
@@ -22,6 +23,10 @@ const {
   ledgers,
   miscList,
   stockItems,
+  billRefs,
+  voucherLines,
+  voucherSeries,
+  vouchers,
 } = schema;
 
 type Row = Record<string, unknown>;
@@ -32,6 +37,10 @@ export type MdaBook = {
   Maacct?: Row[];
   Misc_Master?: Row[];
   Part_Master?: Row[];
+  VchrSeries?: Row[];
+  VchrHdr?: Row[];
+  VchrAcct?: Row[];
+  BillRef?: Row[];
   AuditLog?: Row[];
 };
 export type MdaImport = {
@@ -222,6 +231,82 @@ async function copyBook(db: Db, bookId: string, b: MdaBook): Promise<void> {
         miscGen5: str(r.Misc_Gen5),
         miscGen6: str(r.Misc_Gen6),
         miscDate: str(r.Misc_Date),
+      })),
+    );
+
+  const series = (b.VchrSeries ?? []).filter((r) => str(r.VchrType));
+  if (series.length)
+    await db.insert(voucherSeries).values(
+      series.map((r) => ({
+        bookId,
+        vchrType: str(r.VchrType)!,
+        vchrName: str(r.VchrName),
+        prefix: str(r.Prefix),
+        width: num(r.Width) || 3,
+        lastNo: num(r.LastNo),
+      })),
+    );
+
+  // Vouchers keep their numbers; MDA's integer VchrId maps to each new row's id for its lines.
+  const ids = new Map<string, string>();
+  for (const r of (b.VchrHdr ?? []).filter((h) => str(h.VchrNo) && str(h.VchrType))) {
+    const date = parseDate(str(r.VchrDate)) ?? parseDate(str(r.CreatedAt));
+    if (!date) continue;
+    const [v] = await db
+      .insert(vouchers)
+      .values({
+        bookId,
+        vchrNo: str(r.VchrNo)!,
+        vchrType: str(r.VchrType)!,
+        vchrDate: date,
+        partyCode: str(r.PartyCode),
+        refNo: str(r.RefNo),
+        refDate: str(r.RefDate),
+        narration: str(r.Narration),
+        placeOfSupply: str(r.PlaceOfSupply),
+        taxableAmt: num(r.TaxableAmt).toFixed(2),
+        cgstAmt: num(r.CgstAmt).toFixed(2),
+        sgstAmt: num(r.SgstAmt).toFixed(2),
+        igstAmt: num(r.IgstAmt).toFixed(2),
+        cessAmt: num(r.CessAmt).toFixed(2),
+        otherChrg: num(r.OtherChrg).toFixed(2),
+        roundOff: num(r.RoundOff).toFixed(2),
+        netAmount: num(r.NetAmount).toFixed(2),
+        status: str(r.Status) ?? 'Active',
+        createdBy: str(r.CreatedBy),
+        createdAt: stamp(r.CreatedAt),
+        modifiedBy: str(r.ModifiedBy),
+        modifiedAt: stamp(r.ModifiedAt),
+        cancelledBy: str(r.CancelledBy),
+        cancelledAt: stamp(r.CancelledAt),
+      })
+      .onConflictDoNothing()
+      .returning({ id: vouchers.id });
+    if (v) ids.set(String(r.VchrId), v.id);
+  }
+  const acct = (b.VchrAcct ?? []).filter((r) => ids.has(String(r.VchrId)) && str(r.AccCode));
+  if (acct.length)
+    await db.insert(voucherLines).values(
+      acct.map((r) => ({
+        voucherId: ids.get(String(r.VchrId))!,
+        lineNo: num(r.LineNo),
+        accCode: str(r.AccCode)!,
+        drAmount: num(r.DrAmount).toFixed(2),
+        crAmount: num(r.CrAmount).toFixed(2),
+        narration: str(r.Narration),
+      })),
+    );
+  const refs = (b.BillRef ?? []).filter((r) => ids.has(String(r.VchrId)) && str(r.AccCode));
+  if (refs.length)
+    await db.insert(billRefs).values(
+      refs.map((r) => ({
+        voucherId: ids.get(String(r.VchrId))!,
+        accCode: str(r.AccCode)!,
+        billNo: str(r.BillNo) ?? '',
+        refType: str(r.RefType) ?? 'New',
+        billDate: str(r.BillDate),
+        dueDate: str(r.DueDate),
+        amount: num(r.Amount).toFixed(2),
       })),
     );
 
