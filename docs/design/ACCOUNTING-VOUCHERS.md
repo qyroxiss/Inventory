@@ -3,8 +3,10 @@
 **Status:** built 2026-10-07 from `accounting_vouchers_page.dart`, `posting_service.dart`,
 `voucher_print.dart` and `code_gen.dart` (docs/LOGIC-SPEC.md §4.2, §6.3-6.9, §9, §13).
 
-MDA has one page with five tabs; here each tab has its menu item's own address. The tab rail is
-on the right on laptops, as in MDA, and a row above the form on tablets and phones. Each tab
+MDA has one page with five tabs; here each tab has its menu item's own address. MDA's tab rail
+is left out on laptops, where the left menu already lists the five vouchers (owner,
+2026-10-07). On tablets and phones that menu is folded behind ☰, so the tabs show as one row
+above the form there. Each tab
 keeps an unsaved entry while you look at another one, as MDA's tabs do.
 
 | Tab | Address | Types | Code |

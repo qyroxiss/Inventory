@@ -60,8 +60,10 @@ export const fetchList = (types: string[]) =>
 export const fetchLines = (id: string) =>
   unwrap(api.api.vouchers[':id'].lines.$get({ param: { id } }));
 
-/** The page: Back, "Accounting Vouchers" with MDA's pill, the tab's content, and the tab rail
- *  (on the right, as in MDA; a row above the form on tablets and phones). */
+/** The page: Back, "Accounting Vouchers" with MDA's pill and the tab's content. On laptops the
+ *  left menu already lists the five vouchers, so MDA's own tab rail is left out there (owner,
+ *  2026-10-07); on tablets and phones, where that menu is folded away behind ☰, the tabs stay as
+ *  one row above the form so switching is a single tap. */
 export function VoucherPage({ tab, children }: { tab: TabKey; children: ReactNode }) {
   const navigate = useNavigate();
   return (
@@ -97,10 +99,10 @@ export function VoucherPage({ tab, children }: { tab: TabKey; children: ReactNod
         </div>
       </div>
       <div className="flex min-h-0 flex-1 gap-6 max-lg:flex-none max-lg:flex-col max-lg:gap-4">
-        <div className="flex min-w-0 max-w-[920px] flex-1 flex-col">{children}</div>
+        <div className="flex min-w-0 max-w-[1000px] flex-1 flex-col">{children}</div>
         <nav
           aria-label="Voucher type"
-          className="flex w-44 flex-none flex-col gap-1.5 border-l border-border pl-4 max-lg:order-first max-lg:w-auto max-lg:flex-row max-lg:overflow-x-auto max-lg:border-b max-lg:border-l-0 max-lg:pb-3 max-lg:pl-0"
+          className="hidden gap-1.5 overflow-x-auto border-b border-border pb-3 max-lg:order-first max-lg:flex"
         >
           {TABS.map((t) => (
             <Link
