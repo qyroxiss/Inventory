@@ -150,11 +150,16 @@ export function NumBox({
   );
 }
 
-/** Focuses the field with MDA's order number `n` (deferred a frame, as `_advanceTo`). */
-export const focusNav = (n: number) =>
+/** Focuses the field with MDA's order number `n` (deferred a frame, as `_advanceTo`). A field
+ *  that isn't drawn yet (the page still loading) is waited for, a few frames at most. */
+export const focusNav = (n: number, tries = 10) =>
   requestAnimationFrame(() =>
     // A message popup holds the focus; the cursor moves once it's closed.
-    whenToastClosed(() => document.querySelector<HTMLElement>(`[data-nav="${n}"]`)?.focus()),
+    whenToastClosed(() => {
+      const el = document.querySelector<HTMLElement>(`[data-nav="${n}"]`);
+      if (el) el.focus();
+      else if (tries > 0) focusNav(n, tries - 1);
+    }),
   );
 
 /**
@@ -409,3 +414,143 @@ export const dmyDash = (iso: string) => {
 
 export const BAR_BTN =
   'flex h-11 cursor-pointer items-center justify-center border-[1.5px] border-foreground px-4 text-[15px] font-semibold disabled:cursor-not-allowed disabled:opacity-40';
+
+/** One figure on a totals line ("Sub Total 1049.99"). */
+export const Total = ({ label, value }: { label: string; value: string }) => (
+  <span className="flex items-baseline gap-1.5">
+    <span className="text-xs text-muted-foreground">{label}</span>
+    <span className="font-mono text-sm font-bold">{value}</span>
+  </span>
+);
+
+export type GridCol<T> = {
+  label: string;
+  /** CSS grid track. */
+  w: string;
+  num?: boolean;
+  cell: (line: T, index: number) => string;
+};
+
+/** The item grid under the entry row: tap a row to edit it, ✎ and ✕ on each. It fills the
+ *  space left and scrolls on its own, sideways too on narrow screens; the page doesn't. */
+export function ItemGrid<T>({
+  cols,
+  lines,
+  empty,
+  selected,
+  minWidth = 1110,
+  onEdit,
+  onRemove,
+}: {
+  cols: GridCol<T>[];
+  lines: T[];
+  empty: string;
+  selected: number | null;
+  minWidth?: number;
+  onEdit: (i: number) => void;
+  onRemove: (i: number) => void;
+}) {
+  const tracks = { gridTemplateColumns: [...cols.map((c) => c.w), '64px'].join(' ') };
+  return (
+    <div className="flex min-h-[56px] flex-1 flex-col overflow-auto border border-border bg-card max-sm:min-h-[180px] max-sm:flex-none">
+      <div style={{ minWidth }}>
+        <div
+          style={tracks}
+          className="sticky top-0 grid border-b border-border bg-muted text-xs font-bold text-muted-foreground"
+        >
+          {cols.map((c, i) => (
+            <span key={i} className={`px-1.5 py-1.5 ${c.num ? 'text-right' : ''}`}>
+              {c.label}
+            </span>
+          ))}
+          <span />
+        </div>
+        {lines.map((l, i) => (
+          <div
+            key={i}
+            style={tracks}
+            onClick={() => onEdit(i)}
+            className={`grid cursor-pointer items-center border-b border-border/60 text-[13px] hover:bg-accent ${selected === i ? 'bg-accent' : ''}`}
+          >
+            {cols.map((c, k) => (
+              <span
+                key={k}
+                className={`truncate px-1.5 py-1.5 ${c.num ? 'text-right font-mono' : ''}`}
+              >
+                {c.cell(l, i)}
+              </span>
+            ))}
+            <span className="flex justify-center gap-1">
+              <button
+                type="button"
+                tabIndex={-1}
+                title="Edit line"
+                aria-label={`Edit line ${i + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(i);
+                }}
+                className="grid size-7 cursor-pointer place-items-center text-muted-foreground hover:text-foreground"
+              >
+                ✎
+              </button>
+              <button
+                type="button"
+                tabIndex={-1}
+                title="Remove line"
+                aria-label={`Remove line ${i + 1}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove(i);
+                }}
+                className="grid size-7 cursor-pointer place-items-center text-destructive"
+              >
+                ✕
+              </button>
+            </span>
+          </div>
+        ))}
+      </div>
+      {/* Outside the wide rows, so it stays centred in what's visible. */}
+      {lines.length === 0 && (
+        <p className="sticky left-0 m-0 py-6 text-center text-sm text-muted-foreground">{empty}</p>
+      )}
+    </div>
+  );
+}
+
+/** The Code / Name switch beside an item panel's title: which box the item is typed in. */
+export function EntryBySwitch({
+  byCode,
+  onChange,
+}: {
+  byCode: boolean;
+  onChange: (byCode: boolean) => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Enter item by" className="flex gap-3">
+      {(['Code', 'Name'] as const).map((k) => {
+        const on = (k === 'Code') === byCode;
+        return (
+          <button
+            key={k}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={-1}
+            onClick={() => !on && onChange(k === 'Code')}
+            className={`flex cursor-pointer items-center gap-1.5 text-sm ${on ? 'font-semibold text-primary-text' : 'text-muted-foreground'}`}
+          >
+            <span
+              aria-hidden="true"
+              className={`grid size-4 place-items-center rounded-full border-[1.5px] ${on ? 'border-primary-text' : 'border-muted-foreground'}`}
+            >
+              {on && <span className="size-2 rounded-full bg-primary-text" />}
+            </span>
+            {k}
+          </button>
+        );
+      })}
+    </div>
+  );
+}

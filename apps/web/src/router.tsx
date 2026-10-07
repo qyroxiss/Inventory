@@ -37,6 +37,8 @@ import { CashBankTab } from './screens/vouchers/CashBankTab.tsx';
 import { JournalTab } from './screens/vouchers/JournalTab.tsx';
 import { NoteTab } from './screens/vouchers/NoteTab.tsx';
 import { PurchaseInvoiceScreen } from './screens/transactions/PurchaseInvoiceScreen.tsx';
+import { SalesInvoiceScreen } from './screens/transactions/SalesInvoiceScreen.tsx';
+import { StockJournalScreen } from './screens/transactions/StockJournalScreen.tsx';
 import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
 import { StockItemScreen } from './screens/masters/StockItemScreen.tsx';
 import { StockSubGroupScreen } from './screens/masters/StockSubGroupScreen.tsx';
@@ -188,6 +190,18 @@ const purchaseInvoiceRoute = createRoute({
   component: PurchaseInvoiceScreen,
 });
 
+const salesInvoiceRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'sales-invoice',
+  component: SalesInvoiceScreen,
+});
+
+const stockJournalRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'stock-journal',
+  component: StockJournalScreen,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -218,6 +232,8 @@ export const router = createRouter({
       debitNoteRoute,
       creditNoteRoute,
       purchaseInvoiceRoute,
+      salesInvoiceRoute,
+      stockJournalRoute,
       screenRoute,
     ]),
   ]),

@@ -4,7 +4,7 @@
 //
 // Covered today: CompanyMaster, Company_Year, and per year User, Maacct2, Maacct, Misc_Master,
 // Part_Master, VchrSeries, VchrHdr, VchrAcct, BillRef, VchrItem, StockTrn, PurcMaster,
-// PurcDetail and AuditLog. The sale tables (SaleMaster/Detail) are added with Sales Invoice.
+// PurcDetail, SaleMaster, SaleDetail and AuditLog.
 // A company whose CompCode this account already has is skipped, so importing the same folder
 // twice changes nothing.
 
@@ -26,6 +26,8 @@ const {
   billRefs,
   purchaseLines,
   purchases,
+  saleLines,
+  sales,
   stockTrn,
   voucherItems,
   voucherLines,
@@ -49,6 +51,8 @@ export type MdaBook = {
   StockTrn?: Row[];
   PurcMaster?: Row[];
   PurcDetail?: Row[];
+  SaleMaster?: Row[];
+  SaleDetail?: Row[];
   AuditLog?: Row[];
 };
 export type MdaImport = {
@@ -419,6 +423,83 @@ async function copyBook(db: Db, bookId: string, b: MdaBook): Promise<void> {
     await db.insert(purchaseLines).values(
       pLines.map((r) => ({
         purchaseId: bills.get(String(r.BillNo))!,
+        lineNo: num(r.LineNo),
+        itemCode: str(r.ItemCode)!,
+        itemName: str(r.ItemName),
+        hsnNo: str(r.HsnNo),
+        unit: str(r.Unit),
+        location: str(r.Location),
+        qty: String(num(r.Qty)),
+        rate: num(r.Rate).toFixed(2),
+        disP: num(r.DisP).toFixed(2),
+        disA: num(r.DisA).toFixed(2),
+        amount: num(r.Amount).toFixed(2),
+        sgstP: num(r.SgstP).toFixed(2),
+        sgstA: num(r.SgstA).toFixed(2),
+        cgstP: num(r.CgstP).toFixed(2),
+        cgstA: num(r.CgstA).toFixed(2),
+        igstP: num(r.IgstP).toFixed(2),
+        igstA: num(r.IgstA).toFixed(2),
+        lineTotal: num(r.LineTotal).toFixed(2),
+      })),
+    );
+
+  // Sale bills and their lines, joined on the bill number.
+  const saleIds = new Map<string, string>();
+  for (const r of (b.SaleMaster ?? []).filter((x) => str(x.BillNo))) {
+    const date = parseDate(str(r.BillDate));
+    if (!date) continue;
+    const vid = r.VchrId === null || r.VchrId === undefined ? null : ids.get(String(r.VchrId));
+    const [s] = await db
+      .insert(sales)
+      .values({
+        bookId,
+        billNo: str(r.BillNo)!,
+        billDate: date,
+        saleType: str(r.SaleType),
+        payMode: str(r.PayMode) ?? 'Cash',
+        custCode: str(r.CustCode),
+        custName: str(r.CustName),
+        address: str(r.Address),
+        area: str(r.Area),
+        city: str(r.City),
+        state: str(r.State),
+        stateCode: str(r.StateCode),
+        mobile: str(r.Mobile),
+        gstNo: str(r.GstNo),
+        location: str(r.Location),
+        narration: str(r.Narration),
+        isInterState: bool(r.IsInterState, false),
+        totalQty: String(num(r.TotalQty)),
+        subTotal: num(r.SubTotal).toFixed(2),
+        itemDiscAmt: num(r.ItemDiscAmt).toFixed(2),
+        billDiscPct: num(r.BillDiscPct).toFixed(2),
+        billDiscAmt: num(r.BillDiscAmt).toFixed(2),
+        sgstAmt: num(r.SgstAmt).toFixed(2),
+        cgstAmt: num(r.CgstAmt).toFixed(2),
+        igstAmt: num(r.IgstAmt).toFixed(2),
+        roundOff: num(r.RoundOff).toFixed(2),
+        netAmount: num(r.NetAmount).toFixed(2),
+        voucherId: vid ?? null,
+        status: str(r.Status) ?? 'Active',
+        createdBy: str(r.CreatedBy),
+        createdAt: stamp(r.CreatedAt),
+        modifiedBy: str(r.ModifiedBy),
+        modifiedAt: stamp(r.ModifiedAt),
+        cancelledBy: str(r.CancelledBy),
+        cancelledAt: stamp(r.CancelledAt),
+      })
+      .onConflictDoNothing()
+      .returning({ id: sales.id });
+    if (s) saleIds.set(str(r.BillNo)!, s.id);
+  }
+  const sLines = (b.SaleDetail ?? []).filter(
+    (r) => saleIds.has(String(r.BillNo)) && str(r.ItemCode),
+  );
+  if (sLines.length)
+    await db.insert(saleLines).values(
+      sLines.map((r) => ({
+        saleId: saleIds.get(String(r.BillNo))!,
         lineNo: num(r.LineNo),
         itemCode: str(r.ItemCode)!,
         itemName: str(r.ItemName),

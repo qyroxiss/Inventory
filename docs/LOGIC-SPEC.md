@@ -17,7 +17,7 @@ When the new code and this spec disagree, the spec wins. When this spec and the 
 | Masters › Inventory | Stock Group, Stock Sub Group, Stock Item, Godown, Unit, Sale Type | Built | 5 |
 | Accounting Vouchers | Receipt (Cash/Bank), Payment (Cash/Bank), Journal, Debit Note, Credit Note | Built | 5 |
 | Transactions | Purchase Invoice, Sales Invoice | Built | 5 |
-| Transactions | Stock Journal | Placeholder | 9 |
+| Transactions | Stock Journal | Placeholder in MDA; built in this rebuild at the owner's request (docs/design/TRANSACTIONS.md) | 9 |
 | Reports | Stock Summary, P&L, Balance Sheet, Day Book, Sales Register | Placeholder | 6 (new spec) |
 | GST Reports | GSTR-1, GSTR-3B, GST Audit, HSN Summary, ITC | Placeholder | 6 (new spec) |
 | Tools | User Management | Built | 3/5 |
@@ -608,7 +608,10 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-47 | A bank payment prints "By Cash" (receipts print "By Cash/Bank") |
 | Q-48 | The Receipt and Payment lists show the date as stored (yyyy-MM-dd); the Journal and note lists show dd/MM/yyyy |
 | Q-49 | A purchase saved with an empty Narration posts an empty voucher narration; MDA's fallback "Purchase <bill no>" never applies, because the box always sends text |
-| Q-50 | A cancelled purchase opens with its details and the Save button; saving it tries its own bill number and is refused as already existing |
+| Q-50 | A cancelled purchase opens with its details and the Save button; saving it tries its own bill number and is refused as already existing (a cancelled sale does the same) |
+| Q-51 | A sale's customer can only be picked from Sundry Debtors; there's no walk-in name, even on a cash sale |
+| Q-52 | A sale's line Location is the header Location at the moment the line is added; changing the header later doesn't move existing lines |
+| Q-53 | Reopening a sale whose customer is no longer listed (inactive or removed) clears the customer link; updating it then saves it without one, and a credit sale is refused |
 
 ## 15. Branding
 

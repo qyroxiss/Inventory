@@ -3,8 +3,7 @@
 //   - Sale Name and Sale By are required; Sale Prefix is upper-cased; all trimmed.
 //   - The name must be unique among sale types, case-sensitively, on Save and on Update.
 //   - Update has no confirmation step (the screen saves straight away).
-//   - Remove is refused once a sale bill carries the type. Sale bills don't exist in this
-//     rebuild yet, so the count is 0 until Sales Invoice lands (like Ledger's voucher check).
+//   - Remove is refused once a sale bill (cancelled ones too) carries the type's name.
 
 import {
   SALE_TYPE,
@@ -13,10 +12,10 @@ import {
   nextCode,
   saleTypeMessages as msg,
 } from '@qi/core';
-import { and, asc, eq, ne, schema, type Db } from '@qi/db';
+import { and, asc, eq, ne, schema, sql, type Db } from '@qi/db';
 import { UserError } from './errors.ts';
 
-const { miscList } = schema;
+const { miscList, sales } = schema;
 
 export type SaleType = { code: string; name: string; prefix: string; saleBy: string };
 export type SaleTypeInput = { name: string; prefix?: string; saleBy?: string };
@@ -98,12 +97,13 @@ export async function updateSaleType(
   return { code, ...v };
 }
 
-/**
- * How many sale bills carry this type (sale_type_service.dart:107-112). Always 0 until the
- * Sales Invoice tables exist; it becomes a real count then, without touching its callers.
- */
-export async function saleTypeUsageCount(): Promise<number> {
-  return 0;
+/** How many sale bills carry this type, by name (sale_type_service.dart:107-112). */
+export async function saleTypeUsageCount(db: Db, bookId: string, name: string): Promise<number> {
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(sales)
+    .where(and(eq(sales.bookId, bookId), eq(sales.saleType, name)));
+  return Number(row?.n ?? 0);
 }
 
 export async function removeSaleType(db: Db, bookId: string, code: string): Promise<void> {
@@ -112,7 +112,7 @@ export async function removeSaleType(db: Db, bookId: string, code: string): Prom
     .from(miscList)
     .where(and(ofTypes(bookId), eq(miscList.miscCode, code)));
   if (!row) return;
-  const used = await saleTypeUsageCount();
+  const used = await saleTypeUsageCount(db, bookId, row.name);
   if (used > 0) throw new UserError(msg.inUse(row.name, used));
   await db.delete(miscList).where(and(ofTypes(bookId), eq(miscList.miscCode, code)));
 }

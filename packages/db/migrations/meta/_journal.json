@@ -50,6 +50,13 @@
       "when": 1791376268408,
       "tag": "0006_naive_wolfpack",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791382974302,
+      "tag": "0007_overjoyed_pretty_boy",
+      "breakpoints": true
     }
   ]
 }

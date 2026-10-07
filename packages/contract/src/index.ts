@@ -160,6 +160,58 @@ export const purchaseSave = z.object({
   ),
 });
 
+const invoiceLine = z.object({
+  itemCode: z.string(),
+  itemName: z.string(),
+  hsnNo: z.string().nullable().optional(),
+  unit: z.string().nullable().optional(),
+  location: z.string().nullable().optional(),
+  qty: z.number(),
+  rate: z.number(),
+  disP: z.number(),
+  disA: z.number(),
+  gstRate: z.number(),
+});
+
+/** A sale bill as the screen sends it. Each line's tax is worked out again on the server. */
+export const saleSave = z.object({
+  billNo: z.string(),
+  billDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  saleType: z.string().nullable().optional(),
+  isCash: z.boolean(),
+  custCode: z.string().nullable().optional(),
+  custName: z.string(),
+  address: opt,
+  area: opt,
+  city: opt,
+  state: opt,
+  stateCode: z.string().nullable().optional(),
+  mobile: opt,
+  gstNo: opt,
+  location: opt,
+  billDiscPct: z.number(),
+  billDiscAmt: z.number(),
+  interState: z.boolean(),
+  lines: z.array(invoiceLine),
+});
+
+export const stockJournalSave = z.object({
+  vchrNo: opt,
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  narration: opt,
+  lines: z.array(
+    z.object({
+      side: z.enum(['out', 'in']),
+      itemCode: z.string(),
+      itemName: z.string(),
+      unit: z.string().nullable(),
+      godown: z.string().nullable(),
+      qty: z.number(),
+      rate: z.number(),
+    }),
+  ),
+});
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),
@@ -204,6 +256,8 @@ export const mdaImport = z.object({
               StockTrn: mdaRows,
               PurcMaster: mdaRows,
               PurcDetail: mdaRows,
+              SaleMaster: mdaRows,
+              SaleDetail: mdaRows,
               AuditLog: mdaRows,
             })
             .nullable(),

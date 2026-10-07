@@ -544,7 +544,7 @@ export async function listPurchases(db: Db, bookId: string): Promise<PurchaseRow
       suppCode: purchases.suppCode,
       suppName: ledgers.accName,
       suppInvNo: purchases.suppInvNo,
-      itemCount: sql<number>`(select count(*)::int from ${purchaseLines} d where d.purchase_id = ${purchases.id})`,
+      itemCount: sql<number>`(select count(*)::int from ${purchaseLines} d where d.purchase_id = "purchases"."id")`,
       netAmount: purchases.netAmount,
       status: purchases.status,
     })

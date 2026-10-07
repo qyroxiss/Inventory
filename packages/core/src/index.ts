@@ -95,6 +95,32 @@ export {
   type PurcLine,
   type PurcTotals,
 } from './purchases.ts';
+export {
+  CASH_SALE_LEDGER,
+  CUSTOMER_GROUP,
+  SALE_BILL_SERIES,
+  SALE_GROUP_SEEDS,
+  SALE_LEDGERS,
+  SALE_LEDGER_SEEDS,
+  saleBillPrefix,
+  saleLine,
+  saleMessages,
+  salePosting,
+  saleProblem,
+  saleTotals,
+  type SaleHeaderCheck,
+  type SaleLine,
+  type SaleTotals,
+} from './sales.ts';
+export {
+  stjLine,
+  stjTotals,
+  stockJournalMessages,
+  stockJournalProblem,
+  type StjLine,
+  type StjSide,
+  type StjTotals,
+} from './stock-journal.ts';
 export { parseDate, formatDmy, isInFinancialYear, financialYearLabel } from './dates.ts';
 export {
   companyCode,

@@ -24,6 +24,20 @@ import {
   createSaleType,
   createStockItem,
   cancelPurchase,
+  cancelSale,
+  listSales,
+  nextSaleBillNo,
+  saleBill,
+  saleLookups,
+  saveSale,
+  updateSale,
+  cancelStockJournal,
+  listStockJournals,
+  nextStockJournalNo,
+  saveStockJournal,
+  stockInHand,
+  stockJournalLinesOf,
+  updateStockJournal,
   listPurchases,
   nextPurchaseBillNo,
   purchaseBill,
@@ -538,6 +552,98 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await cancelPurchase(db, postingContext(book), c.req.valid('json').billNo);
+      return c.json({ ok: true });
+    })
+
+    // ── Sales Invoice (sale_service.dart) ────────────────────────────────────────
+    .get('/api/sales', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listSales(db, book.bookId));
+    })
+    .get('/api/sales/setup', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({
+        ...(await saleLookups(db, book.bookId)),
+        companyStateCode: book.companyStateCode,
+      });
+    })
+    .get(
+      '/api/sales/next',
+      zValidator('query', z.object({ prefix: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json({
+          billNo: await nextSaleBillNo(db, book.bookId, c.req.valid('query').prefix),
+        });
+      },
+    )
+    .get('/api/sales/bill', zValidator('query', z.object({ no: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ bill: await saleBill(db, book.bookId, c.req.valid('query').no) });
+    })
+    .post('/api/sales', json(contract.saleSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await saveSale(db, postingContext(book), c.req.valid('json')), 201);
+    })
+    .put('/api/sales', json(contract.saleSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await updateSale(db, postingContext(book), c.req.valid('json')));
+    })
+    .post('/api/sales/cancel', json(z.object({ billNo: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await cancelSale(db, postingContext(book), c.req.valid('json').billNo);
+      return c.json({ ok: true });
+    })
+
+    // ── Stock Journal (not built in MDA; docs/design/TRANSACTIONS.md) ───────────
+    .get('/api/stock-journals', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listStockJournals(db, book.bookId));
+    })
+    .get('/api/stock-journals/next', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ vchrNo: await nextStockJournalNo(db, book.bookId) });
+    })
+    .get(
+      '/api/stock-journals/in-hand',
+      zValidator('query', z.object({ item: z.string() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const code = c.req.valid('query').item;
+        return c.json({ qty: (await stockInHand(db, book.bookId, [code])).get(code) ?? 0 });
+      },
+    )
+    .get('/api/stock-journals/:id/lines', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await stockJournalLinesOf(db, book.bookId, c.req.param('id')));
+    })
+    .post('/api/stock-journals', json(contract.stockJournalSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await saveStockJournal(db, postingContext(book), c.req.valid('json')), 201);
+    })
+    .put('/api/stock-journals/:id', json(contract.stockJournalSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateStockJournal(db, postingContext(book), c.req.param('id'), c.req.valid('json')),
+      );
+    })
+    .post('/api/stock-journals/:id/cancel', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await cancelStockJournal(db, postingContext(book), c.req.param('id'));
       return c.json({ ok: true });
     })
 

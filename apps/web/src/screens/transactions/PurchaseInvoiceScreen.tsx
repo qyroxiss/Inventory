@@ -25,6 +25,9 @@ import { PurchaseList } from './PurchaseList.tsx';
 import {
   BAR_BTN,
   Cell,
+  ItemGrid,
+  Total,
+  type GridCol,
   Chip,
   Lookup,
   NumBox,
@@ -676,7 +679,14 @@ export function PurchaseInvoiceScreen() {
               </div>
             </div>
 
-            <LineGrid lines={lines} selected={entry.line} onEdit={editLine} onRemove={removeLine} />
+            <ItemGrid
+              cols={COLS}
+              lines={lines}
+              empty={pm.noLines}
+              selected={entry.line}
+              onEdit={editLine}
+              onRemove={removeLine}
+            />
 
             {/* Totals */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border border-border bg-card px-3 py-1">
@@ -749,129 +759,20 @@ export function PurchaseInvoiceScreen() {
   );
 }
 
-const Total = ({ label, value }: { label: string; value: string }) => (
-  <span className="flex items-baseline gap-1.5">
-    <span className="text-xs text-muted-foreground">{label}</span>
-    <span className="font-mono text-sm font-bold">{value}</span>
-  </span>
-);
-
 /** The grid's columns, as MDA's (`_cols`); Item Name takes the spare width. */
-const COLS: { label: string; w: string; num?: boolean }[] = [
-  { label: 'SNo.', w: '44px' },
-  { label: 'Code', w: '78px' },
-  { label: 'Item Name', w: 'minmax(170px,1fr)' },
-  { label: 'Qty.', w: '62px', num: true },
-  { label: 'Rate', w: '76px', num: true },
-  { label: 'DisP', w: '52px', num: true },
-  { label: 'DisA', w: '66px', num: true },
-  { label: 'Amount', w: '86px', num: true },
-  { label: 'SGSTP', w: '54px', num: true },
-  { label: 'SGSTA', w: '70px', num: true },
-  { label: 'CGSTP', w: '54px', num: true },
-  { label: 'CGSTA', w: '70px', num: true },
-  { label: 'IGSTP', w: '54px', num: true },
-  { label: 'IGSTA', w: '70px', num: true },
-  { label: '', w: '64px' },
+const COLS: GridCol<PurcLine>[] = [
+  { label: 'SNo.', w: '44px', cell: (_, i) => String(i + 1) },
+  { label: 'Code', w: '78px', cell: (l) => l.itemCode },
+  { label: 'Item Name', w: 'minmax(170px,1fr)', cell: (l) => l.itemName },
+  { label: 'Qty.', w: '62px', num: true, cell: (l) => f2(l.qty) },
+  { label: 'Rate', w: '76px', num: true, cell: (l) => f2(l.rate) },
+  { label: 'DisP', w: '52px', num: true, cell: (l) => f2(l.disP) },
+  { label: 'DisA', w: '66px', num: true, cell: (l) => f2(l.disA) },
+  { label: 'Amount', w: '86px', num: true, cell: (l) => f2(l.amount) },
+  { label: 'SGSTP', w: '54px', num: true, cell: (l) => f2(l.sgstP) },
+  { label: 'SGSTA', w: '70px', num: true, cell: (l) => f2(l.sgstA) },
+  { label: 'CGSTP', w: '54px', num: true, cell: (l) => f2(l.cgstP) },
+  { label: 'CGSTA', w: '70px', num: true, cell: (l) => f2(l.cgstA) },
+  { label: 'IGSTP', w: '54px', num: true, cell: (l) => f2(l.igstP) },
+  { label: 'IGSTA', w: '70px', num: true, cell: (l) => f2(l.igstA) },
 ];
-const TRACKS = { gridTemplateColumns: COLS.map((c) => c.w).join(' ') };
-
-/** "Purchased Item Detail" grid: tap a row to edit it. It fills the space left and scrolls on its
- *  own, sideways too on narrow screens; the page itself doesn't. */
-function LineGrid({
-  lines,
-  selected,
-  onEdit,
-  onRemove,
-}: {
-  lines: PurcLine[];
-  selected: number | null;
-  onEdit: (i: number) => void;
-  onRemove: (i: number) => void;
-}) {
-  return (
-    <div className="flex min-h-[88px] flex-1 flex-col overflow-auto border border-border bg-card max-sm:min-h-[180px] max-sm:flex-none">
-      <div className="min-w-[1110px]">
-        <div
-          style={TRACKS}
-          className="sticky top-0 grid border-b border-border bg-muted text-xs font-bold text-muted-foreground"
-        >
-          {COLS.map((c, i) => (
-            <span key={i} className={`px-1.5 py-1.5 ${c.num ? 'text-right' : ''}`}>
-              {c.label}
-            </span>
-          ))}
-        </div>
-        {lines.map((l, i) => {
-          const cells = [
-            String(i + 1),
-            l.itemCode,
-            l.itemName,
-            f2(l.qty),
-            f2(l.rate),
-            f2(l.disP),
-            f2(l.disA),
-            f2(l.amount),
-            f2(l.sgstP),
-            f2(l.sgstA),
-            f2(l.cgstP),
-            f2(l.cgstA),
-            f2(l.igstP),
-            f2(l.igstA),
-          ];
-          return (
-            <div
-              key={i}
-              style={TRACKS}
-              onClick={() => onEdit(i)}
-              className={`grid cursor-pointer items-center border-b border-border/60 text-[13px] hover:bg-accent ${selected === i ? 'bg-accent' : ''}`}
-            >
-              {cells.map((v, c) => (
-                <span
-                  key={c}
-                  className={`truncate px-1.5 py-1.5 ${COLS[c]!.num ? 'text-right font-mono' : ''}`}
-                >
-                  {v}
-                </span>
-              ))}
-              <span className="flex justify-center gap-1">
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  title="Edit line"
-                  aria-label={`Edit line ${i + 1}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(i);
-                  }}
-                  className="grid size-7 cursor-pointer place-items-center text-muted-foreground hover:text-foreground"
-                >
-                  ✎
-                </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  title="Remove line"
-                  aria-label={`Remove line ${i + 1}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(i);
-                  }}
-                  className="grid size-7 cursor-pointer place-items-center text-destructive"
-                >
-                  ✕
-                </button>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-      {/* Outside the wide rows, so it stays centred in what's visible. */}
-      {lines.length === 0 && (
-        <p className="sticky left-0 m-0 py-6 text-center text-sm text-muted-foreground">
-          {pm.noLines}
-        </p>
-      )}
-    </div>
-  );
-}

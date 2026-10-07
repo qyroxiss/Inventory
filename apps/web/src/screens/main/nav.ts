@@ -64,7 +64,7 @@ export const NAV: NavSection[] = [
 
 /** Items MDA itself shows as "Not built yet" (LOGIC-SPEC §1). */
 export const NOT_BUILT = new Set([
-  'Stock Journal', 'Stock Summary', 'Profit & Loss', 'Balance Sheet', 'Day Book', 'Sales Register',
+  'Stock Summary', 'Profit & Loss', 'Balance Sheet', 'Day Book', 'Sales Register',
   'GSTR-1', 'GSTR-3B', 'GST Audit', 'HSN Summary', 'Input Tax Credit',
   'Backup Data', 'Company Settings', 'Import Data', 'Logs',
 ]); // prettier-ignore

@@ -25,6 +25,8 @@ const BOOK_TABLES = [
   'StockTrn',
   'PurcMaster',
   'PurcDetail',
+  'SaleMaster',
+  'SaleDetail',
   'AuditLog',
 ] as const;
 

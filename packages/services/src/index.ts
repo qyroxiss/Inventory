@@ -109,4 +109,28 @@ export {
   type PurchaseRow,
   type Supplier,
 } from './purchases.ts';
+export {
+  cancelSale,
+  listSales,
+  nextSaleBillNo,
+  saleBill,
+  saleLookups,
+  saveSale,
+  updateSale,
+  type Customer,
+  type SaleInput,
+  type SaleLineInput,
+  type SaleRow,
+} from './sales.ts';
+export {
+  cancelStockJournal,
+  listStockJournals,
+  nextStockJournalNo,
+  saveStockJournal,
+  stockJournalLinesOf,
+  updateStockJournal,
+  type StockJournalInput,
+  type StockJournalRow,
+} from './stock-journal.ts';
+export { stockInHand } from './stock.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

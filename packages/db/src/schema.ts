@@ -556,6 +556,115 @@ export const purchaseLines = pgTable(
   (t) => [uniqueIndex('purchase_lines_purchase_line').on(t.purchaseId, t.lineNo)],
 );
 
+// ── Sale document (sale_service.dart; docs/LOGIC-SPEC.md §6.1) ─────────────────────
+
+/** SaleMaster: the sale bill, unique by bill number within a book. The customer's address block
+ *  is copied on, so a reprint shows it as it was when the bill was raised. */
+export const sales = pgTable(
+  'sales',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    billNo: text('bill_no').notNull(),
+    billDate: date('bill_date').notNull(),
+    /** The sale type's name. */
+    saleType: text('sale_type'),
+    /** 'Cash' or 'Credit'. */
+    payMode: text('pay_mode').notNull().default('Cash'),
+    custCode: text('cust_code'),
+    custName: text('cust_name'),
+    address: text('address'),
+    area: text('area'),
+    city: text('city'),
+    state: text('state'),
+    stateCode: text('state_code'),
+    mobile: text('mobile'),
+    gstNo: text('gst_no'),
+    location: text('location'),
+    narration: text('narration'),
+    isInterState: boolean('is_inter_state').notNull().default(false),
+    totalQty: numeric('total_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    subTotal: numeric('sub_total', { precision: 14, scale: 2 }).notNull().default('0'),
+    itemDiscAmt: numeric('item_disc_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    billDiscPct: numeric('bill_disc_pct', { precision: 8, scale: 2 }).notNull().default('0'),
+    billDiscAmt: numeric('bill_disc_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstAmt: numeric('sgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    roundOff: numeric('round_off', { precision: 14, scale: 2 }).notNull().default('0'),
+    netAmount: numeric('net_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    voucherId: uuid('voucher_id').references(() => vouchers.id),
+    status: text('status').notNull().default('Active'),
+    createdBy: text('created_by'),
+    createdAt: createdAt(),
+    modifiedBy: text('modified_by'),
+    modifiedAt: timestamp('modified_at', { withTimezone: true }),
+    cancelledBy: text('cancelled_by'),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('sales_book_bill').on(t.bookId, t.billNo),
+    index('sales_book_date').on(t.bookId, t.billDate),
+  ],
+);
+
+/** SaleDetail: one row per item of a sale bill. */
+export const saleLines = pgTable(
+  'sale_lines',
+  {
+    id: id(),
+    saleId: uuid('sale_id')
+      .notNull()
+      .references(() => sales.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    itemCode: text('item_code').notNull(),
+    itemName: text('item_name'),
+    hsnNo: text('hsn_no'),
+    unit: text('unit'),
+    location: text('location'),
+    qty: numeric('qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    disP: numeric('dis_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    disA: numeric('dis_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstP: numeric('sgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    sgstA: numeric('sgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstP: numeric('cgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    cgstA: numeric('cgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstP: numeric('igst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    igstA: numeric('igst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [uniqueIndex('sale_lines_sale_line').on(t.saleId, t.lineNo)],
+);
+
+// ── Stock Journal (not built in MDA; docs/design/TRANSACTIONS.md) ───────────────────
+
+/** A stock journal's lines; its header is its STJ voucher. `side` is 'out' (Consumption /
+ *  Source) or 'in' (Production / Destination). Kept when cancelled, so it can still be opened;
+ *  only its stock_trn rows go. */
+export const stockJournalLines = pgTable(
+  'stock_journal_lines',
+  {
+    id: id(),
+    voucherId: uuid('voucher_id')
+      .notNull()
+      .references(() => vouchers.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    side: text('side').notNull(),
+    itemCode: text('item_code').notNull(),
+    itemName: text('item_name'),
+    unit: text('unit'),
+    godown: text('godown'),
+    qty: numeric('qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [uniqueIndex('stock_journal_lines_voucher_line').on(t.voucherId, t.lineNo)],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {
