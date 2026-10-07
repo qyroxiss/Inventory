@@ -32,6 +32,7 @@ import { GroupMasterScreen } from './screens/masters/GroupMasterScreen.tsx';
 import { LedgerCreationScreen } from './screens/masters/LedgerCreationScreen.tsx';
 import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
 import { MiscMasterScreen } from './screens/masters/MiscMasterScreen.tsx';
+import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
 
 export const queryClient = new QueryClient();
 
@@ -141,6 +142,12 @@ const godownRoute = createRoute({
   component: () => <MiscMasterScreen key="godown" kind="godown" />,
 });
 
+const stockGroupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'stock-group',
+  component: StockGroupScreen,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -161,6 +168,7 @@ export const router = createRouter({
       ledgerCreationRoute,
       unitMasterRoute,
       godownRoute,
+      stockGroupRoute,
       screenRoute,
     ]),
   ]),

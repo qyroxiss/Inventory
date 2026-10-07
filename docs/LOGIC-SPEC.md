@@ -598,6 +598,7 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-37 | Unit Master's and Godown's Update has no duplicate-name check, so two can share a name; its "This Name Already Exists" never appears |
 | Q-38 | Unit Master's and Godown's Save and Update write the name into Misc_Pname too, so updating a seeded unit replaces its long name ("Numbers" becomes "Nos") |
 | Q-39 | Unit Master's and Godown's Remove doesn't check whether a stock item or purchase uses it |
+| Q-40 | Stock Group's Remove doesn't check whether a stock sub group sits under it |
 
 ## 15. Branding
 

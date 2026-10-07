@@ -12,6 +12,13 @@ export {
   miscMasterMessages,
   type MiscMasterKind,
 } from './misc-masters.ts';
+export {
+  STOCK_GROUP_CODE_PREFIX,
+  STOCK_GROUP_CODE_WIDTH,
+  STOCK_GROUP_TYPE,
+  stockGroupFieldErrors,
+  stockGroupMessages,
+} from './stock-groups.ts';
 export { parseDate, formatDmy, isInFinancialYear, financialYearLabel } from './dates.ts';
 export {
   companyCode,

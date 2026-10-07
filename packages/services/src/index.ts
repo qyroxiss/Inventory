@@ -52,4 +52,11 @@ export {
   updateMiscMaster,
   type MiscMasterRow,
 } from './misc-masters.ts';
+export {
+  createStockGroup,
+  listStockGroups,
+  removeStockGroup,
+  updateStockGroup,
+  type StockGroup,
+} from './stock-groups.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

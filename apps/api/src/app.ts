@@ -19,6 +19,7 @@ import {
   createLedger,
   createSubGroup,
   createMiscMaster,
+  createStockGroup,
   createYear,
   deleteCompany,
   deleteGroup,
@@ -33,12 +34,15 @@ import {
   listMisc,
   listSubGroups,
   listMiscMaster,
+  listStockGroups,
   removeMiscMaster,
+  removeStockGroup,
   updateCompany,
   updateGroup,
   updateLedger,
   updateSubGroup,
   updateMiscMaster,
+  updateStockGroup,
   listBookIndex,
   listCompanies,
   listYears,
@@ -296,6 +300,31 @@ export function createApp(opts: AppOptions) {
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       const { kind, code } = c.req.valid('param');
       await removeMiscMaster(db, book.bookId, kind, code);
+      return c.json({ ok: true });
+    })
+
+    // ── Stock Group (Misc_Master rows of type 'StockGroup') ──────────────────────
+    .get('/api/stock-groups', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listStockGroups(db, book.bookId));
+    })
+    .post('/api/stock-groups', json(contract.stockGroupSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createStockGroup(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/stock-groups/:code', json(contract.stockGroupSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateStockGroup(db, book.bookId, c.req.param('code'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/stock-groups/:code', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await removeStockGroup(db, book.bookId, c.req.param('code'));
       return c.json({ ok: true });
     })
 

@@ -78,6 +78,9 @@ export const ledgerCreate = z.object({
 /** Unit Master and Godown (one field each). */
 export const miscMasterSave = z.object({ name: z.string() });
 
+/** Stock Group: GST Rate and HSN No. are free text, as MDA stores them. */
+export const stockGroupSave = z.object({ name: z.string(), gstRate: opt, hsn: opt });
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),
