@@ -45,6 +45,13 @@ import {
   StockSummaryScreen,
 } from './screens/reports/ListReports.tsx';
 import { BalanceSheetScreen, ProfitLossScreen } from './screens/reports/Statements.tsx';
+import {
+  GstAuditScreen,
+  Gstr1Screen,
+  Gstr3bScreen,
+  HsnSummaryScreen,
+  ItcScreen,
+} from './screens/gst/GstReports.tsx';
 import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
 import { StockItemScreen } from './screens/masters/StockItemScreen.tsx';
 import { StockSubGroupScreen } from './screens/masters/StockSubGroupScreen.tsx';
@@ -217,6 +224,11 @@ const reportRoutes = [
   reportRoute('balance-sheet', BalanceSheetScreen),
   reportRoute('day-book', DayBookScreen),
   reportRoute('sales-register', SalesRegisterScreen),
+  reportRoute('gstr-1', Gstr1Screen),
+  reportRoute('gstr-3b', Gstr3bScreen),
+  reportRoute('gst-audit', GstAuditScreen),
+  reportRoute('hsn-summary', HsnSummaryScreen),
+  reportRoute('input-tax-credit', ItcScreen),
 ];
 
 const screenRoute = createRoute({

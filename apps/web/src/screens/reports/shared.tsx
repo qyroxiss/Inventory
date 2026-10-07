@@ -34,11 +34,14 @@ export function ReportPage({
   title,
   subtitle,
   filters,
+  section = 'reports',
   children,
 }: {
   title: [string, string];
   /** The period line ("From 01-04-2026 to 07-10-2026", "As on 07-10-2026"). */
   subtitle: string;
+  /** The menu section Back returns to. */
+  section?: 'reports' | 'gst-reports';
   filters: ReactNode;
   children: ReactNode;
 }) {
@@ -57,9 +60,7 @@ export function ReportPage({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b-2 border-foreground pb-3 max-md:gap-x-3 print:border-black">
         <span className="print:hidden">
           <BackButton
-            onClick={() =>
-              void navigate({ to: '/app/section/$section', params: { section: 'reports' } })
-            }
+            onClick={() => void navigate({ to: '/app/section/$section', params: { section } })}
           />
         </span>
         <div className="flex flex-col">
@@ -164,6 +165,7 @@ export function ReportTable<T>({
   muted,
   onRow,
   minWidth = 0,
+  grow = true,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -173,6 +175,8 @@ export function ReportTable<T>({
   muted?: (r: T) => boolean;
   onRow?: (r: T) => void;
   minWidth?: number;
+  /** Fill the space left (one table on the page); false sizes it to its rows. */
+  grow?: boolean;
 }) {
   const tracks = cols.map((c) => c.w).join(' ');
   const phone = cols
@@ -186,7 +190,9 @@ export function ReportTable<T>({
   const cellClass = (c: Col<T>) =>
     `truncate px-1 ${c.num ? 'text-right font-mono' : ''} ${c.wide ? 'max-sm:hidden' : ''}`;
   return (
-    <div className="flex min-h-[120px] flex-1 flex-col overflow-auto border border-border bg-card print:overflow-visible print:border-black print:bg-white">
+    <div
+      className={`flex flex-col overflow-auto border border-border bg-card ${grow ? 'min-h-[120px] flex-1' : 'flex-none'} print:overflow-visible print:border-black print:bg-white`}
+    >
       <div
         style={style}
         className={`${grid} sticky top-0 z-[1] border-b-2 border-foreground bg-muted px-2 py-2 font-mono text-[11px] uppercase tracking-[0.06em] text-muted-foreground print:static print:border-black print:bg-white print:text-black`}
@@ -227,5 +233,71 @@ export function ReportTable<T>({
         </div>
       )}
     </div>
+  );
+}
+
+/** The open year's months, for the GST returns (filed monthly). */
+export function yearMonths(fyFrom?: string | null, fyTo?: string | null) {
+  if (!fyFrom || !fyTo) return [];
+  const out: { label: string; from: string; to: string }[] = [];
+  let [y, m] = fyFrom.split('-').map(Number) as [number, number];
+  const pad = (n: number) => String(n).padStart(2, '0');
+  for (let i = 0; i < 24; i++) {
+    const from = `${y}-${pad(m)}-01`;
+    if (from > fyTo) break;
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const to = `${y}-${pad(m)}-${pad(last)}`;
+    const name = new Date(Date.UTC(y, m - 1, 1)).toLocaleString('en-IN', {
+      month: 'short',
+      timeZone: 'UTC',
+    });
+    out.push({
+      label: `${name} ${y}`,
+      from: from < fyFrom ? fyFrom : from,
+      to: to > fyTo ? fyTo : to,
+    });
+    m++;
+    if (m > 12) {
+      m = 1;
+      y++;
+    }
+  }
+  return out;
+}
+
+/** "Month" — picks a whole month of the open year into the period; "Custom" keeps the dates. */
+export function MonthPicker({
+  p,
+  set,
+}: {
+  p: { from: string; to: string };
+  set: (p: { from: string; to: string }) => void;
+}) {
+  const book = useBook();
+  const months = yearMonths(book?.fyFrom, book?.fyTo);
+  const current = months.find((m) => m.from === p.from && m.to === p.to);
+  return (
+    <label
+      htmlFor="rp-month"
+      className="flex w-40 flex-col gap-0.5 text-[13px] font-semibold text-muted-foreground"
+    >
+      Month
+      <select
+        id="rp-month"
+        value={current ? current.from : ''}
+        onChange={(e) => {
+          const m = months.find((x) => x.from === e.target.value);
+          if (m) set({ from: m.from, to: m.to });
+        }}
+        className={`${boxClass()} cursor-pointer`}
+      >
+        <option value="">Custom</option>
+        {months.map((m) => (
+          <option key={m.from} value={m.from}>
+            {m.label}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }

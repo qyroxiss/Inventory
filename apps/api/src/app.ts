@@ -24,6 +24,11 @@ import {
   createSaleType,
   createStockItem,
   balanceSheetReport,
+  gstAudit,
+  gstr1Report,
+  gstr3bReport,
+  hsnReport,
+  itcReport,
   dayBook,
   profitLossReport,
   salesRegister,
@@ -702,6 +707,37 @@ export function createApp(opts: AppOptions) {
         return c.json(await balanceSheetReport(db, book.bookId, c.req.valid('query').to));
       },
     )
+
+    // ── GST Reports (docs/design/GST-REPORTS.md) ────────────────────────────────
+    .get('/api/gst/gstr1', zValidator('query', period), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await gstr1Report(db, book, c.req.valid('query')));
+    })
+    .get('/api/gst/gstr3b', zValidator('query', period), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await gstr3bReport(db, book, c.req.valid('query')));
+    })
+    .get(
+      '/api/gst/hsn',
+      zValidator('query', period.extend({ side: z.enum(['out', 'in']) })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json(await hsnReport(db, book, c.req.valid('query')));
+      },
+    )
+    .get('/api/gst/itc', zValidator('query', period), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await itcReport(db, book, c.req.valid('query')));
+    })
+    .get('/api/gst/audit', zValidator('query', period), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await gstAudit(db, book, c.req.valid('query')));
+    })
 
     // ── Misc lists (City today; Unit/Godown/Stock Group/Sale Type share this later) ─────────────
     .get(

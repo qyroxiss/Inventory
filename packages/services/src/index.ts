@@ -145,4 +145,13 @@ export {
   type SalesRegisterRow,
   type StockSummaryRow,
 } from './reports.ts';
+export {
+  gstAudit,
+  gstr1Report,
+  gstr3bReport,
+  hsnReport,
+  itcReport,
+  type GstContext,
+  type ItcRow,
+} from './gst.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';
