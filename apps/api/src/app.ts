@@ -23,6 +23,11 @@ import {
   createStockSubGroup,
   createSaleType,
   createStockItem,
+  balanceSheetReport,
+  dayBook,
+  profitLossReport,
+  salesRegister,
+  stockSummary,
   cancelPurchase,
   cancelSale,
   listSales,
@@ -123,6 +128,10 @@ const postingContext = (book: BookSession) => ({
   fyTo: book.fyTo,
   financialYearLabel: book.financialYearLabel,
 });
+
+const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+/** A report's From–To (yyyy-MM-dd). */
+const period = z.object({ from: isoDate, to: isoDate });
 
 const json = <T extends ZodType>(schema: T) =>
   zValidator('json', schema, (result, c) => {
@@ -646,6 +655,53 @@ export function createApp(opts: AppOptions) {
       await cancelStockJournal(db, postingContext(book), c.req.param('id'));
       return c.json({ ok: true });
     })
+
+    // ── Reports (docs/design/REPORTS.md) ────────────────────────────────────────
+    .get(
+      '/api/reports/stock-summary',
+      zValidator('query', period.extend({ godown: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json(await stockSummary(db, book.bookId, c.req.valid('query')));
+      },
+    )
+    .get(
+      '/api/reports/day-book',
+      zValidator('query', period.extend({ cancelled: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json(await dayBook(db, book.bookId, { ...q, cancelled: q.cancelled === '1' }));
+      },
+    )
+    .get(
+      '/api/reports/sales-register',
+      zValidator('query', period.extend({ cancelled: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json(
+          await salesRegister(db, book.bookId, { ...q, cancelled: q.cancelled === '1' }),
+        );
+      },
+    )
+    .get('/api/reports/profit-loss', zValidator('query', z.object({ to: isoDate })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await profitLossReport(db, book.bookId, c.req.valid('query').to));
+    })
+    .get(
+      '/api/reports/balance-sheet',
+      zValidator('query', z.object({ to: isoDate })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json(await balanceSheetReport(db, book.bookId, c.req.valid('query').to));
+      },
+    )
 
     // ── Misc lists (City today; Unit/Godown/Stock Group/Sale Type share this later) ─────────────
     .get(

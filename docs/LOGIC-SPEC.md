@@ -18,7 +18,7 @@ When the new code and this spec disagree, the spec wins. When this spec and the 
 | Accounting Vouchers | Receipt (Cash/Bank), Payment (Cash/Bank), Journal, Debit Note, Credit Note | Built | 5 |
 | Transactions | Purchase Invoice, Sales Invoice | Built | 5 |
 | Transactions | Stock Journal | Placeholder in MDA; built in this rebuild at the owner's request (docs/design/TRANSACTIONS.md) | 9 |
-| Reports | Stock Summary, P&L, Balance Sheet, Day Book, Sales Register | Placeholder | 6 (new spec) |
+| Reports | Stock Summary, P&L, Balance Sheet, Day Book, Sales Register | Placeholder in MDA; built in this rebuild (docs/design/REPORTS.md) | 6 |
 | GST Reports | GSTR-1, GSTR-3B, GST Audit, HSN Summary, ITC | Placeholder | 6 (new spec) |
 | Tools | User Management | Built | 3/5 |
 | Tools | Backup, Company Settings, Import, Logs | Placeholder | 6–7 |

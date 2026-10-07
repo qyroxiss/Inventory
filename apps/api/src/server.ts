@@ -20,7 +20,18 @@ if (!process.env.DATABASE_URL) {
   dataDir = fileURLToPath(new URL('../../../.data/pglite', import.meta.url));
   mkdirSync(dataDir, { recursive: true });
 }
-const { db } = await openDatabase({ url: process.env.DATABASE_URL, dataDir });
+const { db, close } = await openDatabase({ url: process.env.DATABASE_URL, dataDir });
+
+// Close the database before exiting. A local PGlite folder left open by a stopped process can't
+// be opened again ("Aborted()"), so Ctrl+C and a stop signal shut it down cleanly.
+let closing = false;
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+  process.on(signal, () => {
+    if (closing) return;
+    closing = true;
+    void close().finally(() => process.exit(0));
+  });
+}
 
 // LOCAL_ACCOUNT=1 skips the account layer and runs as account 'local', exactly as the desktop
 // app will. For local development only, until the account sign-in screen is built.

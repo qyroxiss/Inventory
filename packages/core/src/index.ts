@@ -121,6 +121,21 @@ export {
   type StjSide,
   type StjTotals,
 } from './stock-journal.ts';
+export {
+  TRADING_GROUPS,
+  balanceSheet,
+  groupBalances,
+  openingStockValue,
+  profitAndLoss,
+  reportMessages,
+  stockRate,
+  topGroupOf,
+  type BalanceSheet,
+  type LedgerBalance,
+  type ProfitAndLoss,
+  type ReportGroup,
+  type StatementGroup,
+} from './reports.ts';
 export { parseDate, formatDmy, isInFinancialYear, financialYearLabel } from './dates.ts';
 export {
   companyCode,

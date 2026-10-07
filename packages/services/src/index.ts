@@ -133,4 +133,16 @@ export {
   type StockJournalRow,
 } from './stock-journal.ts';
 export { stockInHand } from './stock.ts';
+export {
+  balanceSheetReport,
+  dayBook,
+  ledgerBalancesAsOn,
+  profitLossReport,
+  salesRegister,
+  stockSummary,
+  stockValues,
+  type DayBookRow,
+  type SalesRegisterRow,
+  type StockSummaryRow,
+} from './reports.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

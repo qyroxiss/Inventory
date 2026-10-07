@@ -54,8 +54,8 @@ export function MainShell() {
   const name = me.data?.userName ?? '';
 
   return (
-    <div className="flex h-app-screen min-h-[600px] flex-col">
-      <div className="flex min-h-0 flex-1">
+    <div className="flex h-app-screen min-h-[600px] flex-col print:block print:h-auto">
+      <div className="flex min-h-0 flex-1 print:block">
         <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
         {menuOpen && (
           <div
@@ -65,7 +65,7 @@ export function MainShell() {
           />
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col print:block">
           <header className="flex h-16 flex-none items-center gap-4 border-b border-border pl-9 pr-8 print:hidden max-lg:gap-2.5 max-lg:px-4 max-sm:px-3">
             <button
               type="button"
@@ -146,7 +146,7 @@ export function MainShell() {
 
           {/* Pages never shrink below their content ([&>*]:shrink-0): a page taller than the
               window (long forms on a phone) scrolls here instead of spilling past its paper. */}
-          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2 [&>*]:shrink-0">
+          <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 print:block print:overflow-visible print:p-0 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2 [&>*]:shrink-0">
             <Outlet />
           </main>
         </div>

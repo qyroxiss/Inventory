@@ -39,6 +39,12 @@ import { NoteTab } from './screens/vouchers/NoteTab.tsx';
 import { PurchaseInvoiceScreen } from './screens/transactions/PurchaseInvoiceScreen.tsx';
 import { SalesInvoiceScreen } from './screens/transactions/SalesInvoiceScreen.tsx';
 import { StockJournalScreen } from './screens/transactions/StockJournalScreen.tsx';
+import {
+  DayBookScreen,
+  SalesRegisterScreen,
+  StockSummaryScreen,
+} from './screens/reports/ListReports.tsx';
+import { BalanceSheetScreen, ProfitLossScreen } from './screens/reports/Statements.tsx';
 import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
 import { StockItemScreen } from './screens/masters/StockItemScreen.tsx';
 import { StockSubGroupScreen } from './screens/masters/StockSubGroupScreen.tsx';
@@ -202,6 +208,17 @@ const stockJournalRoute = createRoute({
   component: StockJournalScreen,
 });
 
+// Reports: each menu item's own address.
+const reportRoute = (path: string, component: () => React.JSX.Element) =>
+  createRoute({ getParentRoute: () => appRoute, path, component });
+const reportRoutes = [
+  reportRoute('stock-summary', StockSummaryScreen),
+  reportRoute('profit-loss', ProfitLossScreen),
+  reportRoute('balance-sheet', BalanceSheetScreen),
+  reportRoute('day-book', DayBookScreen),
+  reportRoute('sales-register', SalesRegisterScreen),
+];
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -234,6 +251,7 @@ export const router = createRouter({
       purchaseInvoiceRoute,
       salesInvoiceRoute,
       stockJournalRoute,
+      ...reportRoutes,
       screenRoute,
     ]),
   ]),
