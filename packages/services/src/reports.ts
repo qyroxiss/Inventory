@@ -11,11 +11,52 @@ import {
   type LedgerBalance,
   type ReportGroup,
 } from '@qi/core';
-import { and, asc, eq, gte, lte, schema, sql, type Db } from '@qi/db';
+import { and, asc, desc, eq, gt, gte, lte, schema, sql, type Db } from '@qi/db';
 
-const { accountGroups, ledgers, sales, stockItems, stockTrn, voucherLines, vouchers } = schema;
+const {
+  accountGroups,
+  ledgers,
+  purchaseLines,
+  purchases,
+  sales,
+  stockItems,
+  stockTrn,
+  voucherLines,
+  vouchers,
+} = schema;
 
 export type Period = { from: string; to: string };
+
+/** Each item's rate on its latest active purchase bill dated on or before [to]: the stock rate
+ *  for an item with neither a purchase nor a sale rate. */
+export async function lastPurchaseRates(
+  db: Db,
+  bookId: string,
+  to: string,
+): Promise<Map<string, number>> {
+  const rows = await db
+    .selectDistinctOn([purchaseLines.itemCode], {
+      code: purchaseLines.itemCode,
+      rate: purchaseLines.rate,
+    })
+    .from(purchaseLines)
+    .innerJoin(purchases, eq(purchases.id, purchaseLines.purchaseId))
+    .where(
+      and(
+        eq(purchases.bookId, bookId),
+        eq(purchases.status, 'Active'),
+        lte(purchases.billDate, to),
+        gt(purchaseLines.rate, '0'),
+      ),
+    )
+    .orderBy(
+      purchaseLines.itemCode,
+      desc(purchases.billDate),
+      desc(purchases.createdAt),
+      desc(purchaseLines.lineNo),
+    );
+  return new Map(rows.map((r) => [r.code, Number(r.rate)]));
+}
 
 // ── Stock Summary ──────────────────────────────────────────────────────────────
 
@@ -58,13 +99,14 @@ export async function stockSummary(
     .where(and(...where))
     .groupBy(stockTrn.partCode);
   const byCode = new Map(moved.map((m) => [m.code, m]));
+  const last = await lastPurchaseRates(db, bookId, p.to);
   return items.map((i) => {
     const m = byCode.get(i.partCode);
     const opening = round2((p.godown ? 0 : Number(i.opQty)) + Number(m?.before ?? 0));
     const inward = round2(Number(m?.inward ?? 0));
     const outward = round2(Number(m?.outward ?? 0));
     const closing = round2(opening + inward - outward);
-    const rate = stockRate(Number(i.purRate), Number(i.saleRate));
+    const rate = stockRate(Number(i.purRate), Number(i.saleRate), last.get(i.partCode));
     return {
       code: i.partCode,
       name: i.partName,
@@ -79,7 +121,7 @@ export async function stockSummary(
   });
 }
 
-/** Opening stock (the items' opening values) and closing stock as on a date, at MDA's rate. */
+/** Opening stock (the items' opening values) and closing stock as on a date, at the stock rate. */
 export async function stockValues(db: Db, bookId: string, to: string) {
   const items = await db
     .select()
@@ -94,10 +136,11 @@ export async function stockValues(db: Db, bookId: string, to: string) {
     .where(and(eq(stockTrn.bookId, bookId), lte(stockTrn.trnDate, to)))
     .groupBy(stockTrn.partCode);
   const byCode = new Map(moved.map((m) => [m.code, Number(m.qty)]));
+  const last = await lastPurchaseRates(db, bookId, to);
   let opening = 0;
   let closing = 0;
   for (const i of items) {
-    const rate = stockRate(Number(i.purRate), Number(i.saleRate));
+    const rate = stockRate(Number(i.purRate), Number(i.saleRate), last.get(i.partCode));
     opening += openingStockValue(Number(i.opQty), Number(i.opValue), rate);
     closing += (Number(i.opQty) + (byCode.get(i.partCode) ?? 0)) * rate;
   }

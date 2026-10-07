@@ -31,11 +31,27 @@ export const stockItemMessages = {
   updateConfirm: (name: string) => `Update record "${name}"?`,
   deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
   noneFound: 'No stock items saved yet.',
+  /** Purchase Rate and Sale Rate are added here; MDA's table has them but its form doesn't. */
+  invalidRate: 'Enter a valid rate',
 };
 
-export function stockItemFieldErrors(input: { code?: string; name?: string }) {
+/** A rate box: blank is 0; otherwise a number of 0 or more with up to 2 decimals. */
+export const rateValue = (v: string | undefined): number | null => {
+  const s = (v ?? '').trim();
+  if (!s) return 0;
+  return /^\d+(\.\d{0,2})?$|^\.\d{1,2}$/.test(s) ? Number(s) : null;
+};
+
+export function stockItemFieldErrors(input: {
+  code?: string;
+  name?: string;
+  purRate?: string;
+  saleRate?: string;
+}) {
   const errors: Record<string, string> = {};
   if (!(input.code ?? '').trim()) errors.code = stockItemMessages.required;
   if (!(input.name ?? '').trim()) errors.name = stockItemMessages.required;
+  if (rateValue(input.purRate) === null) errors.purRate = stockItemMessages.invalidRate;
+  if (rateValue(input.saleRate) === null) errors.saleRate = stockItemMessages.invalidRate;
   return errors;
 }

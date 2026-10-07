@@ -505,7 +505,7 @@ Invoice item and party lookups show nothing until you type, and match by "contai
 
 | KPI | Formula |
 |---|---|
-| Stock value | For each active item: (OpQty + Σ(In−Out)) × rate, where rate = PurRate if above 0, else SaleRate. Opening = OpValue if above 0, else OpQty × rate. Trend = % change versus opening, or the signed ₹ movement if opening is 0. |
+| Stock value | For each active item: (OpQty + Σ(In−Out)) × rate, where rate = PurRate if above 0, else SaleRate. Opening = OpValue if above 0, else OpQty × rate. Trend = % change versus opening, or the signed ₹ movement if opening is 0. **Web app:** when both rates are 0, the last purchase price is used (owner's choice, 2026-10-07; REPORTS.md). |
 | Today's sales | Σ NetAmount of active `sales` for today. Trend versus yesterday. A 7-day series (today is the 7th day) feeds the bar chart. |
 | Cash balance | Σ ±OpBal of ledgers directly in A003 + Σ(Dr−Cr) on active vouchers for those ledgers. Trend = today's movement. |
 | Pending bills | BillRef `New` rows are bills raised; all other RefTypes are settlements, summed per party and applied to bills **oldest first**. A bill is open if more than 0.005 remains unpaid. It is overdue if BillDate + ledger CreditDays is before today. |

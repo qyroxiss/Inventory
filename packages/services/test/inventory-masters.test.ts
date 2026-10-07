@@ -160,10 +160,27 @@ describe('Stock Item', () => {
       regType: 'Exempt',
     });
     expect(await listStockItems(db, bookId)).toEqual([
-      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '' },
-      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005' },
+      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '', purRate: 0, saleRate: 0 },
+      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005', purRate: 0, saleRate: 0 },
     ]); // prettier-ignore
   });
+
+  test('Purchase Rate and Sale Rate: saved, checked, and kept when an update leaves them out', async () => {
+    await createStockItem(db, bookId, { code: 'A1', name: 'CHIPPS', purRate: '80', saleRate: '120.5' });
+    expect(await listStockItems(db, bookId)).toMatchObject([{ purRate: 80, saleRate: 120.5 }]);
+    const err = await createStockItem(db, bookId, { code: 'A2', name: 'X', purRate: '-1', saleRate: '1.234' })
+      .catch((e: unknown) => e as UserError);
+    expect((err as UserError).fieldErrors).toEqual({
+      purRate: stockItemMessages.invalidRate,
+      saleRate: stockItemMessages.invalidRate,
+    });
+    // An update without the rates (an older client, or an MDA import's rates) keeps them.
+    await updateStockItem(db, bookId, 'A1', { code: 'A1', name: 'CHIPPS', unit: 'Kg' });
+    expect(await listStockItems(db, bookId)).toMatchObject([{ purRate: 80, saleRate: 120.5 }]);
+    // A blank box clears the rate.
+    await updateStockItem(db, bookId, 'A1', { code: 'A1', name: 'CHIPPS', purRate: '', saleRate: '99' });
+    expect(await listStockItems(db, bookId)).toMatchObject([{ purRate: 0, saleRate: 99 }]);
+  }); // prettier-ignore
 
   test('update keeps the code, checks the name against the others only; remove', async () => {
     await createStockItem(db, bookId, { code: 'A1', name: 'CHIPPS' });

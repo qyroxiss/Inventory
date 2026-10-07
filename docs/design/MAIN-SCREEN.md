@@ -15,7 +15,14 @@
 - `packages/core/src/dashboard.ts`: MDA's formats and trend wording, tested against MDA's own cases
 - `GET /api/dashboard` (`packages/services/src/dashboard.ts`)
 
-**Data, for now:** the project builds structure first and fills in real figures later. Until the stock, sales and voucher tables exist (Phase 2), every book reports no activity: ₹0, "none overdue", empty bars, and MDA's own "No transactions yet." Each figure is then filled in from its MDA query, without changing the screen.
+**Data:** every figure comes from the open book by MDA's own queries (LOGIC-SPEC §12), counting Active documents only:
+- **Total Stock Value:** opening quantity plus every movement, at the item's purchase rate (its sale rate when that is 0, and its last purchase price when both are 0; see REPORTS.md). The trend compares it with the opening stock value.
+- **Today's Sales:** the net amount of today's sale bills, against yesterday's. The same figures, day by day, draw the 7-day bars.
+- **Pending Bills:** bills raised (purchase bills and credit sales) with each party's settlements applied oldest first. A bill is overdue once its date plus the party's Credit Days has passed.
+- **Cash Balance:** the ledgers directly under Cash-in-Hand, opening plus movements. The trend is today's movement.
+- **Recent Transactions:** the five newest vouchers.
+
+"Today" is the day in India, so the live server (which runs on UTC) agrees with the user's calendar. A book with no activity shows ₹0, "none overdue", empty bars and MDA's "No transactions yet.". Checked in `packages/services/test/dashboard.test.ts` against a hand-computed book.
 
 | | |
 |---|---|

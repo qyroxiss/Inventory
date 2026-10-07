@@ -1,8 +1,8 @@
 // The dashboard — approved design D1 "Ledger Desk" (docs/design/MAIN-SCREEN.md), sized to fit
 // one screen with no scrolling: greeting, MDA's four figures in a ledger strip, "Sales — Last
 // 7 Days" beside Recent Transactions (MDA lists the latest 5), and the Quick Actions as one row
-// at the bottom. Figures and formats are MDA's (main.dart, dashboard_service.dart); until the
-// stock, sales and voucher tables exist every book reports no activity, in MDA's own wording.
+// at the bottom. Figures and formats are MDA's (main.dart, dashboard_service.dart), read from
+// the open book; a book with no activity shows MDA's own "No transactions yet.".
 
 import { compact, inr, trends, type Trend } from '@qi/core';
 import { useQuery } from '@tanstack/react-query';

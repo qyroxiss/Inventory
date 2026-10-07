@@ -96,6 +96,8 @@ export const stockItemSave = z.object({
   regType: opt,
   gstRate: opt,
   hsn: opt,
+  purRate: opt,
+  saleRate: opt,
 });
 
 /** A voucher as the tabs build it (receiptDraft, journalDraft, …). Rules are checked in @qi/core. */

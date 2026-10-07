@@ -134,4 +134,21 @@ describe('Reports', () => {
     expect(bs.difference).toBe(0);
     expect(bs.total).toBe(11408);
   });
+
+  test('an item with no rates is valued at its last purchase price, as on the date', async () => {
+    await db.execute(sql`update stock_items set pur_rate = 0, sale_rate = 0`);
+    // A later, dearer purchase: 10 kg @ 90 on 1 June.
+    await savePurchase(db, ctx, {
+      billNo: 'PB-0002', billDate: '2026-06-01', suppCode: 'AC0001', interState: false,
+      lines: [{ itemCode: 'IT01', itemName: 'Basmati Rice', unit: 'Kgs', qty: 10, rate: 90, disP: 0, disA: 0, gstRate: 18 }],
+    }); // prettier-ignore
+    const [may] = await stockSummary(db, ctx.bookId, { from: year.from, to: '2026-05-31' });
+    expect(may).toMatchObject({ closing: 15, rate: 80, value: 1200 });
+    const [june] = await stockSummary(db, ctx.bookId, year);
+    expect(june).toMatchObject({ closing: 25, rate: 90, value: 2250 });
+    expect((await profitLossReport(db, ctx.bookId, year.to)).trading.closingStock).toBe(2250);
+    // An item's own rate still comes first (MDA's rule).
+    await db.execute(sql`update stock_items set sale_rate = 120`);
+    expect((await stockSummary(db, ctx.bookId, year))[0]).toMatchObject({ rate: 120 });
+  });
 });

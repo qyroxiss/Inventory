@@ -3,7 +3,8 @@
 // and the dashboard's stock valuation. The reports are built here on those, in the usual
 // Indian accounting shape (docs/design/REPORTS.md):
 //   - Stock is valued as MDA's dashboard values it: quantity × purchase rate, or the sale rate
-//     when an item has no purchase rate.
+//     when an item has no purchase rate. An item with neither (MDA's form never sets them) is
+//     valued at its last purchase price, by the owner's choice, so stock isn't shown as ₹0.
 //   - Balances follow MDA's ledgerBalance: ± opening (Cr negative) + Σ(Dr − Cr) over Active
 //     vouchers; positive means Dr.
 //   - Sub groups roll up into their top-level group; a group's type (Assets, Liabilities,
@@ -11,8 +12,10 @@
 
 import { round2 } from './round.ts';
 
-/** MDA's stock rate (dashboard_service.dart:94). */
-export const stockRate = (purRate: number, saleRate: number) => (purRate > 0 ? purRate : saleRate);
+/** MDA's stock rate (dashboard_service.dart:94), falling back to the last purchase price when
+ *  the item has neither rate. */
+export const stockRate = (purRate: number, saleRate: number, lastPurchase = 0) =>
+  purRate > 0 ? purRate : saleRate > 0 ? saleRate : lastPurchase;
 
 /** Opening stock value: the item's opening value when set, else quantity × rate. */
 export const openingStockValue = (opQty: number, opValue: number, rate: number) =>

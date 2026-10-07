@@ -41,6 +41,7 @@ export {
   ITEM_UNITS,
   TAXABLE,
   TAX_TYPES,
+  rateValue,
   stockItemFieldErrors,
   stockItemMessages,
 } from './stock-items.ts';

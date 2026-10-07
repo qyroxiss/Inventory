@@ -1,10 +1,18 @@
 // Stock Item — MDA's "Stock Item" page (stock_item_page.dart). Fields two to a line, in MDA's
 // order: Item Code | Item Name, Print Name | Under Sub Group, Unit | Tax Type, then GST Rate |
-// HSN No. when the Tax Type is Taxable, or HSN No. alone. Enter moves through them in that order
-// and on to Save Item (or Update). The code can't be changed once saved.
+// HSN No. when the Tax Type is Taxable, or HSN No. alone, then Purchase Rate | Sale Rate (added
+// here: MDA's table has them but its form doesn't). Enter moves through them in that order and
+// on to Save Item (or Update). The code can't be changed once saved.
 // Logic and quirks: packages/services/src/stock-items.ts.
 
-import { ITEM_GST_RATES, ITEM_UNITS, TAXABLE, TAX_TYPES, stockItemMessages as msg } from '@qi/core';
+import {
+  ITEM_GST_RATES,
+  ITEM_UNITS,
+  TAXABLE,
+  TAX_TYPES,
+  rateValue,
+  stockItemMessages as msg,
+} from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
@@ -31,8 +39,10 @@ type Form = {
   regType: string;
   gstRate: string;
   hsn: string;
+  purRate: string;
+  saleRate: string;
 };
-type Errors = { code?: string; name?: string };
+type Errors = { code?: string; name?: string; purRate?: string; saleRate?: string };
 type Message = { kind: 'ok' | 'error'; title: [string, string]; text: string };
 
 const EMPTY: Form = {
@@ -44,9 +54,13 @@ const EMPTY: Form = {
   regType: '',
   gstRate: '',
   hsn: '',
+  purRate: '',
+  saleRate: '',
 };
 const TITLE = 'Stock Item';
 const asOptions = (list: readonly string[]) => list.map((v) => ({ value: v, label: v }));
+/** A saved rate as shown in its box and the lists: blank for 0. */
+const rateText = (v: number) => (v > 0 ? v.toFixed(2) : '');
 
 const viewColumns: Column<Item>[] = [
   { head: 'Code', width: '75px', cell: (i) => i.code, mono: true },
@@ -65,9 +79,12 @@ const printColumns: Column<Item>[] = [
   { head: 'Reg Type', width: '', cell: (i) => i.regType },
   { head: 'GST Rate', width: '', cell: (i) => i.gstRate },
   { head: 'HSN No.', width: '', cell: (i) => i.hsn },
+  { head: 'Purchase Rate', width: '', cell: (i) => rateText(i.purRate) },
+  { head: 'Sale Rate', width: '', cell: (i) => rateText(i.saleRate) },
 ];
 
 const focusId = (id: string) => setTimeout(() => document.getElementById(id)?.focus(), 0);
+const FIELD_IDS = { code: 'si-code', name: 'si-name', purRate: 'si-pur', saleRate: 'si-sale' };
 
 export function StockItemScreen() {
   const queryClient = useQueryClient();
@@ -119,17 +136,20 @@ export function StockItemScreen() {
     const e: Errors = {};
     if (!form.code.trim()) e.code = msg.required;
     if (!form.name.trim()) e.name = msg.required;
+    if (rateValue(form.purRate) === null) e.purRate = msg.invalidRate;
+    if (rateValue(form.saleRate) === null) e.saleRate = msg.invalidRate;
     setErrors(e);
-    if (e.code) focusId('si-code');
-    else if (e.name) focusId('si-name');
-    return !e.code && !e.name;
+    const first = (['code', 'name', 'purRate', 'saleRate'] as const).find((k) => e[k]);
+    if (first) focusId(FIELD_IDS[first]);
+    return !first;
   };
 
   const failed = (err: unknown) => {
     const fe = err instanceof ApiError && err.status === 422 ? err.body.fieldErrors : undefined;
-    if (fe?.code || fe?.name) {
-      setErrors({ code: fe.code, name: fe.name });
-      focusId(fe.code ? 'si-code' : 'si-name');
+    const first = fe && (['code', 'name', 'purRate', 'saleRate'] as const).find((k) => fe[k]);
+    if (fe && first) {
+      setErrors({ code: fe.code, name: fe.name, purRate: fe.purRate, saleRate: fe.saleRate });
+      focusId(FIELD_IDS[first]);
     } else {
       setMessage({
         kind: 'error',
@@ -200,6 +220,8 @@ export function StockItemScreen() {
       regType: i.regType,
       gstRate: i.gstRate,
       hsn: i.hsn,
+      purRate: rateText(i.purRate),
+      saleRate: rateText(i.saleRate),
     });
     focusId('si-code');
   };
@@ -212,9 +234,31 @@ export function StockItemScreen() {
         placeholder="HSN / SAC code"
         autoComplete="off"
         onChange={(e) => set({ hsn: e.target.value })}
-        // Enter moves to Save Item, or to Update while an item is open (MDA).
-        onKeyDown={enterTo(toAction)}
+        onKeyDown={enterTo('si-pur')}
         className={inputClass()}
+      />
+    </FieldRow>
+  );
+
+  const rateField = (
+    key: 'purRate' | 'saleRate',
+    label: string,
+    placeholder: string,
+    next: string | (() => void),
+  ) => (
+    <FieldRow id={FIELD_IDS[key]} label={label} error={errors[key]}>
+      <input
+        id={FIELD_IDS[key]}
+        value={form[key]}
+        placeholder={placeholder}
+        inputMode="decimal"
+        autoComplete="off"
+        onChange={(e) => {
+          set({ [key]: e.target.value });
+          setErrors((x) => ({ ...x, [key]: undefined }));
+        }}
+        onKeyDown={enterTo(next)}
+        className={`${inputClass(errors[key])} text-right font-mono`}
       />
     </FieldRow>
   );
@@ -313,6 +357,9 @@ export function StockItemScreen() {
             </FieldRow>
           )}
           {hsnField}
+          {rateField('purRate', 'Purchase Rate', '0.00', 'si-sale')}
+          {/* Enter moves to Save Item, or to Update while an item is open (MDA). */}
+          {rateField('saleRate', 'Sale Rate', '0.00', toAction)}
         </FormBlock>
         <ActionBar
           wide

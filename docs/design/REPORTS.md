@@ -27,8 +27,11 @@ planned.
 - **Only Active vouchers count.** Cancelled documents have no stock movements.
 - **Period:** it defaults to the open year's first day to today, and is kept inside the year.
   From after To shows "The From date is after the To date." and nothing is fetched.
-- **Stock valuation (MDA's dashboard rule):**
+- **Stock valuation (MDA's dashboard rule, plus a fallback):**
   - Value = quantity × the item's purchase rate, or its sale rate when the purchase rate is 0.
+  - An item with neither rate is valued at the rate on its last active purchase bill dated on or
+    before the report date. MDA's form never sets the rates, so without this, stock would show
+    as 0. This is the owner's choice (2026-10-07).
   - Opening stock value = the item's opening value when set, otherwise opening quantity × that
     rate.
   - Only active items are counted.
@@ -98,14 +101,18 @@ planned.
   - Stock: 15 kg closing, value 1,200.
   - Trading: gross profit 200. P&L: net loss 300.
   - Balance Sheet: 11,408 on both sides, no difference.
+  - With the rates cleared, stock is valued at the last purchase price as on each date (80 in
+    May, 90 after a June purchase), and the item's own rate still wins when set.
 - **In the browser:**
   - Every report, the voucher-lines popup and the godown filter.
   - The print layout of the Balance Sheet.
   - No page scroll at 1280×720 and 768×1024.
 
-## Open point for the owner
+## Settled: stock valuation
 
-Stock is valued at the item master's purchase rate, as MDA's dashboard does. Saving a purchase
-doesn't update that rate. An item bought without a rate on its master is valued at 0 until the
-rate is filled in on the Stock Item screen. This can turn a real gross profit into a loss in
-P&L.
+- **The problem:** MDA values stock at the item's purchase rate, but its Stock Item form has no
+  rate box. So an item made in the app was always valued at 0, which turned a real gross profit
+  into a loss in P&L.
+- **The owner's choice (2026-10-07):** do both of these.
+  - Add Purchase Rate and Sale Rate to the Stock Item form (see INVENTORY-MASTERS.md).
+  - Value any item whose rates are still 0 at its last purchase price.

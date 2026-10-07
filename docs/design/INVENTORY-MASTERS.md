@@ -141,6 +141,7 @@ in MDA. There's no View or Print.
   - Print Name | Under Sub Group
   - Unit | Tax Type
   - GST Rate | HSN No. when the Tax Type is Taxable; otherwise HSN No. alone
+  - Purchase Rate | Sale Rate (added; see below)
   - On tablets and phones the fields go to one column. Enter moves through them in that order,
     then to Save Item, or to Update.
 - **Fields:**
@@ -150,13 +151,20 @@ in MDA. There's no View or Print.
   - **Unit** lists MDA's own hard-coded units (Q-19) and keeps any typed text.
   - **Tax Type:** Taxable, Non GST, Nil Rated, Exempt. Moving away from Taxable clears the GST Rate.
   - **GST Rate** lists 0% to 28% and keeps typed text.
+  - **Purchase Rate** and **Sale Rate** are added by the owner's choice (2026-10-07).
+    - MDA's table has these columns, and its Purchase and Sales Invoice fill an empty Rate from
+      them. Stock is valued at them too, but MDA's form never sets them.
+    - Blank means 0. Otherwise a number of 0 or more with up to 2 decimals; anything else gets
+      "Enter a valid rate".
+    - An update that leaves them out keeps the stored rates, so an MDA import's rates survive.
 - **Messages:**
   - `Required` under Code and Name.
   - Save checks the code first (`Item Code "X" already exists.`), then the name (`Item Name is
     Already Exists..`). Update checks the name against the other items only.
   - `Stock Item "X" saved` (no code in this one), `… updated`, `… removed` (red).
 - **View:** Code · Item Name · Sub Group · Unit · GST Rate · HSN No. (phones show Code · Item
-  Name · Unit). **Print:** "Stock Item List", with Print Name and Reg Type added.
+  Name · Unit). **Print:** "Stock Item List", with Print Name, Reg Type, Purchase Rate and Sale
+  Rate added.
 - **Quirk kept:** Q-42, Remove doesn't check purchases, sales or stock.
 
 ## Import from MDA

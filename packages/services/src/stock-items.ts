@@ -7,8 +7,16 @@
 //     Rate are free text. GST Rate is cleared unless the Tax Type is Taxable (the screen does
 //     this; the service stores what it's given, as MDA's does).
 //   - Remove doesn't check purchases, sales or stock (docs/LOGIC-SPEC.md Q-42).
+// Added here: Purchase Rate and Sale Rate. MDA's table has them (the invoices fill them in and
+// stock is valued at them) but its form never sets them. Leaving them out of an update keeps
+// the stored rates, so an MDA import's rates survive.
 
-import { STOCK_SUB_GROUP_TYPE, stockItemFieldErrors, stockItemMessages as msg } from '@qi/core';
+import {
+  STOCK_SUB_GROUP_TYPE,
+  rateValue,
+  stockItemFieldErrors,
+  stockItemMessages as msg,
+} from '@qi/core';
 import { and, asc, eq, ne, schema, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 
@@ -24,6 +32,8 @@ export type StockItem = {
   regType: string;
   gstRate: string;
   hsn: string;
+  purRate: number;
+  saleRate: number;
 };
 export type StockItemInput = {
   code: string;
@@ -34,6 +44,8 @@ export type StockItemInput = {
   regType?: string;
   gstRate?: string;
   hsn?: string;
+  purRate?: string;
+  saleRate?: string;
 };
 
 const t = (v: string | undefined) => (v ?? '').trim();
@@ -63,6 +75,8 @@ export async function listStockItems(db: Db, bookId: string): Promise<StockItem[
     regType: i.regType ?? '',
     gstRate: i.gstRate ?? '',
     hsn: i.hsnNo ?? '',
+    purRate: Number(i.purRate),
+    saleRate: Number(i.saleRate),
   }));
 }
 
@@ -84,6 +98,8 @@ const fields = (input: StockItemInput) => ({
   regType: input.regType ?? '',
   gstRate: t(input.gstRate),
   hsnNo: t(input.hsn),
+  ...(input.purRate === undefined ? {} : { purRate: rateValue(input.purRate)!.toFixed(2) }),
+  ...(input.saleRate === undefined ? {} : { saleRate: rateValue(input.saleRate)!.toFixed(2) }),
 });
 
 export async function createStockItem(
