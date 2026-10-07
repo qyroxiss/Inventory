@@ -80,6 +80,15 @@ describe('createLedger', () => {
       'Pincode must be 6 digits',
     );
   });
+
+  test('a mobile number is checked with its country code', async () => {
+    await rejects(
+      createLedger(db, bookId, { ...valid, mobile: '+91 98765' }),
+      'Enter a 10-digit mobile number starting with 6, 7, 8 or 9',
+    );
+    const l = await createLedger(db, bookId, { ...valid, mobile: '+91 9876543210' });
+    expect(l.mobile).toBe('+91 9876543210');
+  });
 });
 
 describe('updateLedger', () => {

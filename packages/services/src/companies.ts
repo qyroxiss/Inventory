@@ -96,11 +96,9 @@ export async function deleteCompany(db: Db, accountId: string, companyId: string
     .where(and(eq(companies.accountId, accountId), eq(companies.id, companyId)));
 }
 
-/** The values MDA saves from the form; validation first (Name required, GSTIN/PAN if entered). */
+/** The values MDA saves from the form; validation first (Name required, the rest if entered). */
 function formValues(input: CompanyInput) {
-  assertNoFieldErrors(
-    companyFieldErrors({ name: input.compName, gstin: input.gstin, pan: input.pan }),
-  );
+  assertNoFieldErrors(companyFieldErrors({ ...input, name: input.compName }));
   const name = t(input.compName);
   const statutory = companyStatutory(input);
   return {

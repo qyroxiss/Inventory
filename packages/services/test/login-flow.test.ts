@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { contactMessages } from '@qi/core';
 import { eq, openDatabase, schema, sql, type Db } from '@qi/db';
 import {
   UserError,
@@ -76,6 +77,26 @@ describe('companies', () => {
       createCompany(db, ACC, { compName: 'X', gstin: '27AAPFU0939F1ZX' }),
       'Invalid GSTIN check digit',
     );
+  });
+
+  test('contact and bank numbers are checked when entered, and saved as given', async () => {
+    await rejects(
+      createCompany(db, ACC, { compName: 'X', bankIfsc: 'SBIN1001234' }),
+      contactMessages.ifsc,
+    );
+    await rejects(
+      createCompany(db, ACC, { compName: 'X', mobile: '+91 12345' }),
+      contactMessages.mobileIndia,
+    );
+    await rejects(
+      createCompany(db, ACC, { compName: 'X', bankAcNo: '12AB' }),
+      contactMessages.bankAcNo,
+    );
+    const c = await createCompany(db, ACC, {
+      compName: 'X', phone: '022 2345 6789', mobile: '+971 501234567', fax: '022-2345-6790',
+      cin: 'U12345MH2020PTC123456', bankAcNo: '123456789012', bankIfsc: 'sbin0001234',
+    }); // prettier-ignore
+    expect(c).toMatchObject({ mobile: '+971 501234567', bankIfsc: 'SBIN0001234' });
   });
 
   test('list is per account, ordered by name', async () => {

@@ -1,6 +1,14 @@
 // Company and financial-year rules, ported from MDA-Inventory
 // lib/company_creation_page.dart and lib/company_year_page.dart. Messages are verbatim.
 
+import {
+  bankAcNoProblem,
+  cinProblem,
+  faxProblem,
+  ifscProblem,
+  mobileProblem,
+  telephoneProblem,
+} from './contact.ts';
 import { validators } from './validators.ts';
 
 /** `'C' + first 6 alphanumerics (upper-cased) + '_' + epoch ms` (company_creation_page.dart:223-224). */
@@ -36,14 +44,34 @@ export const companyMessages = {
   noneFound: 'No companies found',
 };
 
-/** Field validation for the company form (only Name is required; GSTIN/PAN checked if entered). */
-export function companyFieldErrors(input: { name?: string; gstin?: string; pan?: string }) {
+/**
+ * Field validation for the company form. Only Name is required. GSTIN and PAN are checked if
+ * entered, as in MDA; the contact, CIN and bank checks are added (contact.ts).
+ */
+export function companyFieldErrors(input: {
+  name?: string;
+  gstin?: string;
+  pan?: string;
+  phone?: string;
+  mobile?: string;
+  fax?: string;
+  cin?: string;
+  bankAcNo?: string;
+  bankIfsc?: string;
+}) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = companyMessages.required;
-  const g = validators.gstin(input.gstin);
-  if (g) errors.gstin = g;
-  const p = validators.pan(input.pan);
-  if (p) errors.pan = p;
+  const checks: [string, string | null][] = [
+    ['gstin', validators.gstin(input.gstin)],
+    ['pan', validators.pan(input.pan)],
+    ['phone', telephoneProblem(input.phone)],
+    ['mobile', mobileProblem(input.mobile)],
+    ['fax', faxProblem(input.fax)],
+    ['cin', cinProblem(input.cin)],
+    ['bankAcNo', bankAcNoProblem(input.bankAcNo)],
+    ['bankIfsc', ifscProblem(input.bankIfsc)],
+  ];
+  for (const [k, problem] of checks) if (problem) errors[k] = problem;
   return errors;
 }
 
@@ -65,6 +93,44 @@ export const yearMessages = {
   deleteConfirm: (year: string, company: string) =>
     `Delete "${year}" for ${company}?\nThis only removes the record — the database file is not deleted.`,
 };
+
+/**
+ * The usual April–March dates for a year name "2026-2027" (or "2026-27"): 01/04/2026 and
+ * 31/03/2027, dd/MM/yyyy as the form shows them. Null when the name isn't such a range. Added on
+ * the owner's request; the dates stay editable.
+ */
+export function yearDates(yearName: string): { from: string; to: string } | null {
+  const m = /^\s*(\d{4})\s*-\s*(\d{2}|\d{4})\s*$/.exec(yearName);
+  if (!m) return null;
+  const start = Number(m[1]);
+  const end = m[2]!.length === 2 ? fullEnd(start, Number(m[2])) : Number(m[2]);
+  if (end !== start + 1) return null;
+  return { from: `01/04/${start}`, to: `31/03/${end}` };
+}
+
+/** The 4-digit year a 2-digit end stands for: the next one with those last digits. */
+const fullEnd = (start: number, yy: number) => {
+  const end = Math.floor(start / 100) * 100 + yy;
+  return end < start ? end + 100 : end;
+};
+
+/** "2026-27" → "2026-2027", MDA's own form; anything else is left as typed. */
+export function fullYearName(yearName: string): string {
+  const m = /^\s*(\d{4})\s*-\s*(\d{2})\s*$/.exec(yearName);
+  if (!m) return yearName.trim();
+  return `${m[1]}-${fullEnd(Number(m[1]), Number(m[2]))}`;
+}
+
+/**
+ * Year names to pick from: the five years around the one [today] falls in (April starts a
+ * year), newest first, leaving out those the company already has.
+ */
+export function yearChoices(today: Date, existing: readonly string[]): string[] {
+  const current = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+  const names = [];
+  for (let y = current + 1; y >= current - 3; y--) names.push(`${y}-${y + 1}`);
+  return names.filter((n) => !existing.includes(n));
+}
 
 /** Year form validation. From/To are only checked for presence, as in MDA (Q-06). */
 export function yearFieldErrors(input: { yearName?: string; fromDate?: string; toDate?: string }) {

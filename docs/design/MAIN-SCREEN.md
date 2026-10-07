@@ -62,6 +62,12 @@
 - "Enterprise Edition" (under MDA's product name) is left out while the app is unbranded.
 - "View all →" is plain text, because in MDA it opens nothing (quirk Q-36).
 - Signing out of the website account stays on Company & Year Setup. This screen's Logout is MDA's book Logout.
+- **Added on the owner's request (2026-10-07):**
+  - **Logout asks first:** "Log out of <company> (FY …)? You'll go back to Company & Year Setup." with Cancel · Logout. The website account's Logout asks too.
+  - **Changing year from inside the app:** the FY pill (with ▾) and a **Change Year** button on wide screens open a "Financial Year" popup:
+    - **Change Year** goes to Company & Year Setup with this company selected.
+    - **Manage Years** opens Manage Years on this company.
+    - Both close the open year first, so the year in use can't be deleted while open.
 
 **Wording:** every label is MDA's: the 7 menu sections and their items, "Quick find..." / "Ctrl K", "Logout", the greeting and "Here's what's happening in your business today.", the four figures, "Sales — Last 7 Days", "in Indian Rupees (₹)", "This Week", "Recent Transactions", "View all →", "Quick Actions" with its six actions, "Not built yet", and the status bar "Ready · … · FY … · v1.0.0".
 

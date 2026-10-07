@@ -11,13 +11,16 @@
 
 import {
   brand,
+  CITY_STATES,
   COUNTRIES,
   DR_CR,
   INDIAN_STATES,
   ledgerMessages,
   MISC_TYPE_CITY,
+  mobileProblem,
   REG_TYPES,
   SALES_EXECUTIVES,
+  stateOfCity,
   type DrCr,
 } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -27,6 +30,7 @@ import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { PhoneInput } from '../../components/PhoneInput.tsx';
 import { SearchSelect, type SearchOption } from '../../components/SearchSelect.tsx';
 
 type Ledger = OkBody<Awaited<ReturnType<typeof api.api.ledgers.$get>>>[number];
@@ -89,7 +93,7 @@ export function LedgerCreationScreen() {
 
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [errors, setErrors] = useState<
-    Partial<Record<'name' | 'city' | 'state' | 'under' | 'pincode', string>>
+    Partial<Record<'name' | 'city' | 'state' | 'under' | 'pincode' | 'mobile', string>>
   >({});
   const [editing, setEditing] = useState<Ledger | null>(null);
   const [busy, setBusy] = useState(false);
@@ -118,7 +122,17 @@ export function LedgerCreationScreen() {
     value: g.grpCode,
     label: g.grpName,
   }));
-  const cityOptions: SearchOption[] = (cities.data ?? []).map((c) => ({ value: c, label: c }));
+  // City suggestions (added): the cities this book has used, then the built-in Indian list.
+  const cityOptions: SearchOption[] = [
+    ...new Map(
+      [...(cities.data ?? []), ...CITY_STATES.map((c) => c.city)].map((c) => [c.toLowerCase(), c]),
+    ).values(),
+  ].map((c) => ({ value: c, label: c }));
+  /** The state a city goes with: as on this book's own ledgers, else the built-in list. */
+  const stateFor = (city: string) =>
+    (ledgers.data ?? []).find(
+      (l) => (l.city ?? '').toLowerCase() === city.toLowerCase() && (l.state ?? ''),
+    )?.state ?? stateOfCity(city);
   const stateOptions: SearchOption[] = INDIAN_STATES.map((s) => ({ value: s, label: s }));
   const salesExecOptions: SearchOption[] = SALES_EXECUTIVES.map((s) => ({ value: s, label: s }));
 
@@ -144,11 +158,14 @@ export function LedgerCreationScreen() {
     if (!form.under) e.under = ledgerMessages.underRequired;
     if (!form.pincode.trim()) e.pincode = ledgerMessages.pincodeRequired;
     else if (!/^[1-9][0-9]{5}$/.test(form.pincode.trim())) e.pincode = ledgerMessages.pincodeFormat;
+    const mobile = mobileProblem(form.mobile);
+    if (mobile) e.mobile = mobile;
     setErrors(e);
     if (e.name) nameRef.current?.focus();
     else if (e.city) focusId('ledger-city');
     else if (e.state) focusId('ledger-state');
     else if (e.pincode) pincodeRef.current?.focus();
+    else if (e.mobile) mobileRef.current?.focus();
     else if (e.under) focusId('ledger-under');
     return Object.keys(e).length === 0;
   };
@@ -345,12 +362,19 @@ export function LedgerCreationScreen() {
                 id="ledger-city"
                 value={form.city}
                 options={cityOptions}
-                placeholder="Search or type city…"
+                placeholder="Start typing a city…"
                 allowNew
+                typeToSuggest
                 error={!!errors.city}
                 onCommit={(value) => {
-                  setForm((f) => ({ ...f, city: value }));
-                  setErrors((er) => ({ ...er, city: undefined }));
+                  // Added: a known city fills its State (still changeable).
+                  const state = value && value !== form.city ? stateFor(value) : null;
+                  setForm((f) => ({ ...f, city: value, ...(state ? { state } : {}) }));
+                  setErrors((er) => ({
+                    ...er,
+                    city: undefined,
+                    ...(state ? { state: undefined } : {}),
+                  }));
                 }}
                 onNext={() => focusId('ledger-state')}
               />
@@ -411,22 +435,18 @@ export function LedgerCreationScreen() {
               />
             </Row>
 
-            <Row label="Mobile No.">
-              <input
+            <Row label="Mobile No." error={errors.mobile}>
+              {/* Added: country code, and digits only up to the number's length (10 for +91). */}
+              <PhoneInput
                 id="ledger-mobile"
-                ref={mobileRef}
+                inputRef={mobileRef}
                 value={form.mobile}
-                placeholder="10-digit mobile"
-                inputMode="numeric"
-                autoComplete="off"
-                onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    emailRef.current?.focus();
-                  }
+                error={!!errors.mobile}
+                onChange={(mobile) => {
+                  setForm((f) => ({ ...f, mobile }));
+                  setErrors((er) => ({ ...er, mobile: undefined }));
                 }}
-                className={fieldClass(false)}
+                onEnter={() => emailRef.current?.focus()}
               />
             </Row>
           </div>

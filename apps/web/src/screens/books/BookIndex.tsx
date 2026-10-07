@@ -34,7 +34,8 @@ export function BookIndex({
   onPickCompany: (id: string) => void;
   onPickYear: (id: string) => void;
   onNewCompany: () => void;
-  onManageYears: () => void;
+  /** Opens Manage Years with this company selected. */
+  onManageYears: (companyId: string | null) => void;
 }) {
   const [q, setQ] = useState('');
   const qRef = useRef<HTMLInputElement>(null);
@@ -190,7 +191,7 @@ export function BookIndex({
             </svg>
             New Company
           </InkButton>
-          <OutlineButton type="button" onClick={onManageYears}>
+          <OutlineButton type="button" onClick={() => onManageYears(companyId)}>
             <svg
               width="18"
               height="18"
@@ -337,7 +338,20 @@ export function BookIndex({
                       {c.years.length === 0 ? (
                         <p className="m-0 py-2 text-sm text-muted-foreground">
                           No year yet. Add one with{' '}
-                          <strong className="font-semibold text-foreground">Manage Years</strong>.
+                          <button
+                            type="button"
+                            onClick={() => onManageYears(c.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'ArrowUp' || e.key === 'Escape') {
+                                e.preventDefault();
+                                focusRow(k);
+                              }
+                            }}
+                            className="min-h-6 cursor-pointer font-semibold text-foreground underline underline-offset-4"
+                          >
+                            Manage Years
+                          </button>
+                          .
                         </p>
                       ) : (
                         c.years.map((y, j) => {

@@ -11,6 +11,7 @@ import { AppHeader } from '../../components/AppHeader.tsx';
 import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { PhoneInput } from '../../components/PhoneInput.tsx';
 import { toast } from '../../components/Toast.tsx';
 import {
   BASE_CURRENCY,
@@ -73,7 +74,7 @@ export function CompanyScreen() {
 
   /** Form validation (MDA's validators), then the server's own check. */
   const validate = () => {
-    const raw = companyFieldErrors({ name: form.compName, gstin: form.gstin, pan: form.pan });
+    const raw = companyFieldErrors({ ...form, name: form.compName });
     const e: Partial<Record<FieldKey, string>> = {};
     for (const [k, msg] of Object.entries(raw)) e[ERROR_KEY[k] ?? (k as FieldKey)] = msg;
     setErrors(e);
@@ -330,7 +331,18 @@ export function FormSection({
               :
             </span>
             <div className="flex flex-col gap-1">
-              {f.options ? (
+              {f.mobile ? (
+                <PhoneInput
+                  id={id}
+                  value={form[f.key]}
+                  error={!!err}
+                  inputRef={(el) => {
+                    refs[f.key] = el;
+                  }}
+                  onChange={(v) => set(f.key, v)}
+                  onEnter={() => next(f.key)}
+                />
+              ) : f.options ? (
                 <select
                   {...common}
                   onChange={(e) => set(f.key, e.target.value)}
@@ -356,7 +368,17 @@ export function FormSection({
                   {...common}
                   placeholder={f.hint}
                   autoComplete="off"
-                  onChange={(e) => set(f.key, e.target.value)}
+                  // A filtered box cuts to length after dropping what it doesn't accept, so
+                  // pasted "12ab34…" still keeps all its digits.
+                  maxLength={f.allow ? undefined : f.maxLength}
+                  inputMode={f.inputMode}
+                  onChange={(e) => {
+                    const allow = f.allow;
+                    const v = allow
+                      ? [...e.target.value].filter((ch) => allow.test(ch)).join('')
+                      : e.target.value;
+                    set(f.key, f.maxLength ? v.slice(0, f.maxLength) : v);
+                  }}
                   onKeyDown={enterNext}
                   className={`${line} h-[42px] ${f.upper ? 'uppercase placeholder:normal-case' : ''}`}
                 />

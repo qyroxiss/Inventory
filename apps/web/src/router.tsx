@@ -97,9 +97,14 @@ const signinRoute = createRoute({
   component: AccountScreen,
 });
 
+/** `?company=<id>`: the company to open with (Change Year, Manage Years). */
+const companySearch = (s: Record<string, unknown>): { company?: string } =>
+  typeof s.company === 'string' && s.company ? { company: s.company } : {};
+
 const booksRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
+  validateSearch: companySearch,
   beforeLoad: requireAccount,
   component: BooksScreen,
 });
@@ -114,6 +119,7 @@ const newCompanyRoute = createRoute({
 const yearsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/years',
+  validateSearch: companySearch,
   beforeLoad: requireAccount,
   component: YearsScreen,
 });

@@ -72,6 +72,7 @@ export async function createLedger(db: Db, bookId: string, input: LedgerInput): 
       state: input.state,
       under: input.under,
       pincode: input.pincode,
+      mobile: input.mobile,
     }),
   );
   const name = input.name.trim();
@@ -126,6 +127,7 @@ export async function updateLedger(
       state: input.state,
       under: input.under,
       pincode: input.pincode,
+      mobile: input.mobile,
     }),
   );
   const name = input.name.trim();

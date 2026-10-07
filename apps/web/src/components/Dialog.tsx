@@ -60,6 +60,7 @@ export function ConfirmUpdate({
   onCancel,
   onConfirm,
   busy,
+  confirmLabel = 'Update',
 }: {
   open: boolean;
   title: [string, string];
@@ -67,6 +68,7 @@ export function ConfirmUpdate({
   onCancel: () => void;
   onConfirm: () => void;
   busy?: boolean;
+  confirmLabel?: string;
 }) {
   return (
     <Dialog open={open} onClose={onCancel} title={title} alert>
@@ -87,7 +89,7 @@ export function ConfirmUpdate({
             disabled={busy}
             className="flex h-12 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:opacity-70"
           >
-            Update
+            {confirmLabel}
           </button>
         </div>
       </div>

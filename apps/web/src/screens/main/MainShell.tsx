@@ -8,7 +8,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from '../../api.ts';
-import { Dialog } from '../../components/Dialog.tsx';
+import { ConfirmUpdate, Dialog } from '../../components/Dialog.tsx';
 import { getAccount } from '../../lib/account.ts';
 import { setTheme, useTheme } from '../../lib/theme.ts';
 import { ALL_ITEMS, NAV, SECTION_ICONS, findItem, findSection, slug, type NavItem } from './nav.ts';
@@ -41,12 +41,25 @@ export function MainShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  /** MDA's Logout: close the books and go back to Company & Year Setup. */
-  const logout = async () => {
+  const [logoutAsk, setLogoutAsk] = useState(false);
+  const [yearOpen, setYearOpen] = useState(false);
+
+  /** Close the open book: MDA's Logout, and the first step of changing year. */
+  const closeBook = async () => {
     await api.api.book.logout.$post().catch(() => undefined);
     queryClient.removeQueries({ queryKey: ['book-me'] });
     queryClient.removeQueries({ queryKey: ['dashboard'] });
+  };
+  /** MDA's Logout: close the books and go back to Company & Year Setup. Asks first (added). */
+  const logout = async () => {
+    await closeBook();
     await navigate({ to: '/' });
+  };
+  /** Added: open another year of this company, or manage its years, from inside the app. */
+  const leaveFor = async (to: '/' | '/years') => {
+    const company = me.data?.companyId;
+    await closeBook();
+    await navigate({ to, search: company ? { company } : {} });
   };
 
   const fy = me.data ? `FY ${me.data.yearName}` : '';
@@ -92,9 +105,18 @@ export function MainShell() {
                 {me.data?.companyName}
               </span>
               {fy && (
-                <span className="whitespace-nowrap rounded-full border border-foreground px-2.5 py-1 font-mono text-xs max-md:border-0 max-md:p-0 max-md:text-[11px] max-md:text-muted-foreground">
+                <button
+                  type="button"
+                  onClick={() => setYearOpen(true)}
+                  title="Change Year"
+                  aria-haspopup="dialog"
+                  className="flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-foreground px-2.5 py-1 font-mono text-xs hover:bg-accent max-md:border-0 max-md:p-0 max-md:text-[11px] max-md:text-muted-foreground max-md:underline max-md:underline-offset-2"
+                >
                   {fy}
-                </span>
+                  <span aria-hidden="true" className="text-[9px]">
+                    ▼
+                  </span>
+                </button>
               )}
             </div>
             <span className="flex-1" />
@@ -136,7 +158,14 @@ export function MainShell() {
             )}
             <button
               type="button"
-              onClick={logout}
+              onClick={() => setYearOpen(true)}
+              className="flex h-10 flex-none cursor-pointer items-center border-[1.5px] border-border px-4 text-sm font-semibold max-xl:hidden"
+            >
+              Change Year
+            </button>
+            <button
+              type="button"
+              onClick={() => setLogoutAsk(true)}
               title="Sign Out"
               className="flex h-10 flex-none cursor-pointer items-center border-[1.5px] border-foreground px-4 text-sm font-semibold max-lg:h-11 max-sm:px-3"
             >
@@ -165,6 +194,58 @@ export function MainShell() {
         </span>
       </footer>
 
+      <ConfirmUpdate
+        open={logoutAsk}
+        title={['Log', 'out']}
+        text={`Log out of ${me.data?.companyName ?? 'this company'}${fy ? ` (${fy})` : ''}?\nYou'll go back to Company & Year Setup.`}
+        confirmLabel="Logout"
+        onCancel={() => setLogoutAsk(false)}
+        onConfirm={() => {
+          setLogoutAsk(false);
+          void logout();
+        }}
+      />
+      <Dialog
+        open={yearOpen}
+        onClose={() => setYearOpen(false)}
+        title={['Financial', 'Year']}
+        className="w-[520px]"
+      >
+        <div className="flex flex-col gap-[18px] px-[26px] pb-[26px] pt-[18px]">
+          <p className="m-0 text-[15px] leading-[1.55]">
+            You're in <strong>{fy}</strong> of {me.data?.companyName}. The open year is closed
+            first.
+          </p>
+          <div className="flex flex-col gap-2.5">
+            <button
+              type="button"
+              autoFocus
+              onClick={() => void leaveFor('/')}
+              className="flex min-h-12 cursor-pointer flex-col items-start justify-center bg-primary px-5 py-2 text-left text-primary-foreground"
+            >
+              <span className="text-[15px] font-semibold">Change Year</span>
+              <span className="text-[13px] opacity-85">Open another year of this company</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => void leaveFor('/years')}
+              className="flex min-h-12 cursor-pointer flex-col items-start justify-center border-[1.5px] border-foreground px-5 py-2 text-left"
+            >
+              <span className="text-[15px] font-semibold">Manage Years</span>
+              <span className="text-[13px] text-muted-foreground">
+                Add a new year or delete one
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setYearOpen(false)}
+              className="flex h-11 cursor-pointer items-center justify-center text-sm font-semibold underline underline-offset-4"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </Dialog>
       <QuickFind
         open={findOpen}
         onClose={() => setFindOpen(false)}

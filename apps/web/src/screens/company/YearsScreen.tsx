@@ -1,15 +1,26 @@
 // Manage Years — MDA's "Manage Company Years" page (company_year_page.dart), approved design M2
 // (docs/design/MASTERS-SCREENS.md). Back returns to Company & Year Setup (MDA exits the app; Q-01).
+// Added on the owner's request: the page can open with a company chosen (?company=), Year Name
+// offers the years around today, and a year range fills From 01/04 and To 31/03 (still editable).
 
-import { formatDmy, parseDate, yearFieldErrors, yearMessages } from '@qi/core';
+import {
+  formatDmy,
+  fullYearName,
+  parseDate,
+  yearChoices,
+  yearDates,
+  yearFieldErrors,
+  yearMessages,
+} from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap } from '../../api.ts';
 import { AppHeader } from '../../components/AppHeader.tsx';
 import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { toast } from '../../components/Toast.tsx';
 import type { IndexCompany, IndexYear } from '../books/types.ts';
 
@@ -20,30 +31,47 @@ const SECTION = 'font-mono text-xs tracking-[0.12em] text-primary-text';
 
 export function YearsScreen() {
   const navigate = useNavigate();
+  const search = useSearch({ from: '/years' });
   const queryClient = useQueryClient();
   const index = useQuery({
     queryKey: ['book-index'],
     queryFn: () => unwrap(api.api['book-index'].$get()),
   });
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(search.company ?? null);
   const [yearName, setYearName] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [toDelete, setToDelete] = useState<IndexYear | null>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
   const fromRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const focusName = () => setTimeout(() => document.getElementById('y-name')?.focus(), 0);
 
   const companies = index.data ?? [];
   const sel = companies.find((c) => c.id === selId) ?? null;
+  const choices = yearChoices(
+    new Date(),
+    (sel?.years ?? []).map((y) => y.yearName),
+  ).map((n) => ({ value: n, label: n }));
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ['book-index'], refetchType: 'all' });
 
   const pick = (c: IndexCompany) => {
     setSelId(c.id);
-    setTimeout(() => nameRef.current?.focus(), 0);
+    focusName();
+  };
+
+  /** A chosen or typed name; a year range fills the dates, which stay editable. */
+  const nameChosen = (v: string) => {
+    const name = fullYearName(v);
+    setYearName(name);
+    setErrors((x) => ({ ...x, yearName: undefined }));
+    const d = yearDates(name);
+    if (!d) return;
+    setFrom(d.from);
+    setTo(d.to);
+    setErrors((x) => ({ ...x, fromDate: undefined, toDate: undefined }));
   };
 
   async function save() {
@@ -65,7 +93,7 @@ export function YearsScreen() {
       setFrom('');
       setTo('');
       toast(yearMessages.added(name, sel.compName));
-      nameRef.current?.focus();
+      focusName();
     } catch (err) {
       if (
         err instanceof ApiError &&
@@ -109,7 +137,9 @@ export function YearsScreen() {
             aria-hidden="true"
             className="absolute inset-y-0 left-[89px] w-px bg-ledger-margin max-lg:hidden"
           />
-          <BackButton onClick={() => void navigate({ to: '/' })} />
+          <BackButton
+            onClick={() => void navigate({ to: '/', search: selId ? { company: selId } : {} })}
+          />
           <div className="flex flex-col gap-2">
             <span className={SECTION}>SELECT COMPANY</span>
             <Heading
@@ -196,24 +226,16 @@ export function YearsScreen() {
                 <label htmlFor="y-name" className={LABEL}>
                   Year Name
                 </label>
-                <input
+                <SearchSelect
                   id="y-name"
-                  ref={nameRef}
                   value={yearName}
-                  placeholder="2026-2027"
-                  autoComplete="off"
-                  aria-invalid={errors.yearName ? true : undefined}
-                  onChange={(e) => {
-                    setYearName(e.target.value);
-                    setErrors((x) => ({ ...x, yearName: undefined }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      fromRef.current?.focus();
-                    }
-                  }}
-                  className={`h-11 field-box px-3 text-[17px] outline-none focus-visible:outline-none ${errors.yearName ? 'field-error' : ''}`}
+                  options={choices}
+                  placeholder="Pick or type, e.g. 2026-2027"
+                  freeText
+                  tall
+                  error={!!errors.yearName}
+                  onCommit={nameChosen}
+                  onNext={() => fromRef.current?.focus()}
                 />
                 {errors.yearName && (
                   <span className="text-[13px] text-destructive">{errors.yearName}</span>

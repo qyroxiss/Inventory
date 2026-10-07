@@ -26,9 +26,21 @@ export type Field = {
   upper?: boolean;
   multiline?: boolean;
   options?: string[];
+  /** Most characters the box takes (added; MDA's boxes take any length). */
+  maxLength?: number;
+  /** Characters the box accepts; anything else typed or pasted is dropped. */
+  allow?: RegExp;
+  inputMode?: 'numeric' | 'tel';
+  /** A mobile number with its country code picker. */
+  mobile?: boolean;
 };
 
 export type Section = { title: string; fields: Field[] };
+
+/** Telephone and Fax: digits, spaces, +, - and brackets. */
+const LANDLINE = /[0-9+\-() ]/;
+const DIGITS = /[0-9]/;
+const ALNUM = /[0-9A-Za-z]/;
 
 /** Read-only rows of MDA's BASE CURRENCY block. */
 export const BASE_CURRENCY: [string, string][] = [
@@ -56,7 +68,15 @@ export const COLUMNS: Section[][] = [
         { key: 'state', label: 'State', options: STATES },
         { key: 'country', label: 'Country', options: COUNTRIES },
         { key: 'pinCode', label: 'Pincode', hint: '000 000' },
-        { key: 'phone', label: 'Telephone', hint: '+91 00000 00000' },
+        // A landline: STD code and number (added format; see packages/core/src/contact.ts).
+        {
+          key: 'phone',
+          label: 'Telephone',
+          hint: '022 2345 6789',
+          maxLength: 20,
+          allow: LANDLINE,
+          inputMode: 'tel',
+        },
       ],
     },
   ],
@@ -64,8 +84,15 @@ export const COLUMNS: Section[][] = [
     {
       title: '',
       fields: [
-        { key: 'mobile', label: 'Mobile', hint: '+91 00000 00000' },
-        { key: 'fax', label: 'Fax', hint: 'Fax number' },
+        { key: 'mobile', label: 'Mobile', mobile: true },
+        {
+          key: 'fax',
+          label: 'Fax',
+          hint: '022 2345 6790',
+          maxLength: 20,
+          allow: LANDLINE,
+          inputMode: 'tel',
+        },
         { key: 'email', label: 'E-mail', hint: 'company@example.com' },
         { key: 'website', label: 'Website', hint: 'www.example.com' },
       ],
@@ -73,9 +100,23 @@ export const COLUMNS: Section[][] = [
     {
       title: 'STATUTORY DETAILS',
       fields: [
-        { key: 'gstin', label: 'GSTIN', hint: '27AAAAA0000A1Z5', upper: true },
-        { key: 'pan', label: 'PAN', hint: 'AAAAA0000A', upper: true },
-        { key: 'cin', label: 'CIN', hint: 'Corporate Identity Number (optional)', upper: true },
+        {
+          key: 'gstin',
+          label: 'GSTIN',
+          hint: '27AAAAA0000A1Z5',
+          upper: true,
+          maxLength: 15,
+          allow: ALNUM,
+        },
+        { key: 'pan', label: 'PAN', hint: 'AAAAA0000A', upper: true, maxLength: 10, allow: ALNUM },
+        {
+          key: 'cin',
+          label: 'CIN',
+          hint: 'U12345MH2020PTC123456 (optional)',
+          upper: true,
+          maxLength: 21,
+          allow: ALNUM,
+        },
       ],
     },
   ],
@@ -85,8 +126,22 @@ export const COLUMNS: Section[][] = [
       fields: [
         { key: 'bankName', label: 'Bank Name', hint: 'Bank name' },
         { key: 'bankBranch', label: 'Branch', hint: 'Branch name' },
-        { key: 'bankAcNo', label: 'A/c Number', hint: 'Account number' },
-        { key: 'bankIfsc', label: 'IFSC Code', hint: 'ABCD0123456', upper: true },
+        {
+          key: 'bankAcNo',
+          label: 'A/c Number',
+          hint: '9 to 18 digits',
+          maxLength: 18,
+          allow: DIGITS,
+          inputMode: 'numeric',
+        },
+        {
+          key: 'bankIfsc',
+          label: 'IFSC Code',
+          hint: 'SBIN0001234',
+          upper: true,
+          maxLength: 11,
+          allow: ALNUM,
+        },
       ],
     },
     {
@@ -109,5 +164,5 @@ export const EMPTY_FORM: CompanyForm = {
   bankBranch: '', bankAcNo: '', bankIfsc: '', finYrFrom: '1-Apr-26', booksFrom: '1-Apr-26',
 }; // prettier-ignore
 
-/** core's field keys → the form's. */
-export const ERROR_KEY: Record<string, FieldKey> = { name: 'compName', gstin: 'gstin', pan: 'pan' };
+/** core's field keys → the form's, where they differ. */
+export const ERROR_KEY: Record<string, FieldKey> = { name: 'compName' };

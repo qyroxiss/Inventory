@@ -47,6 +47,22 @@
 - **Messages:** `Required`, `Format: YYYY-YYYY`, `Please select a company first`, `Year "X" added for Y`, `Year "X" already exists for this company`, "No companies found. Create a company first.", "Select a company to see its years", "No financial years added yet".
 - **Back** (top-left, above "SELECT COMPANY") returns to Company & Year Setup. MDA's Back quits the app (quirk Q-01).
 
+## Owner's changes (2026-10-07)
+
+Not in MDA; added on the owner's request. Rules in `packages/core/src/contact.ts` and `company.ts`, checked again on the server.
+
+- **Company Creation and Tools › Company Settings:**
+  - **Telephone** and **Fax** are landlines: digits, spaces, `+`, `-` and brackets only, 6 to 15 digits (hint "022 2345 6789").
+  - **Mobile** has a country code picker (India +91 first, then the Gulf, neighbours and other common countries) and takes digits only. For +91: exactly 10, starting 6–9. Elsewhere: 6 to 12. It's stored as "+91 9876543210". A number saved before without a code reads as +91.
+  - **GSTIN** at most 15, **PAN** 10, **CIN** 21, letters and digits only. CIN must be in its format (e.g. U12345MH2020PTC123456).
+  - **A/c Number:** digits only, 9 to 18. **IFSC:** 11 characters, 4 letters, then 0, then 6 letters or digits (e.g. SBIN0001234).
+  - Every one of these stays optional. Typing past a limit stops; pasted letters are dropped from a number box.
+- **"No year yet. Add one with Manage Years."** — "Manage Years" is a link that opens Manage Years with that company chosen. The same goes for the "No Year" panel and the Manage Years button (it opens on the selected company).
+- **Manage Years:**
+  - Opens on the company in the address (`/years?company=…`), and Back returns to Company & Year Setup with it still selected.
+  - **Year Name** offers the five years around today (newest first, leaving out years the company has) and still takes typing. "2026-27" becomes "2026-2027".
+  - Picking or typing a year range fills **From 01/04** and **To 31/03** of the next year. Both stay editable, and their calendars open on those dates. This is what stops the dates on Company & Year Setup from disagreeing with the year's name.
+
 ## Layout rules (every inner screen)
 
 Set by the owner on 2026-10-04, for every screen built so far and every one after:

@@ -4,7 +4,7 @@
 // company and its first year are chosen; picking another company chooses its first year.
 
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, api, unwrap } from '../../api.ts';
 import { AppHeader } from '../../components/AppHeader.tsx';
@@ -14,6 +14,7 @@ import { SIGN_IN_ID } from './types.ts';
 
 export function BooksScreen() {
   const navigate = useNavigate();
+  const search = useSearch({ from: '/' });
   const index = useQuery({
     queryKey: ['book-index'],
     queryFn: () => unwrap(api.api['book-index'].$get()),
@@ -27,7 +28,9 @@ export function BooksScreen() {
   }, [accountGone, navigate]);
 
   const companies = index.data ?? [];
-  const company = companies.find((c) => c.id === picked?.companyId) ?? companies[0] ?? null;
+  // Without a pick, the company in the address (Change Year, back from Manage Years), else the first.
+  const company =
+    companies.find((c) => c.id === (picked?.companyId ?? search.company)) ?? companies[0] ?? null;
   const year =
     company?.years.find(
       (y) => y.id === (picked?.companyId === company.id ? picked.yearId : null),
@@ -77,13 +80,23 @@ export function BooksScreen() {
               onPickCompany={pickCompany}
               onPickYear={pickYear}
               onNewCompany={() => void navigate({ to: '/company/new' })}
-              onManageYears={() => void navigate({ to: '/years' })}
+              onManageYears={(id) =>
+                void navigate({ to: '/years', search: id ? { company: id } : {} })
+              }
             />
             {company && year ? (
               <SignInPanel key={year.id} company={company} year={year} passRef={passRef} />
             ) : company ? (
               <NothingToOpen title={['No', 'Year']}>
-                {company.compName} has no year yet. Add one with Manage Years, then sign in here.
+                {company.compName} has no year yet. Add one with{' '}
+                <button
+                  type="button"
+                  onClick={() => void navigate({ to: '/years', search: { company: company.id } })}
+                  className="cursor-pointer font-semibold text-foreground underline underline-offset-4"
+                >
+                  Manage Years
+                </button>
+                , then sign in here.
               </NothingToOpen>
             ) : (
               <NothingToOpen title={['No', 'Company']}>

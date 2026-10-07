@@ -6,6 +6,8 @@
 // or update. Kept in the UI for look and feel, but there is nothing here to validate or persist
 // for them; they never reach this module or the API.
 
+import { mobileProblem } from './contact.ts';
+
 /** MDA's own list, in its own order (ledger_creation_page.dart:25-34). */
 export const INDIAN_STATES = [
   'Andaman & Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh',
@@ -77,6 +79,7 @@ export function ledgerFieldErrors(input: {
   state?: string;
   under?: string;
   pincode?: string;
+  mobile?: string;
 }) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = ledgerMessages.nameRequired;
@@ -86,5 +89,8 @@ export function ledgerFieldErrors(input: {
   const pin = (input.pincode ?? '').trim();
   if (!pin) errors.pincode = ledgerMessages.pincodeRequired;
   else if (!PINCODE_RE.test(pin)) errors.pincode = ledgerMessages.pincodeFormat;
+  // Added: the mobile number, with its country code, when entered (contact.ts).
+  const mobile = mobileProblem(input.mobile);
+  if (mobile) errors.mobile = mobile;
   return errors;
 }

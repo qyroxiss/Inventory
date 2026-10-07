@@ -142,6 +142,15 @@ puts Opening Balance in a bottom bar; changed on 2026-10-04 under the layout rul
   both times), "Update record…?", `Remove "X"?\nThis cannot be undone.`.
 - City's "type to add new" entries are stored in `misc_list` (Misc_Master in MDA) — a small shared
   table Unit, Godown, Stock Group and Sale Type masters will also use later, same as MDA's does.
+- **Added on the owner's request (2026-10-07):**
+  - **City suggests as you type:** nothing is listed until something is typed. Names starting
+    with the typed text come first, from the cities this book has used plus about 450 Indian
+    cities (`packages/core/src/cities.ts`). Any other city can still be typed.
+  - **Picking a city fills the State:** as on this book's own ledgers, else from the list. It
+    stays changeable.
+  - **Mobile No.:** the country code picker and digits-only box shared with Company Creation.
+    It stops at 10 digits for +91, is stored as "+91 9876543210", and an invalid number gets
+    "Enter a 10-digit mobile number starting with 6, 7, 8 or 9" (also checked on the server).
 
 ## How to change it
 

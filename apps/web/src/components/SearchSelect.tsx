@@ -19,6 +19,8 @@ export function SearchSelect({
   error,
   onCommit,
   onNext,
+  typeToSuggest,
+  tall,
 }: {
   id: string;
   /** The resolved value (an option's `value`, or — when `allowNew` — arbitrary stored text). */
@@ -35,6 +37,11 @@ export function SearchSelect({
   onCommit: (value: string, label: string) => void;
   /** Focus-advance after a successful Enter, same as MDA's onSelected chaining. */
   onNext?: () => void;
+  /** A long list (City): nothing is offered until something is typed, and names starting
+   *  with the typed text come first. */
+  typeToSuggest?: boolean;
+  /** The taller box of the company and year pages. */
+  tall?: boolean;
 }) {
   const labelOf = (v: string) =>
     options.find((o) => o.value === v)?.label ?? (allowNew || freeText ? v : '');
@@ -48,7 +55,15 @@ export function SearchSelect({
   useEffect(() => setText(labelOf(value)), [value]);
 
   const needle = text.trim().toLowerCase();
-  const matches = needle ? options.filter((o) => o.label.toLowerCase().includes(needle)) : options;
+  const found = needle ? options.filter((o) => o.label.toLowerCase().includes(needle)) : options;
+  const matches = !typeToSuggest
+    ? found
+    : !needle || needle === labelOf(value).toLowerCase()
+      ? []
+      : [
+          ...found.filter((o) => o.label.toLowerCase().startsWith(needle)),
+          ...found.filter((o) => !o.label.toLowerCase().startsWith(needle)),
+        ].slice(0, 50);
 
   /** Resolves typed text to a list entry (or discards it); returns whether it committed to something. */
   function resolve(): boolean {
@@ -129,7 +144,7 @@ export function SearchSelect({
             setOpen(false);
           }
         }}
-        className={`h-[42px] w-full field-box px-3 text-base text-foreground outline-none focus-visible:outline-none ${
+        className={`${tall ? 'h-11 text-[17px]' : 'h-[42px] text-base'} w-full field-box px-3 text-foreground outline-none focus-visible:outline-none ${
           error ? 'field-error' : ''
         }`}
       />

@@ -120,7 +120,7 @@ function CompanyDetails() {
   const next = (k: FieldKey) => refs.current[FIELD_ORDER[FIELD_ORDER.indexOf(k) + 1]!]?.focus();
 
   const update = async () => {
-    const raw = companyFieldErrors({ name: form.compName, gstin: form.gstin, pan: form.pan });
+    const raw = companyFieldErrors({ ...form, name: form.compName });
     const e: Partial<Record<FieldKey, string>> = {};
     for (const [k, msg] of Object.entries(raw)) e[ERROR_KEY[k] ?? (k as FieldKey)] = msg;
     setErrors(e);

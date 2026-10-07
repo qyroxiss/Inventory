@@ -4,7 +4,9 @@
 import { brand } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { useState } from 'react';
 import { api } from '../api.ts';
+import { ConfirmUpdate } from './Dialog.tsx';
 import { getAccount, logoutAccount } from '../lib/account.ts';
 import { setTheme, useTheme } from '../lib/theme.ts';
 
@@ -23,6 +25,7 @@ function AccountChip() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const account = useQuery({ queryKey: ['account'], queryFn: getAccount });
+  const [ask, setAsk] = useState(false);
   if (!account.data) return null;
 
   const logout = async () => {
@@ -40,11 +43,23 @@ function AccountChip() {
       </span>
       <button
         type="button"
-        onClick={logout}
+        onClick={() => setAsk(true)}
         className="flex h-10 cursor-pointer items-center rounded-full border border-border px-3.5 text-[13px] text-muted-foreground"
       >
         Logout
       </button>
+      {/* Added: Logout asks first (owner's request). */}
+      <ConfirmUpdate
+        open={ask}
+        title={['Log', 'out']}
+        text={`Sign out of ${account.data.email}?`}
+        confirmLabel="Logout"
+        onCancel={() => setAsk(false)}
+        onConfirm={() => {
+          setAsk(false);
+          void logout();
+        }}
+      />
     </div>
   );
 }
