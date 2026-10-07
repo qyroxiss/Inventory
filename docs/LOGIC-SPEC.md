@@ -21,7 +21,7 @@ When the new code and this spec disagree, the spec wins. When this spec and the 
 | Reports | Stock Summary, P&L, Balance Sheet, Day Book, Sales Register | Placeholder in MDA; built in this rebuild (docs/design/REPORTS.md) | 6 |
 | GST Reports | GSTR-1, GSTR-3B, GST Audit, HSN Summary, ITC | Placeholder in MDA; built in this rebuild (docs/design/GST-REPORTS.md) | 6 |
 | Tools | User Management | Built | 3/5 |
-| Tools | Backup, Company Settings, Import, Logs | Placeholder | 6–7 |
+| Tools | Backup, Company Settings, Import, Logs | Placeholder in MDA; built in this rebuild (docs/design/TOOLS.md) | 6 |
 | Setup | Company create/edit, Financial Year manage, Login | Built | 5 |
 
 **Notes on what is missing in MDA:**
@@ -612,6 +612,7 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-51 | A sale's customer can only be picked from Sundry Debtors; there's no walk-in name, even on a cash sale |
 | Q-52 | A sale's line Location is the header Location at the moment the line is added; changing the header later doesn't move existing lines |
 | Q-53 | Reopening a sale whose customer is no longer listed (inactive or removed) clears the customer link; updating it then saves it without one, and a credit sale is refused |
+| Q-54 | User Management's Update has no last-Admin or duplicate check of its own: an Admin can demote or deactivate themselves, and a clashing name shows the database error |
 
 ## 15. Branding
 

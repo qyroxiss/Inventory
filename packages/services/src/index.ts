@@ -154,4 +154,20 @@ export {
   type GstContext,
   type ItcRow,
 } from './gst.ts';
+export {
+  auditLogFilters,
+  createBookUser,
+  deleteBookUser,
+  listAuditLog,
+  listBookUsers,
+  listSeries,
+  updateBookUser,
+  updateSeries,
+  type Actor,
+  type BookUserRow,
+  type LogRow,
+  type SeriesRow,
+  type UserInput,
+} from './tools.ts';
+export { exportBackup, restoreBackup, summarizeBackup, type Backup } from './backup.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

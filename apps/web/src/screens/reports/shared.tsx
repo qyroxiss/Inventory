@@ -35,13 +35,16 @@ export function ReportPage({
   subtitle,
   filters,
   section = 'reports',
+  print = true,
   children,
 }: {
   title: [string, string];
   /** The period line ("From 01-04-2026 to 07-10-2026", "As on 07-10-2026"). */
   subtitle: string;
   /** The menu section Back returns to. */
-  section?: 'reports' | 'gst-reports';
+  section?: 'reports' | 'gst-reports' | 'tools';
+  /** Show the Print button (reports); off for the Tools forms. */
+  print?: boolean;
   filters: ReactNode;
   children: ReactNode;
 }) {
@@ -74,13 +77,15 @@ export function ReportPage({
         </div>
         <span className="flex-1" />
         <span className="font-mono text-xs text-muted-foreground print:text-black">{subtitle}</span>
-        <button
-          type="button"
-          onClick={() => window.print()}
-          className="flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-4 text-[15px] font-semibold print:hidden"
-        >
-          Print
-        </button>
+        {print && (
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-4 text-[15px] font-semibold print:hidden"
+          >
+            Print
+          </button>
+        )}
       </div>
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2 print:hidden">{filters}</div>
       {children}

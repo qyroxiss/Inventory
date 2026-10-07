@@ -63,9 +63,9 @@ export const NAV: NavSection[] = [
 ];
 
 /** Items MDA itself shows as "Not built yet" (LOGIC-SPEC §1). */
-export const NOT_BUILT = new Set([
-  'Backup Data', 'Company Settings', 'Import Data', 'Logs',
-]); // prettier-ignore
+// Empty since 2026-10-07: every item is built (Stock Journal, Reports, GST Reports and the Tools
+// items MDA leaves unbuilt included). Kept so a future placeholder can be listed here again.
+export const NOT_BUILT = new Set<string>([]);
 
 /** The dashboard's Quick Actions, in MDA's order, and the screen each one opens (main.dart:738-745). */
 export const QUICK_ACTIONS = [

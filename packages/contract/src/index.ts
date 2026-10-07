@@ -212,6 +212,20 @@ export const stockJournalSave = z.object({
   ),
 });
 
+/** User Management's form. */
+export const bookUserSave = z.object({
+  userName: z.string(),
+  password: z.string(),
+  confirmPassword: opt,
+  role: opt,
+  isActive: z.boolean(),
+});
+
+export const seriesSave = z.object({ prefix: z.string(), width: z.number().int() });
+
+/** A backup file's contents; its shape is checked when it's restored. */
+export const backupRestore = z.record(z.string(), z.unknown());
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),

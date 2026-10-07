@@ -46,6 +46,13 @@ import {
 } from './screens/reports/ListReports.tsx';
 import { BalanceSheetScreen, ProfitLossScreen } from './screens/reports/Statements.tsx';
 import {
+  BackupScreen,
+  CompanySettingsScreen,
+  ImportDataScreen,
+  LogsScreen,
+} from './screens/tools/ToolsScreens.tsx';
+import { UserManagementScreen } from './screens/tools/UserManagementScreen.tsx';
+import {
   GstAuditScreen,
   Gstr1Screen,
   Gstr3bScreen,
@@ -229,6 +236,11 @@ const reportRoutes = [
   reportRoute('gst-audit', GstAuditScreen),
   reportRoute('hsn-summary', HsnSummaryScreen),
   reportRoute('input-tax-credit', ItcScreen),
+  reportRoute('backup-data', BackupScreen),
+  reportRoute('user-management', UserManagementScreen),
+  reportRoute('company-settings', CompanySettingsScreen),
+  reportRoute('import-data', ImportDataScreen),
+  reportRoute('logs', LogsScreen),
 ];
 
 const screenRoute = createRoute({

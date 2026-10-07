@@ -156,6 +156,20 @@ export {
   type InvoiceRateRow,
   type TaxSums,
 } from './gst.ts';
+export {
+  BACKUP_FORMAT,
+  BACKUP_VERSION,
+  NEW_USER_ROLE,
+  ROLE_PERMISSIONS,
+  backupMessages,
+  isAdminRole,
+  logMessages,
+  seriesMessages,
+  seriesProblem,
+  userCode,
+  userFieldErrors,
+  userMessages,
+} from './tools.ts';
 export { parseDate, formatDmy, isInFinancialYear, financialYearLabel } from './dates.ts';
 export {
   companyCode,

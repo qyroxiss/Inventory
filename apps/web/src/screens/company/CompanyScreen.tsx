@@ -25,7 +25,7 @@ import {
 
 type Company = OkBody<Awaited<ReturnType<typeof api.api.companies.$get>>>[number];
 
-const fromRecord = (c: Company): CompanyForm => {
+export const fromRecord = (c: Company): CompanyForm => {
   const form = { ...EMPTY_FORM };
   for (const k of Object.keys(form) as FieldKey[]) form[k] = (c[k] as string | null) ?? '';
   if (!form.state) form.state = EMPTY_FORM.state;
@@ -270,7 +270,7 @@ export function CompanyScreen() {
   );
 }
 
-function FormSection({
+export function FormSection({
   title,
   fields,
   form,
@@ -374,7 +374,7 @@ function FormSection({
   );
 }
 
-function BaseCurrency() {
+export function BaseCurrency() {
   return (
     <section className="flex flex-col gap-1">
       <h2 className="m-0 mb-1.5 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">

@@ -7,7 +7,13 @@
 import { zValidator } from '@hono/zod-validator';
 import type { AccountAuth } from '@qi/auth';
 import * as contract from '@qi/contract';
-import { MISC_CITY_CODE_PREFIX, MISC_MASTER_KINDS, loginMessages } from '@qi/core';
+import {
+  MISC_CITY_CODE_PREFIX,
+  MISC_MASTER_KINDS,
+  isAdminRole,
+  loginMessages,
+  seriesMessages,
+} from '@qi/core';
 import type { Db } from '@qi/db';
 import {
   UserError,
@@ -24,6 +30,18 @@ import {
   createSaleType,
   createStockItem,
   balanceSheetReport,
+  auditLogFilters,
+  createBookUser,
+  deleteBookUser,
+  exportBackup,
+  listAuditLog,
+  listBookUsers,
+  listSeries,
+  restoreBackup,
+  summarizeBackup,
+  updateBookUser,
+  updateSeries,
+  getCompany,
   gstAudit,
   gstr1Report,
   gstr3bReport,
@@ -225,6 +243,9 @@ export function createApp(opts: AppOptions) {
     )
     .post('/api/import/mda', json(contract.mdaImport), async (c) =>
       c.json(await importMda(db, c.get('accountId'), c.req.valid('json')), 201),
+    )
+    .post('/api/import/backup', json(contract.backupRestore), async (c) =>
+      c.json(await restoreBackup(db, c.get('accountId'), c.req.valid('json')), 201),
     )
 
     // ── Layer 2: book login (MDA's login) ───────────────────────────────────────
@@ -737,6 +758,83 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       return c.json(await gstAudit(db, book, c.req.valid('query')));
+    })
+
+    // ── Tools (docs/design/TOOLS.md) ────────────────────────────────────────────
+    .get('/api/users', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listBookUsers(db, book.bookId));
+    })
+    .post('/api/users', json(contract.bookUserSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createBookUser(db, book, c.req.valid('json')), 201);
+    })
+    .put('/api/users/:code', json(contract.bookUserSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await updateBookUser(db, book, c.req.param('code'), c.req.valid('json')));
+    })
+    .delete('/api/users/:code', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await deleteBookUser(db, book, c.req.param('code'));
+      return c.json({ ok: true });
+    })
+    .get('/api/settings/company', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ company: await getCompany(db, book.accountId, book.companyId) });
+    })
+    .put('/api/settings/company', json(contract.companyCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      if (!isAdminRole(book.role)) throw new UserError(seriesMessages.adminOnly);
+      const company = await updateCompany(db, book.accountId, book.companyId, c.req.valid('json'));
+      // The open book shows the company's name and decides GST by its state: keep both current.
+      const stored = (company.stateCode ?? '').trim();
+      const gstin = (company.gstin ?? '').trim();
+      await writeBook(c, {
+        ...book,
+        companyName: company.compName,
+        companyStateCode: stored || (gstin.length >= 2 ? gstin.substring(0, 2) : ''),
+      });
+      return c.json(company);
+    })
+    .get('/api/settings/series', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listSeries(db, book.bookId));
+    })
+    .put('/api/settings/series/:type', json(contract.seriesSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await updateSeries(db, book, c.req.param('type'), c.req.valid('json'));
+      return c.json({ ok: true });
+    })
+    .get('/api/backup', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const backup = await exportBackup(db, book.accountId, book.companyId);
+      return c.json({ backup, summary: summarizeBackup(backup) });
+    })
+    .get(
+      '/api/logs',
+      zValidator(
+        'query',
+        period.extend({ user: z.string().optional(), action: z.string().optional() }),
+      ),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json(await listAuditLog(db, book.bookId, c.req.valid('query')));
+      },
+    )
+    .get('/api/logs/filters', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await auditLogFilters(db, book.bookId));
     })
 
     // ── Misc lists (City today; Unit/Godown/Stock Group/Sale Type share this later) ─────────────
