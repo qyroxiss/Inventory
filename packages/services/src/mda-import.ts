@@ -3,10 +3,10 @@
 // MDA's own column names; this file maps them onto our tables.
 //
 // Covered today: CompanyMaster, Company_Year, and per year User, Maacct2, Maacct, Misc_Master,
-// Part_Master, VchrSeries, VchrHdr, VchrAcct, BillRef and AuditLog. The purchase, sale and stock
-// tables (PurcMaster/Detail, SaleMaster/Detail, VchrItem, StockTrn) are added here as the
-// Transactions screens land. A company whose CompCode this account already has is skipped, so importing the same
-// folder twice changes nothing.
+// Part_Master, VchrSeries, VchrHdr, VchrAcct, BillRef, VchrItem, StockTrn, PurcMaster,
+// PurcDetail and AuditLog. The sale tables (SaleMaster/Detail) are added with Sales Invoice.
+// A company whose CompCode this account already has is skipped, so importing the same folder
+// twice changes nothing.
 
 import { SEED_ADMIN, hashPassword, importMessages, parseDate } from '@qi/core';
 import { and, eq, schema, type Db } from '@qi/db';
@@ -24,6 +24,10 @@ const {
   miscList,
   stockItems,
   billRefs,
+  purchaseLines,
+  purchases,
+  stockTrn,
+  voucherItems,
   voucherLines,
   voucherSeries,
   vouchers,
@@ -41,6 +45,10 @@ export type MdaBook = {
   VchrHdr?: Row[];
   VchrAcct?: Row[];
   BillRef?: Row[];
+  VchrItem?: Row[];
+  StockTrn?: Row[];
+  PurcMaster?: Row[];
+  PurcDetail?: Row[];
   AuditLog?: Row[];
 };
 export type MdaImport = {
@@ -307,6 +315,128 @@ async function copyBook(db: Db, bookId: string, b: MdaBook): Promise<void> {
         billDate: str(r.BillDate),
         dueDate: str(r.DueDate),
         amount: num(r.Amount).toFixed(2),
+      })),
+    );
+
+  // Item side and stock movements of the vouchers (purchases and sales alike).
+  const vItems = (b.VchrItem ?? []).filter((r) => ids.has(String(r.VchrId)) && str(r.PartCode));
+  if (vItems.length)
+    await db.insert(voucherItems).values(
+      vItems.map((r) => ({
+        voucherId: ids.get(String(r.VchrId))!,
+        lineNo: num(r.LineNo),
+        partCode: str(r.PartCode)!,
+        godownCode: str(r.GodownCode),
+        qty: String(num(r.Qty)),
+        unit: str(r.Unit),
+        rate: num(r.Rate).toFixed(2),
+        discPct: num(r.DiscPct).toFixed(2),
+        discAmt: num(r.DiscAmt).toFixed(2),
+        hsnNo: str(r.HsnNo),
+        gstRate: num(r.GstRate).toFixed(2),
+        cessRate: num(r.CessRate).toFixed(2),
+        taxableAmt: num(r.TaxableAmt).toFixed(2),
+        cgstAmt: num(r.CgstAmt).toFixed(2),
+        sgstAmt: num(r.SgstAmt).toFixed(2),
+        igstAmt: num(r.IgstAmt).toFixed(2),
+        cessAmt: num(r.CessAmt).toFixed(2),
+        lineTotal: num(r.LineTotal).toFixed(2),
+      })),
+    );
+  // A stock row may stand without a voucher (MDA allows it); one pointing at a voucher that
+  // wasn't brought over is left out.
+  const moves = (b.StockTrn ?? []).filter(
+    (r) =>
+      str(r.PartCode) &&
+      parseDate(str(r.TrnDate)) &&
+      (r.VchrId === null || r.VchrId === undefined || ids.has(String(r.VchrId))),
+  );
+  if (moves.length)
+    await db.insert(stockTrn).values(
+      moves.map((r) => ({
+        bookId,
+        voucherId: r.VchrId === null || r.VchrId === undefined ? null : ids.get(String(r.VchrId))!,
+        vchrType: str(r.VchrType),
+        vchrNo: str(r.VchrNo),
+        trnDate: parseDate(str(r.TrnDate))!,
+        partCode: str(r.PartCode)!,
+        godownCode: str(r.GodownCode),
+        inQty: String(num(r.InQty)),
+        outQty: String(num(r.OutQty)),
+        rate: num(r.Rate).toFixed(2),
+        value: num(r.Value).toFixed(2),
+        remarks: str(r.Remarks),
+      })),
+    );
+
+  // Purchase bills and their lines, joined on the bill number.
+  const bills = new Map<string, string>();
+  for (const r of (b.PurcMaster ?? []).filter((p) => str(p.BillNo) && str(p.SuppCode))) {
+    const date = parseDate(str(r.BillDate));
+    if (!date) continue;
+    const vid = r.VchrId === null || r.VchrId === undefined ? null : ids.get(String(r.VchrId));
+    const [p] = await db
+      .insert(purchases)
+      .values({
+        bookId,
+        billNo: str(r.BillNo)!,
+        billDate: date,
+        suppCode: str(r.SuppCode)!,
+        suppInvNo: str(r.SuppInvNo),
+        suppInvDate: str(r.SuppInvDate),
+        supplyWith: str(r.SupplyWith),
+        orderNo: str(r.OrderNo),
+        orderDate: str(r.OrderDate),
+        orderType: str(r.OrderType),
+        goodsRecNo: str(r.GoodsRecNo),
+        recDate: str(r.RecDate),
+        transporter: str(r.Transporter),
+        narration: str(r.Narration),
+        isInterState: bool(r.IsInterState, false),
+        totalQty: String(num(r.TotalQty)),
+        subTotal: num(r.SubTotal).toFixed(2),
+        discAmt: num(r.DiscAmt).toFixed(2),
+        sgstAmt: num(r.SgstAmt).toFixed(2),
+        cgstAmt: num(r.CgstAmt).toFixed(2),
+        igstAmt: num(r.IgstAmt).toFixed(2),
+        roundOff: num(r.RoundOff).toFixed(2),
+        netAmount: num(r.NetAmount).toFixed(2),
+        voucherId: vid ?? null,
+        status: str(r.Status) ?? 'Active',
+        createdBy: str(r.CreatedBy),
+        createdAt: stamp(r.CreatedAt),
+        modifiedBy: str(r.ModifiedBy),
+        modifiedAt: stamp(r.ModifiedAt),
+        cancelledBy: str(r.CancelledBy),
+        cancelledAt: stamp(r.CancelledAt),
+      })
+      .onConflictDoNothing()
+      .returning({ id: purchases.id });
+    if (p) bills.set(str(r.BillNo)!, p.id);
+  }
+  const pLines = (b.PurcDetail ?? []).filter((r) => bills.has(String(r.BillNo)) && str(r.ItemCode));
+  if (pLines.length)
+    await db.insert(purchaseLines).values(
+      pLines.map((r) => ({
+        purchaseId: bills.get(String(r.BillNo))!,
+        lineNo: num(r.LineNo),
+        itemCode: str(r.ItemCode)!,
+        itemName: str(r.ItemName),
+        hsnNo: str(r.HsnNo),
+        unit: str(r.Unit),
+        location: str(r.Location),
+        qty: String(num(r.Qty)),
+        rate: num(r.Rate).toFixed(2),
+        disP: num(r.DisP).toFixed(2),
+        disA: num(r.DisA).toFixed(2),
+        amount: num(r.Amount).toFixed(2),
+        sgstP: num(r.SgstP).toFixed(2),
+        sgstA: num(r.SgstA).toFixed(2),
+        cgstP: num(r.CgstP).toFixed(2),
+        cgstA: num(r.CgstA).toFixed(2),
+        igstP: num(r.IgstP).toFixed(2),
+        igstA: num(r.IgstA).toFixed(2),
+        lineTotal: num(r.LineTotal).toFixed(2),
       })),
     );
 

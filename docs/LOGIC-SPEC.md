@@ -607,6 +607,8 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-46 | Reopening a debit or credit note doesn't bring its reason back; it has to be chosen again to update |
 | Q-47 | A bank payment prints "By Cash" (receipts print "By Cash/Bank") |
 | Q-48 | The Receipt and Payment lists show the date as stored (yyyy-MM-dd); the Journal and note lists show dd/MM/yyyy |
+| Q-49 | A purchase saved with an empty Narration posts an empty voucher narration; MDA's fallback "Purchase <bill no>" never applies, because the box always sends text |
+| Q-50 | A cancelled purchase opens with its details and the Save button; saving it tries its own bill number and is refused as already existing |
 
 ## 15. Branding
 

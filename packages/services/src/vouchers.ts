@@ -140,7 +140,7 @@ export async function nextVoucherNo(db: Db, bookId: string, vchrType: string): P
 }
 
 /** Records the number as used; runs in the voucher's own transaction. */
-async function commitVoucherNo(db: Db, bookId: string, vchrType: string, vchrNo: string) {
+export async function commitVoucherNo(db: Db, bookId: string, vchrType: string, vchrNo: string) {
   const used = parseInt(vchrNo.replace(/\D/g, ''), 10) || 0;
   await db
     .update(voucherSeries)

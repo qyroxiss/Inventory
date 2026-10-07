@@ -95,4 +95,18 @@ export {
   type VoucherPrint,
   type VoucherRow,
 } from './vouchers.ts';
+export {
+  cancelPurchase,
+  listPurchases,
+  nextPurchaseBillNo,
+  purchaseBill,
+  purchaseLookups,
+  savePurchase,
+  updatePurchase,
+  type PurchaseInput,
+  type PurchaseItem,
+  type PurchaseLineInput,
+  type PurchaseRow,
+  type Supplier,
+} from './purchases.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';

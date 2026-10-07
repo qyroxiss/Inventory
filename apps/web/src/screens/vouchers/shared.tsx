@@ -214,13 +214,22 @@ export function DateBox({
   value,
   min,
   max,
+  placeholder,
+  format = formatDmy,
+  className,
   onChange,
+  ...rest
 }: {
   id?: string;
   value: string;
   min?: string | null;
   max?: string | null;
+  placeholder?: string;
+  /** How the date reads in the box (dd/mm/yyyy unless a screen shows it otherwise). */
+  format?: (iso: string) => string;
+  className?: string;
   onChange: (iso: string) => void;
+  'data-nav'?: number;
 }) {
   const picker = useRef<HTMLInputElement>(null);
   const open = () => {
@@ -238,7 +247,8 @@ export function DateBox({
       <input
         id={id}
         readOnly
-        value={value ? formatDmy(value) : ''}
+        value={value ? format(value) : ''}
+        placeholder={placeholder}
         onClick={open}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
@@ -246,7 +256,8 @@ export function DateBox({
             open();
           }
         }}
-        className={`${inputClass()} cursor-pointer font-mono`}
+        className={`${className ?? inputClass()} cursor-pointer font-mono`}
+        {...rest}
       />
       <input
         ref={picker}

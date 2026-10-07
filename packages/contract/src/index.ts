@@ -127,6 +127,39 @@ export const voucherSave = z.object({
 });
 export const voucherUpdate = voucherSave.omit({ vchrType: true, vchrNo: true, bills: true });
 
+/** A purchase bill as the screen sends it. Each line's tax is worked out again on the server. */
+export const purchaseSave = z.object({
+  billNo: z.string(),
+  /** yyyy-MM-dd */
+  billDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  suppCode: z.string(),
+  suppInvNo: opt,
+  suppInvDate: opt,
+  supplyWith: opt,
+  orderNo: opt,
+  orderDate: z.string().nullable().optional(),
+  orderType: opt,
+  goodsRecNo: opt,
+  recDate: opt,
+  transporter: opt,
+  narration: opt,
+  interState: z.boolean(),
+  lines: z.array(
+    z.object({
+      itemCode: z.string(),
+      itemName: z.string(),
+      hsnNo: z.string().nullable().optional(),
+      unit: z.string().nullable().optional(),
+      location: z.string().nullable().optional(),
+      qty: z.number(),
+      rate: z.number(),
+      disP: z.number(),
+      disA: z.number(),
+      gstRate: z.number(),
+    }),
+  ),
+});
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),
@@ -167,6 +200,10 @@ export const mdaImport = z.object({
               VchrHdr: mdaRows,
               VchrAcct: mdaRows,
               BillRef: mdaRows,
+              VchrItem: mdaRows,
+              StockTrn: mdaRows,
+              PurcMaster: mdaRows,
+              PurcDetail: mdaRows,
               AuditLog: mdaRows,
             })
             .nullable(),

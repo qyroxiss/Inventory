@@ -417,6 +417,145 @@ export const voucherSeries = pgTable(
   (t) => [uniqueIndex('voucher_series_book_type').on(t.bookId, t.vchrType)],
 );
 
+/** VchrItem: the item side of a purchase or sale voucher, with its tax split. */
+export const voucherItems = pgTable(
+  'voucher_items',
+  {
+    id: id(),
+    voucherId: uuid('voucher_id')
+      .notNull()
+      .references(() => vouchers.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    partCode: text('part_code').notNull(),
+    godownCode: text('godown_code'),
+    qty: numeric('qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    unit: text('unit'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    discPct: numeric('disc_pct', { precision: 8, scale: 2 }).notNull().default('0'),
+    discAmt: numeric('disc_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    hsnNo: text('hsn_no'),
+    gstRate: numeric('gst_rate', { precision: 8, scale: 2 }).notNull().default('0'),
+    cessRate: numeric('cess_rate', { precision: 8, scale: 2 }).notNull().default('0'),
+    taxableAmt: numeric('taxable_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstAmt: numeric('sgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cessAmt: numeric('cess_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [index('voucher_items_voucher').on(t.voucherId)],
+);
+
+/** StockTrn: every quantity movement. Stock in hand = opening + Σ(In − Out). Cancelling a bill
+ *  deletes its rows, so its quantities stop counting at once. */
+export const stockTrn = pgTable(
+  'stock_trn',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    voucherId: uuid('voucher_id').references(() => vouchers.id, { onDelete: 'cascade' }),
+    vchrType: text('vchr_type'),
+    /** The bill number, not the voucher number. */
+    vchrNo: text('vchr_no'),
+    trnDate: date('trn_date').notNull(),
+    partCode: text('part_code').notNull(),
+    godownCode: text('godown_code'),
+    inQty: numeric('in_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    outQty: numeric('out_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    value: numeric('value', { precision: 14, scale: 2 }).notNull().default('0'),
+    remarks: text('remarks'),
+  },
+  (t) => [
+    index('stock_trn_book_part').on(t.bookId, t.partCode),
+    index('stock_trn_voucher').on(t.voucherId),
+  ],
+);
+
+// ── Purchase document (purchase_service.dart; docs/LOGIC-SPEC.md §6.2) ─────────────
+
+/** PurcMaster: the purchase bill, unique by bill number within a book. Its accounting and stock
+ *  effect live on the PUR voucher it points at. */
+export const purchases = pgTable(
+  'purchases',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    billNo: text('bill_no').notNull(),
+    billDate: date('bill_date').notNull(),
+    suppCode: text('supp_code').notNull(),
+    suppInvNo: text('supp_inv_no'),
+    /** Free text, as MDA's box takes it. */
+    suppInvDate: text('supp_inv_date'),
+    supplyWith: text('supply_with'),
+    orderNo: text('order_no'),
+    /** yyyy-MM-dd from the picker. */
+    orderDate: text('order_date'),
+    orderType: text('order_type'),
+    goodsRecNo: text('goods_rec_no'),
+    /** Free text, as MDA's box takes it. */
+    recDate: text('rec_date'),
+    transporter: text('transporter'),
+    narration: text('narration'),
+    isInterState: boolean('is_inter_state').notNull().default(false),
+    totalQty: numeric('total_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    subTotal: numeric('sub_total', { precision: 14, scale: 2 }).notNull().default('0'),
+    discAmt: numeric('disc_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstAmt: numeric('sgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    roundOff: numeric('round_off', { precision: 14, scale: 2 }).notNull().default('0'),
+    netAmount: numeric('net_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    voucherId: uuid('voucher_id').references(() => vouchers.id),
+    /** 'Active' or 'Cancelled'. */
+    status: text('status').notNull().default('Active'),
+    createdBy: text('created_by'),
+    createdAt: createdAt(),
+    modifiedBy: text('modified_by'),
+    modifiedAt: timestamp('modified_at', { withTimezone: true }),
+    cancelledBy: text('cancelled_by'),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('purchases_book_bill').on(t.bookId, t.billNo),
+    index('purchases_book_date').on(t.bookId, t.billDate),
+  ],
+);
+
+/** PurcDetail: one row per item of a purchase bill. */
+export const purchaseLines = pgTable(
+  'purchase_lines',
+  {
+    id: id(),
+    purchaseId: uuid('purchase_id')
+      .notNull()
+      .references(() => purchases.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    itemCode: text('item_code').notNull(),
+    itemName: text('item_name'),
+    hsnNo: text('hsn_no'),
+    unit: text('unit'),
+    location: text('location'),
+    qty: numeric('qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    disP: numeric('dis_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    disA: numeric('dis_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstP: numeric('sgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    sgstA: numeric('sgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstP: numeric('cgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    cgstA: numeric('cgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstP: numeric('igst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    igstA: numeric('igst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [uniqueIndex('purchase_lines_purchase_line').on(t.purchaseId, t.lineNo)],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {

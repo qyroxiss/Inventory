@@ -23,6 +23,13 @@ import {
   createStockSubGroup,
   createSaleType,
   createStockItem,
+  cancelPurchase,
+  listPurchases,
+  nextPurchaseBillNo,
+  purchaseBill,
+  purchaseLookups,
+  savePurchase,
+  updatePurchase,
   cancelVoucher,
   listVouchers,
   nextVoucherNo,
@@ -488,6 +495,49 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await cancelVoucher(db, postingContext(book), c.req.param('id'));
+      return c.json({ ok: true });
+    })
+
+    // ── Purchase Invoice (purchase_service.dart) ────────────────────────────────
+    // Bill numbers travel in the query or body, never the path: a series prefix may hold '/'.
+    .get('/api/purchases', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listPurchases(db, book.bookId));
+    })
+    .get('/api/purchases/setup', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({
+        ...(await purchaseLookups(db, book.bookId)),
+        billNo: await nextPurchaseBillNo(db, book.bookId),
+        companyStateCode: book.companyStateCode,
+      });
+    })
+    .get('/api/purchases/next', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ billNo: await nextPurchaseBillNo(db, book.bookId) });
+    })
+    .get('/api/purchases/bill', zValidator('query', z.object({ no: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ bill: await purchaseBill(db, book.bookId, c.req.valid('query').no) });
+    })
+    .post('/api/purchases', json(contract.purchaseSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await savePurchase(db, postingContext(book), c.req.valid('json')), 201);
+    })
+    .put('/api/purchases', json(contract.purchaseSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await updatePurchase(db, postingContext(book), c.req.valid('json')));
+    })
+    .post('/api/purchases/cancel', json(z.object({ billNo: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await cancelPurchase(db, postingContext(book), c.req.valid('json').billNo);
       return c.json({ ok: true });
     })
 
