@@ -13,9 +13,9 @@ _Screen Name_" with an "Inventory Master" pill, as in MDA.
 | Unit Master | `unit_master_page.dart` | 2026-10-05 |
 | Godown | `godown_master_page.dart` | 2026-10-06 |
 | Stock Group | `stock_group_page.dart` | 2026-10-07 |
-| Stock Sub Group | `stock_sub_group_page.dart` | — |
-| Sale Type | `sale_type_master_page.dart` | — |
-| Stock Item | `stock_item_page.dart` | — |
+| Stock Sub Group | `stock_sub_group_page.dart` | 2026-10-07 |
+| Sale Type | `sale_type_master_page.dart` | 2026-10-07 |
+| Stock Item | `stock_item_page.dart` | 2026-10-07 |
 
 ## Unit Master and Godown
 
@@ -81,4 +81,87 @@ and "No godowns saved yet.". MDA seeds no godowns.
 - **Quirks kept:**
   - Q-33: GST Rate and HSN are stored but no item takes them as defaults.
   - Q-40: Remove doesn't check stock sub groups.
+
+## Stock Sub Group
+
+- **Code:** `apps/web/src/screens/masters/StockSubGroupScreen.tsx`; logic in
+  `packages/services/src/stock-sub-groups.ts`; messages in `packages/core/src/stock-sub-groups.ts`.
+  API: `/api/stock-sub-groups`.
+- **Storage:** Misc_Master rows of type `StockSubGroup`; Misc_Pname holds the Stock Group's code;
+  Save stamps Misc_Date. Codes are `SSG` + 4 digits (SSG0001).
+- **Form:** "STOCK SUB GROUP DETAILS": **Sub Group Name \*** ("Enter stock sub group name") and
+  **Under \***, a type-to-search list of stock groups ("Type to search group…"). Enter moves from
+  the name to Under; picking a group moves on to Save Sub Group, or to Update.
+- **Messages:** `Sub group name is required`; then, once the name is there, `Please select an
+  under group`. `Name is Already Exists..` on Save and Update. `Stock Sub Group "X" saved (Code:
+  SSG0001)`, `… updated`, `… removed` (red). Confirms: "Update record "X"?" and "Remove "X"? This
+  cannot be undone.".
+- **View:** Code · Sub Group Name · Under Group (the group's current name). Empty: "No stock sub
+  groups saved yet.". **Print:** "Stock Sub Group List".
+- **Quirks kept:**
+  - A sub group whose group was removed shows a blank Under but keeps the old code (Q-40).
+  - Q-41: Remove doesn't check stock items.
+
+## Sale Type Master
+
+Laid out differently from the other masters, as in MDA. The form (Sale Name, Sale Prefix, Sale
+By) has the saved types listed with it (Job Name · Job Work): click a row to edit it. On laptops
+the list sits beside the form so nothing scrolls; on tablets and phones it's under the form, as
+in MDA. There's no View or Print.
+
+- **Code:** `apps/web/src/screens/masters/SaleTypeScreen.tsx`; logic in
+  `packages/services/src/sale-types.ts`; messages in `packages/core/src/sale-types.ts`.
+  API: `/api/sale-types`.
+- **Storage:** Misc_Master rows of type `SaleType`: Sale Name in Misc_Name, Sale Prefix in
+  Misc_Pname (upper-cased), Sale By in Misc_Sname. Codes are `ST` + 3 digits.
+- **Form:** **Sale Name \*** ("e.g. Counter Sale, Tax Invoice"); **Sale Prefix** ("e.g. CS";
+  letters, digits, `-` and `/`, at most 6); **Sale By \*** ("e.g. Counter, Challan"), typeable, with
+  a "…" button that opens "Select Sale By" (Counter, Challan, Invoice, Delivery, Direct, Online;
+  Close). Picking one moves to Save. Above the form: "Editing ST001" while a type is open, and
+  the hint "Enter moves to the next field".
+- **Buttons:** **Save**, or **Remove · Clear · Update** while a type is open. MDA's own Back
+  button at the bottom is the Back at the top-left here (layout rule 3).
+  - **Update saves without asking**, as in MDA.
+  - **Remove** first checks for bills using the type (`"X" is used on N bill(s) and cannot be
+    removed`), then asks "Remove "X"? This cannot be undone.". Sale bills don't exist yet, so
+    that count is 0 until Sales Invoice is built.
+- **Messages:**
+  - `Sale Name is required` and `Sale By is required` show on the fields.
+  - `Sale Type "X" already exists.` shows as a red message.
+  - `Sale Type "X" saved (Code: ST001)`, `… updated`, `… removed` (red).
+  - Under the list: "No sale types yet", "N sale types", "Click a row to edit it".
+
+## Stock Item
+
+- **Code:** `apps/web/src/screens/masters/StockItemScreen.tsx`; logic in
+  `packages/services/src/stock-items.ts`; lists and messages in `packages/core/src/stock-items.ts`.
+  API: `/api/stock-items`. Table `stock_items` (MDA's Part_Master, every column).
+- **Form, two fields to a line as in MDA:**
+  - Item Code \* | Item Name \*
+  - Print Name | Under Sub Group
+  - Unit | Tax Type
+  - GST Rate | HSN No. when the Tax Type is Taxable; otherwise HSN No. alone
+  - On tablets and phones the fields go to one column. Enter moves through them in that order,
+    then to Save Item, or to Update.
+- **Fields:**
+  - The **Item Code** is typed by the user and can't be changed once saved (read-only while
+    editing).
+  - **Under Sub Group** is an optional list of stock sub groups.
+  - **Unit** lists MDA's own hard-coded units (Q-19) and keeps any typed text.
+  - **Tax Type:** Taxable, Non GST, Nil Rated, Exempt. Moving away from Taxable clears the GST Rate.
+  - **GST Rate** lists 0% to 28% and keeps typed text.
+- **Messages:**
+  - `Required` under Code and Name.
+  - Save checks the code first (`Item Code "X" already exists.`), then the name (`Item Name is
+    Already Exists..`). Update checks the name against the other items only.
+  - `Stock Item "X" saved` (no code in this one), `… updated`, `… removed` (red).
+- **View:** Code · Item Name · Sub Group · Unit · GST Rate · HSN No. (phones show Code · Item
+  Name · Unit). **Print:** "Stock Item List", with Print Name and Reg Type added.
+- **Quirk kept:** Q-42, Remove doesn't check purchases, sales or stock.
+
+## Import from MDA
+
+Brings in every Inventory Master: units, godowns, stock groups, stock sub groups and sale types
+come from Misc_Master; stock items come from Part_Master, with every column (rates, opening
+stock, levels and barcode are kept for the screens that will use them).
 

@@ -81,6 +81,23 @@ export const miscMasterSave = z.object({ name: z.string() });
 /** Stock Group: GST Rate and HSN No. are free text, as MDA stores them. */
 export const stockGroupSave = z.object({ name: z.string(), gstRate: opt, hsn: opt });
 
+/** Stock Sub Group: `under` is the Stock Group's code. */
+export const stockSubGroupSave = z.object({ name: z.string(), under: opt });
+
+export const saleTypeSave = z.object({ name: z.string(), prefix: opt, saleBy: opt });
+
+/** Stock Item: `code` is ignored on update (it can't change once saved). */
+export const stockItemSave = z.object({
+  code: z.string(),
+  name: z.string(),
+  printName: opt,
+  subGrpCode: opt,
+  unit: opt,
+  regType: opt,
+  gstRate: opt,
+  hsn: opt,
+});
+
 export const miscListAdd = z.object({
   type: z.string(),
   name: z.string(),
@@ -116,6 +133,7 @@ export const mdaImport = z.object({
               Maacct2: mdaRows,
               Maacct: mdaRows,
               Misc_Master: mdaRows,
+              Part_Master: mdaRows,
               AuditLog: mdaRows,
             })
             .nullable(),

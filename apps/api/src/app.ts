@@ -20,6 +20,9 @@ import {
   createSubGroup,
   createMiscMaster,
   createStockGroup,
+  createStockSubGroup,
+  createSaleType,
+  createStockItem,
   createYear,
   deleteCompany,
   deleteGroup,
@@ -35,14 +38,23 @@ import {
   listSubGroups,
   listMiscMaster,
   listStockGroups,
+  listStockSubGroups,
+  listSaleTypes,
+  listStockItems,
   removeMiscMaster,
   removeStockGroup,
+  removeStockSubGroup,
+  removeSaleType,
+  removeStockItem,
   updateCompany,
   updateGroup,
   updateLedger,
   updateSubGroup,
   updateMiscMaster,
   updateStockGroup,
+  updateStockSubGroup,
+  updateSaleType,
+  updateStockItem,
   listBookIndex,
   listCompanies,
   listYears,
@@ -325,6 +337,81 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       await removeStockGroup(db, book.bookId, c.req.param('code'));
+      return c.json({ ok: true });
+    })
+
+    // ── Stock Sub Group ──
+    .get('/api/stock-sub-groups', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listStockSubGroups(db, book.bookId));
+    })
+    .post('/api/stock-sub-groups', json(contract.stockSubGroupSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createStockSubGroup(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/stock-sub-groups/:code', json(contract.stockSubGroupSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateStockSubGroup(db, book.bookId, c.req.param('code'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/stock-sub-groups/:code', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await removeStockSubGroup(db, book.bookId, c.req.param('code'));
+      return c.json({ ok: true });
+    })
+
+    // ── Sale Type Master ──
+    .get('/api/sale-types', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listSaleTypes(db, book.bookId));
+    })
+    .post('/api/sale-types', json(contract.saleTypeSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createSaleType(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/sale-types/:code', json(contract.saleTypeSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateSaleType(db, book.bookId, c.req.param('code'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/sale-types/:code', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await removeSaleType(db, book.bookId, c.req.param('code'));
+      return c.json({ ok: true });
+    })
+
+    // ── Stock Item (Part_Master) ──
+    .get('/api/stock-items', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listStockItems(db, book.bookId));
+    })
+    .post('/api/stock-items', json(contract.stockItemSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await createStockItem(db, book.bookId, c.req.valid('json')), 201);
+    })
+    .put('/api/stock-items/:code', json(contract.stockItemSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(
+        await updateStockItem(db, book.bookId, c.req.param('code'), c.req.valid('json')),
+      );
+    })
+    .delete('/api/stock-items/:code', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await removeStockItem(db, book.bookId, c.req.param('code'));
       return c.json({ ok: true });
     })
 

@@ -69,14 +69,28 @@ export function MasterPage({
   );
 }
 
-/** The form block: its section title ("UNIT DETAILS") and its rows. */
-export function FormBlock({ heading, children }: { heading: string; children: ReactNode }) {
+/** The form block: its section title ("UNIT DETAILS") and its rows. `pairs` lays the rows out
+ *  two to a line, in reading order (Stock Item: Code | Name, Print Name | Sub Group, ...); on
+ *  tablets and phones they go back to one column. */
+export function FormBlock({
+  heading,
+  pairs,
+  children,
+}: {
+  heading: string;
+  pairs?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex max-w-[460px] flex-col gap-1">
+    <div className={`flex flex-col gap-1 ${pairs ? 'max-w-[940px]' : 'max-w-[460px]'}`}>
       <h2 className="m-0 mb-1.5 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
         {heading}
       </h2>
-      {children}
+      {pairs ? (
+        <div className="grid grid-cols-2 gap-x-10 gap-y-1 max-lg:grid-cols-1">{children}</div>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -114,6 +128,7 @@ export function FieldRow({
 
 /** Print · View on the left; Save, or Cancel · Update · Remove while a row is open (MDA). */
 export function ActionBar({
+  wide,
   editing,
   busy,
   saveLabel,
@@ -124,6 +139,8 @@ export function ActionBar({
   onUpdate,
   onRemove,
 }: {
+  /** As wide as a `pairs` form. */
+  wide?: boolean;
   editing: boolean;
   busy: boolean;
   saveLabel: string;
@@ -141,7 +158,9 @@ export function ActionBar({
     </span>
   );
   return (
-    <div className="flex max-w-[640px] flex-none items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5 max-sm:flex-wrap">
+    <div
+      className={`flex flex-none items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5 max-sm:flex-wrap ${wide ? 'max-w-[940px]' : 'max-w-[640px]'}`}
+    >
       <button type="button" onClick={() => window.print()} className={BAR_BTN}>
         Print
       </button>

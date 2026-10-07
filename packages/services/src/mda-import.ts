@@ -2,9 +2,9 @@
 // this account. The browser reads MDA's SQLite files and sends their rows as they are, with
 // MDA's own column names; this file maps them onto our tables.
 //
-// Covered today: CompanyMaster, Company_Year, and per year User, Maacct2, Maacct, Misc_Master
-// and AuditLog. The stock, purchase, sale and voucher tables are added here as their screens
-// land. A company whose CompCode this account already has is skipped, so importing the same
+// Covered today: CompanyMaster, Company_Year, and per year User, Maacct2, Maacct, Misc_Master,
+// Part_Master and AuditLog. The purchase, sale and voucher tables are added here as their
+// screens land. A company whose CompCode this account already has is skipped, so importing the same
 // folder twice changes nothing.
 
 import { SEED_ADMIN, hashPassword, importMessages, parseDate } from '@qi/core';
@@ -12,8 +12,17 @@ import { and, eq, schema, type Db } from '@qi/db';
 import { UserError } from './errors.ts';
 import { seedBook } from './years.ts';
 
-const { accountGroups, auditLog, bookUsers, books, companies, financialYears, ledgers, miscList } =
-  schema;
+const {
+  accountGroups,
+  auditLog,
+  bookUsers,
+  books,
+  companies,
+  financialYears,
+  ledgers,
+  miscList,
+  stockItems,
+} = schema;
 
 type Row = Record<string, unknown>;
 
@@ -22,6 +31,7 @@ export type MdaBook = {
   Maacct2?: Row[];
   Maacct?: Row[];
   Misc_Master?: Row[];
+  Part_Master?: Row[];
   AuditLog?: Row[];
 };
 export type MdaImport = {
@@ -212,6 +222,36 @@ async function copyBook(db: Db, bookId: string, b: MdaBook): Promise<void> {
         miscGen5: str(r.Misc_Gen5),
         miscGen6: str(r.Misc_Gen6),
         miscDate: str(r.Misc_Date),
+      })),
+    );
+
+  const items = (b.Part_Master ?? []).filter((r) => str(r.PartCode) && str(r.PartName));
+  if (items.length)
+    await db.insert(stockItems).values(
+      items.map((r) => ({
+        bookId,
+        partCode: str(r.PartCode)!,
+        partName: str(r.PartName)!,
+        printName: str(r.PrintName),
+        subGrpCode: str(r.SubGrpCode) ?? '',
+        unit: str(r.Unit),
+        altUnit: str(r.AltUnit),
+        convFactor: String(num(r.ConvFactor)),
+        regType: str(r.RegType),
+        gstRate: str(r.GstRate),
+        cessRate: num(r.CessRate).toFixed(2),
+        hsnNo: str(r.HsnNo),
+        purRate: num(r.PurRate).toFixed(2),
+        saleRate: num(r.SaleRate).toFixed(2),
+        mrp: num(r.Mrp).toFixed(2),
+        opQty: String(num(r.OpQty)),
+        opValue: num(r.OpValue).toFixed(2),
+        reorderLevel: String(num(r.ReorderLevel)),
+        minLevel: String(num(r.MinLevel)),
+        maxLevel: String(num(r.MaxLevel)),
+        barcode: str(r.Barcode),
+        isActive: bool(r.IsActive, true),
+        createdAt: stamp(r.CreatedAt),
       })),
     );
 

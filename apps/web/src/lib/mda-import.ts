@@ -11,7 +11,14 @@ import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 type Row = Record<string, unknown>;
 
 /** The year-file tables the import carries today (more as their screens land). */
-const BOOK_TABLES = ['User', 'Maacct2', 'Maacct', 'Misc_Master', 'AuditLog'] as const;
+const BOOK_TABLES = [
+  'User',
+  'Maacct2',
+  'Maacct',
+  'Misc_Master',
+  'Part_Master',
+  'AuditLog',
+] as const;
 
 export class MdaFolderError extends Error {}
 

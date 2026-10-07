@@ -278,6 +278,50 @@ export const miscList = pgTable(
   ],
 );
 
+/** Part_Master: stock items. Every column of MDA's table; the Stock Item screen writes code,
+ *  name, print name, sub group, unit, tax type, GST rate and HSN; the rest is carried over from
+ *  MDA imports and used by later screens (rates, opening stock, levels, barcode). */
+export const stockItems = pgTable(
+  'stock_items',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    /** Typed by the user, and never changed afterwards (stock_item_page.dart:483). */
+    partCode: text('part_code').notNull(),
+    partName: text('part_name').notNull(),
+    printName: text('print_name'),
+    /** A Stock Sub Group's misc code, or '' for none. */
+    subGrpCode: text('sub_grp_code'),
+    unit: text('unit'),
+    altUnit: text('alt_unit'),
+    convFactor: numeric('conv_factor', { precision: 14, scale: 4 }).notNull().default('0'),
+    /** Tax Type: Taxable, Non GST, Nil Rated or Exempt. */
+    regType: text('reg_type'),
+    /** Text such as "18%", as MDA stores it. */
+    gstRate: text('gst_rate'),
+    cessRate: numeric('cess_rate', { precision: 8, scale: 2 }).notNull().default('0'),
+    hsnNo: text('hsn_no'),
+    purRate: numeric('pur_rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    saleRate: numeric('sale_rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    mrp: numeric('mrp', { precision: 14, scale: 2 }).notNull().default('0'),
+    opQty: numeric('op_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    opValue: numeric('op_value', { precision: 14, scale: 2 }).notNull().default('0'),
+    reorderLevel: numeric('reorder_level', { precision: 14, scale: 3 }).notNull().default('0'),
+    minLevel: numeric('min_level', { precision: 14, scale: 3 }).notNull().default('0'),
+    maxLevel: numeric('max_level', { precision: 14, scale: 3 }).notNull().default('0'),
+    barcode: text('barcode'),
+    isActive: boolean('is_active').notNull().default(true),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('stock_items_book_code').on(t.bookId, t.partCode),
+    // Case-sensitive, like MDA's SQLite UNIQUE on PartName.
+    uniqueIndex('stock_items_book_name').on(t.bookId, t.partName),
+  ],
+);
+
 export const auditLog = pgTable(
   'audit_log',
   {

@@ -32,7 +32,10 @@ import { GroupMasterScreen } from './screens/masters/GroupMasterScreen.tsx';
 import { LedgerCreationScreen } from './screens/masters/LedgerCreationScreen.tsx';
 import { SubGroupMasterScreen } from './screens/masters/SubGroupMasterScreen.tsx';
 import { MiscMasterScreen } from './screens/masters/MiscMasterScreen.tsx';
+import { SaleTypeScreen } from './screens/masters/SaleTypeScreen.tsx';
 import { StockGroupScreen } from './screens/masters/StockGroupScreen.tsx';
+import { StockItemScreen } from './screens/masters/StockItemScreen.tsx';
+import { StockSubGroupScreen } from './screens/masters/StockSubGroupScreen.tsx';
 
 export const queryClient = new QueryClient();
 
@@ -148,6 +151,24 @@ const stockGroupRoute = createRoute({
   component: StockGroupScreen,
 });
 
+const stockSubGroupRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'stock-sub-group',
+  component: StockSubGroupScreen,
+});
+
+const stockItemRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'stock-item',
+  component: StockItemScreen,
+});
+
+const saleTypeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'sale-type',
+  component: SaleTypeScreen,
+});
+
 const screenRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '$screen',
@@ -169,6 +190,9 @@ export const router = createRouter({
       unitMasterRoute,
       godownRoute,
       stockGroupRoute,
+      stockSubGroupRoute,
+      stockItemRoute,
+      saleTypeRoute,
       screenRoute,
     ]),
   ]),

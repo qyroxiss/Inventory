@@ -20,7 +20,7 @@ beforeAll(async () => {
 });
 beforeEach(async () => {
   await db.execute(
-    sql`TRUNCATE audit_log, misc_list, ledgers, book_users, account_groups, financial_years, books, companies RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE audit_log, stock_items, misc_list, ledgers, book_users, account_groups, financial_years, books, companies RESTART IDENTITY CASCADE`,
   );
   // Rows as MDA's SQLite files hold them (MDA column names, 0/1 booleans, REAL balances).
   data = {
@@ -67,6 +67,9 @@ beforeEach(async () => {
               Misc_Master: [
                 { Misc_Code: 'UN001', Misc_Name: 'Nos', Misc_Pname: 'Numbers', Misc_Type: 'Unit' },
               ],
+              Part_Master: [
+                { PartCode: 'U001', PartName: 'UNCLE CHIPPS', PrintName: 'UNCLE CHIPPS', SubGrpCode: 'SSG0001', Unit: 'Pcs', RegType: 'Taxable', GstRate: '18%', HsnNo: null, SaleRate: 10, OpQty: 0, IsActive: 1 },
+              ], // prettier-ignore
               AuditLog: [
                 { LogId: 1, LogAt: '2026-08-14T20:40:50.897551', UserName: 'admin', Action: 'CREATE', TableName: 'PurcMaster', RecordKey: 'PB-0001', Details: 'Net 105000.00, 1 item(s)' },
               ], // prettier-ignore
@@ -130,6 +133,17 @@ describe('importMda', () => {
       miscName: 'Nos',
       miscPname: 'Numbers',
       miscType: 'Unit',
+    });
+    const [item] = await db
+      .select()
+      .from(schema.stockItems)
+      .where(eq(schema.stockItems.bookId, session.bookId));
+    expect(item).toMatchObject({
+      partCode: 'U001',
+      partName: 'UNCLE CHIPPS',
+      subGrpCode: 'SSG0001',
+      gstRate: '18%',
+      saleRate: '10.00',
     });
     const [log] = await db
       .select()

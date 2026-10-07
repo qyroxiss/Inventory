@@ -599,6 +599,8 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-38 | Unit Master's and Godown's Save and Update write the name into Misc_Pname too, so updating a seeded unit replaces its long name ("Numbers" becomes "Nos") |
 | Q-39 | Unit Master's and Godown's Remove doesn't check whether a stock item or purchase uses it |
 | Q-40 | Stock Group's Remove doesn't check whether a stock sub group sits under it |
+| Q-41 | Stock Sub Group's Remove doesn't check whether a stock item uses it |
+| Q-42 | Stock Item's Remove doesn't check purchases, sales or stock |
 
 ## 15. Branding
 

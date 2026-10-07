@@ -15,6 +15,7 @@ export function SearchSelect({
   options,
   placeholder,
   allowNew,
+  freeText,
   error,
   onCommit,
   onNext,
@@ -26,13 +27,17 @@ export function SearchSelect({
   placeholder: string;
   /** City only: a name with no match is accepted and treated as a new entry. */
   allowNew?: boolean;
+  /** Stock Item's Unit and GST Rate: typed text is kept exactly as typed, like MDA's
+   *  DropdownMenu there (stock_item_page.dart:163-165), unless a list entry is picked. */
+  freeText?: boolean;
   error?: boolean;
   /** Called with the resolved (value, label), or ('', '') when the field is cleared. */
   onCommit: (value: string, label: string) => void;
   /** Focus-advance after a successful Enter, same as MDA's onSelected chaining. */
   onNext?: () => void;
 }) {
-  const labelOf = (v: string) => options.find((o) => o.value === v)?.label ?? (allowNew ? v : '');
+  const labelOf = (v: string) =>
+    options.find((o) => o.value === v)?.label ?? (allowNew || freeText ? v : '');
   const [text, setText] = useState(labelOf(value));
   const [open, setOpen] = useState(false);
   const [hi, setHi] = useState(0);
@@ -51,6 +56,11 @@ export function SearchSelect({
     if (!typed) {
       if (value) onCommit('', '');
       return false;
+    }
+    if (freeText) {
+      onCommit(typed, typed);
+      setText(typed);
+      return true;
     }
     const exact = options.find((o) => o.label.toLowerCase() === typed.toLowerCase());
     if (exact) {

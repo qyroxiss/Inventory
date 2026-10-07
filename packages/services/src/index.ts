@@ -59,4 +59,25 @@ export {
   updateStockGroup,
   type StockGroup,
 } from './stock-groups.ts';
+export {
+  createStockSubGroup,
+  listStockSubGroups,
+  removeStockSubGroup,
+  updateStockSubGroup,
+  type StockSubGroup,
+} from './stock-sub-groups.ts';
+export {
+  createSaleType,
+  listSaleTypes,
+  removeSaleType,
+  updateSaleType,
+  type SaleType,
+} from './sale-types.ts';
+export {
+  createStockItem,
+  listStockItems,
+  removeStockItem,
+  updateStockItem,
+  type StockItem,
+} from './stock-items.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';
