@@ -37,7 +37,7 @@ export type Field = {
 
 export type Section = { title: string; fields: Field[] };
 
-/** Telephone and Fax: digits, spaces, +, - and brackets. */
+/** Telephone and Fax: digits, spaces, +, - and brackets; 10 digits with the STD code. */
 const LANDLINE = /[0-9+\-() ]/;
 const DIGITS = /[0-9]/;
 const ALNUM = /[0-9A-Za-z]/;

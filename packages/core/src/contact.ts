@@ -50,8 +50,8 @@ export const joinPhone = (code: string, number: string) => {
 export const contactMessages = {
   mobileIndia: 'Enter a 10-digit mobile number starting with 6, 7, 8 or 9',
   mobileOther: 'Enter a mobile number of 6 to 12 digits',
-  telephone: 'Enter a telephone number of 6 to 15 digits, e.g. 022 2345 6789',
-  fax: 'Enter a fax number of 6 to 15 digits, e.g. 022 2345 6790',
+  telephone: 'Enter the STD code and number, 10 digits in all, e.g. 022 2345 6789',
+  fax: 'Enter the STD code and number, 10 digits in all, e.g. 022 2345 6790',
   cin: 'CIN is 21 characters, e.g. U12345MH2020PTC123456',
   bankAcNo: 'Account number must be 9 to 18 digits',
   ifsc: 'IFSC is 11 characters, e.g. SBIN0001234',
@@ -66,12 +66,18 @@ export function mobileProblem(value: string | null | undefined): string | null {
   return /^\d{6,12}$/.test(number) ? null : contactMessages.mobileOther;
 }
 
-/** Digits, spaces, +, - and brackets only, the digits numbering 6 to 15. */
+/**
+ * An Indian landline or fax: digits, spaces, +, - and brackets only. STD code plus number make
+ * 10 digits starting 1 to 8 (a mobile starts 6 to 9), with an optional leading 0 or +91.
+ */
 const landline = (value: string | null | undefined, message: string) => {
   const v = (value ?? '').trim();
   if (!v) return null;
-  const n = digitsOf(v).length;
-  return /^[0-9+\-() ]+$/.test(v) && n >= 6 && n <= 15 ? null : message;
+  if (!/^[0-9+\-() ]+$/.test(v)) return message;
+  let d = digitsOf(v);
+  if (/^\s*\+/.test(v) && d.startsWith('91')) d = d.slice(2);
+  else if (d.startsWith('0')) d = d.slice(1);
+  return /^[1-8]\d{9}$/.test(d) ? null : message;
 };
 export const telephoneProblem = (v: string | null | undefined) =>
   landline(v, contactMessages.telephone);
