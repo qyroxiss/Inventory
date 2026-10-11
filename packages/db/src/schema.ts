@@ -501,6 +501,8 @@ export const purchases = pgTable(
     recDate: text('rec_date'),
     transporter: text('transporter'),
     narration: text('narration'),
+    /** The supplier's state as chosen on the bill; it decides CGST + SGST or IGST. */
+    state: text('state'),
     isInterState: boolean('is_inter_state').notNull().default(false),
     totalQty: numeric('total_qty', { precision: 14, scale: 3 }).notNull().default('0'),
     subTotal: numeric('sub_total', { precision: 14, scale: 2 }).notNull().default('0'),

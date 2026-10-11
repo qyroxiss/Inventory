@@ -58,7 +58,13 @@ const qty3 = (v: number) => String(Math.round(v * 1000) / 1000);
 
 // ── What the screen loads (_load) ───────────────────────────────────────────────
 
-export type Supplier = { code: string; name: string; stateCode: string; gstin: string };
+export type Supplier = {
+  code: string;
+  name: string;
+  state: string;
+  stateCode: string;
+  gstin: string;
+};
 export type PurchaseItem = {
   code: string;
   name: string;
@@ -108,7 +114,8 @@ export async function purchaseLookups(db: Db, bookId: string) {
     suppliers: supp.map((r): Supplier => ({
       code: r.accCode,
       name: r.accName,
-      stateCode: partyStateCode(r.stateCode, r.gstin),
+      state: r.state ?? '',
+      stateCode: partyStateCode(r.stateCode, r.gstin, r.state),
       gstin: (r.gstin ?? '').trim(),
     })),
     items: items.map((r): PurchaseItem => ({
@@ -183,7 +190,9 @@ export type PurchaseInput = {
   recDate?: string;
   transporter?: string;
   narration?: string;
-  /** Decided by the screen from the supplier, and kept from the bill when it's reopened. */
+  /** The supplier's state as chosen on the bill. */
+  state?: string;
+  /** Decided by the screen from the State, and kept from the bill when it's reopened. */
   interState: boolean;
   lines: PurchaseLineInput[];
 };
@@ -226,6 +235,7 @@ const headerValues = (input: PurchaseInput, t: PurcTotals) => ({
   recDate: input.recDate?.trim() ?? '',
   transporter: input.transporter?.trim() ?? '',
   narration: input.narration?.trim() ?? '',
+  state: input.state?.trim() || null,
   isInterState: input.interState,
   totalQty: qty3(t.qty),
   subTotal: money(t.subTotal),
@@ -610,6 +620,7 @@ export async function purchaseBill(db: Db, bookId: string, billNo: string) {
     recDate: p.recDate ?? '',
     transporter: p.transporter ?? '',
     narration: p.narration ?? '',
+    state: p.state ?? '',
     isInterState: p.isInterState,
     status: p.status,
     lines,

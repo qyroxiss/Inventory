@@ -7,24 +7,31 @@
 //   - The page opens on Sale Type, set to the first type; changing it on a new bill renumbers
 //     the bill under that type's prefix.
 //   - The customer is picked from Sundry Debtors; picking fills the address block, which stays
-//     editable for a one-off delivery address. Picking jumps to Area; an item to Required Qty;
-//     Add returns to the item.
+//     editable for a one-off delivery address. An item jumps to Required Qty; Add returns to the
+//     item.
 //   - The header Location is stamped on each line as it's added.
 //   - A cancelled bill opens for reference only and its Save collides with its own number.
+//
+// Changed at the user's request (2026-10-11): the State sits beside the Name, picked from the
+// state list, and decides CGST + SGST or IGST; changing it recomputes every line.
 
 import {
+  GST_STATES,
+  INDIAN_STATES,
   f2,
   isInterState,
   round2,
   saleLine,
   saleMessages as sm,
   saleTotals,
+  stateCodeOfName,
   type SaleLine,
 } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { ConfirmDelete } from '../../components/Dialog.tsx';
+import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import { SaleList } from './SaleList.tsx';
@@ -58,11 +65,11 @@ const NAV = {
   billDate: 2,
   location: 3,
   customer: 4,
-  area: 5,
-  city: 6,
+  state: 5,
+  mobile: 6,
   address: 7,
-  state: 8,
-  mobile: 9,
+  area: 8,
+  city: 9,
   gstNo: 10,
   item: 11,
   qty: 12,
@@ -74,6 +81,8 @@ const NAV = {
   billDiscAmt: 18,
   save: 19,
 } as const;
+
+const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
 
 type Header = {
   billNo: string;
@@ -199,21 +208,11 @@ export function SalesInvoiceScreen() {
     focusNav(NAV.billDate);
   };
 
-  /** The address block comes from the ledger; the supply type is decided again and every line
-   *  recomputed. */
-  const onCustomer = (c: Customer) => {
-    const inter = isInterState(data.companyStateCode, c.stateCode);
-    set({
-      customer: c,
-      custName: c.name,
-      address: c.address,
-      city: c.city,
-      state: c.state,
-      mobile: c.mobile,
-      gstNo: c.gstNo,
-      interState: inter,
-    });
-    setErrors((e) => ({ ...e, customer: false }));
+  /** A new State can change the supply type, so every line is recomputed. Blank counts as the
+   *  company's own state. */
+  const applyState = (state: string) => {
+    const inter = isInterState(data.companyStateCode, stateCodeOfName(state));
+    set({ state, interState: inter });
     setLines((ls) =>
       ls.map((l) =>
         saleLine({
@@ -224,7 +223,21 @@ export function SalesInvoiceScreen() {
         }),
       ),
     );
-    focusNav(NAV.area);
+  };
+
+  /** The address block comes from the ledger, the State too (else the state of its code). */
+  const onCustomer = (c: Customer) => {
+    set({
+      customer: c,
+      custName: c.name,
+      address: c.address,
+      city: c.city,
+      mobile: c.mobile,
+      gstNo: c.gstNo,
+    });
+    applyState(c.state.trim() || GST_STATES[c.stateCode] || '');
+    setErrors((e) => ({ ...e, customer: false }));
+    focusNav(NAV.state);
   };
 
   const onItem = (it: Item) => {
@@ -318,7 +331,7 @@ export function SalesInvoiceScreen() {
       area: h.area,
       city: h.city,
       state: h.state,
-      stateCode: h.customer?.stateCode ?? null,
+      stateCode: stateCodeOfName(h.state) || null,
       mobile: h.mobile,
       gstNo: h.gstNo,
       location: h.location,
@@ -403,7 +416,7 @@ export function SalesInvoiceScreen() {
     setSaving(false);
   };
 
-  const text = (id: 'area' | 'city' | 'address' | 'state' | 'mobile' | 'gstNo' | 'location') => (
+  const text = (id: 'area' | 'city' | 'address' | 'mobile' | 'gstNo' | 'location') => (
     <input
       id={`si-${id}`}
       data-nav={NAV[id]}
@@ -459,11 +472,6 @@ export function SalesInvoiceScreen() {
   const chips = (
     <>
       {editing && <Chip tone="warn">Editing {editing}</Chip>}
-      {h.customer && (
-        <Chip tone={h.interState ? 'violet' : 'ok'}>
-          {h.interState ? 'Inter-state - IGST' : 'Intra-state - CGST + SGST'}
-        </Chip>
-      )}
     </>
   );
 
@@ -519,7 +527,7 @@ export function SalesInvoiceScreen() {
             <Cell id="si-location" label="Location">
               {text('location')}
             </Cell>
-            <div className="col-span-5 grid grid-cols-[4fr_3fr_3fr_3fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
+            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_3fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
               <Cell id="si-customer" label="Name" required className="max-md:col-span-2">
                 <Lookup<Customer>
                   id="si-customer"
@@ -534,22 +542,36 @@ export function SalesInvoiceScreen() {
                   onChange={onCustomer}
                 />
               </Cell>
-              <Cell id="si-area" label="Area">
-                {text('area')}
+              <Cell id="si-state" label="State">
+                <SearchSelect
+                  id="si-state"
+                  nav={NAV.state}
+                  compact
+                  value={h.state}
+                  options={STATE_OPTIONS}
+                  placeholder="Search state…"
+                  onCommit={(state) => {
+                    if (state !== h.state) applyState(state);
+                  }}
+                  onNext={() => focusNav(NAV.mobile)}
+                />
               </Cell>
-              <Cell id="si-city" label="City">
-                {text('city')}
+              <Cell label="GST">
+                <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
               </Cell>
               <Cell id="si-mobile" label="Mobile">
                 {text('mobile')}
               </Cell>
             </div>
-            <div className="col-span-5 grid grid-cols-[4fr_3fr_6fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
+            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_3fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
               <Cell id="si-address" label="Address" className="max-md:col-span-2">
                 {text('address')}
               </Cell>
-              <Cell id="si-state" label="State">
-                {text('state')}
+              <Cell id="si-area" label="Area">
+                {text('area')}
+              </Cell>
+              <Cell id="si-city" label="City">
+                {text('city')}
               </Cell>
               <Cell id="si-gstNo" label="GST No">
                 {text('gstNo')}

@@ -145,6 +145,7 @@ export const purchaseSave = z.object({
   recDate: opt,
   transporter: opt,
   narration: opt,
+  state: opt,
   interState: z.boolean(),
   lines: z.array(
     z.object({

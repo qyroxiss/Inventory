@@ -100,7 +100,7 @@ async function saleBills(
       date: h.billDate,
       partyName: h.custName ?? '',
       gstin,
-      stateCode: partyStateCode(h.stateCode, gstin),
+      stateCode: partyStateCode(h.stateCode, gstin, h.state),
       interState: h.isInterState,
       value: Number(h.netAmount),
       lines: mine.map(line),
@@ -112,7 +112,13 @@ async function saleBills(
 /** The period's Active purchase bills with their lines and the supplier's GSTIN. */
 async function purchaseBills(db: Db, bookId: string, p: Period) {
   const heads = await db
-    .select({ p: purchases, name: ledgers.accName, gstin: ledgers.gstin, state: ledgers.stateCode })
+    .select({
+      p: purchases,
+      name: ledgers.accName,
+      gstin: ledgers.gstin,
+      state: ledgers.stateCode,
+      stateName: ledgers.state,
+    })
     .from(purchases)
     .leftJoin(
       ledgers,
@@ -138,7 +144,7 @@ async function purchaseBills(db: Db, bookId: string, p: Period) {
       ),
     )
     .orderBy(asc(purchaseLines.lineNo));
-  return heads.map(({ p: h, name, gstin, state }) => {
+  return heads.map(({ p: h, name, gstin, state, stateName }) => {
     const mine = rows.filter((r) => r.purchaseId === h.id);
     const g = (gstin ?? '').trim().toUpperCase();
     return {
@@ -148,7 +154,7 @@ async function purchaseBills(db: Db, bookId: string, p: Period) {
       partyName: name ?? h.suppCode,
       gstin: g,
       gstinOk: !!g && validators.gstin(g) === null,
-      stateCode: partyStateCode(state, g),
+      stateCode: partyStateCode(state, g, h.state || stateName),
       interState: h.isInterState,
       value: Number(h.netAmount),
       lines: mine.map(line),

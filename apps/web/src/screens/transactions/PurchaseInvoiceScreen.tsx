@@ -1,24 +1,33 @@
 // Purchase Invoice (purchase_invoice_page.dart). The bill's header, the "Purchased Item Detail"
 // entry row with its grid and totals, and the footer buttons. Every figure is worked out as you
 // type with MDA's own maths (@qi/core purcLine / purcTotals); the server works it out again on
-// save. The supplier decides CGST + SGST or IGST, so changing it recomputes every line.
+// save. The State beside the supplier decides CGST + SGST or IGST: it fills from the supplier's
+// ledger, can be changed for the bill, and changing it recomputes every line.
 //
-// Kept as MDA has it: Enter walks the fields in MDA's order, starting on Supply With; picking a
-// supplier jumps to Transporter, an item to Quantity, a godown to Add; Add returns to the item.
+// Changed from MDA at the user's request (2026-10-11): one Location for the whole bill sits in
+// the header; Order No./Date/Type, Goods Rec No, Rec. Date, Narration and Transporter moved into
+// the optional "Other Details" popup.
+//
+// Kept as MDA has it: Enter walks the fields in order, starting on Supply With; picking an item
+// jumps to Quantity; Add returns to the item.
 // A cancelled bill opens for reference only and its Save collides with its own number (Q-50).
 
 import {
+  GST_STATES,
+  INDIAN_STATES,
   f2,
   isInterState,
   purcLine,
   purcTotals,
   purchaseMessages as pm,
+  stateCodeOfName,
   type PurcLine,
 } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
-import { ConfirmDelete } from '../../components/Dialog.tsx';
+import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
+import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import { PurchaseList } from './PurchaseList.tsx';
@@ -45,28 +54,27 @@ type Item = Setup['items'][number];
 type Godown = Setup['godowns'][number];
 type ListRow = OkBody<Awaited<ReturnType<typeof api.api.purchases.$get>>>[number];
 
-/** MDA's order numbers (NumericFocusOrder): Enter follows them; Location comes last (Q-35). */
+/** Enter follows these numbers (MDA's NumericFocusOrder, with Location now in the header). */
 const NAV = {
   billDate: 1,
   supplyWith: 2,
   suppInvNo: 3,
   suppInvDate: 4,
-  orderNo: 5,
-  orderDate: 6,
-  orderType: 7,
-  goodsRecNo: 8,
-  recDate: 9,
+  location: 5,
   supplier: 10,
-  transporter: 11,
-  narration: 12,
+  state: 11,
   item: 13,
   qty: 14,
   rate: 15,
   discPct: 16,
   discAmt: 17,
   add: 18,
-  location: 26,
 } as const;
+
+const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
+
+/** A supplier's State as the bill shows it: the ledger's State, else the state of its code. */
+const stateOf = (s: Supplier) => s.state.trim() || GST_STATES[s.stateCode] || '';
 
 type Header = {
   billNo: string;
@@ -81,7 +89,9 @@ type Header = {
   recDate: string;
   transporter: string;
   narration: string;
+  location: string;
   supplier: Supplier | null;
+  state: string;
   interState: boolean;
 };
 
@@ -91,7 +101,6 @@ type Entry = {
   rate: string;
   discPct: string;
   discAmt: string;
-  location: string;
   /** Index being re-edited, null when adding. */
   line: number | null;
 };
@@ -101,7 +110,6 @@ const blankEntry = (): Entry => ({
   rate: '0',
   discPct: '0.00',
   discAmt: '0.00',
-  location: '',
   line: null,
 });
 const num = (s: string) => Number(s) || 0;
@@ -131,7 +139,9 @@ export function PurchaseInvoiceScreen() {
     recDate: '',
     transporter: '',
     narration: '',
+    location: '',
     supplier: null,
+    state: '',
     interState: false,
   });
 
@@ -144,6 +154,7 @@ export function PurchaseInvoiceScreen() {
   const [saving, setSaving] = useState(false);
   const [list, setList] = useState<ListRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [otherOpen, setOtherOpen] = useState(false);
   const started = useRef(false);
 
   // First load: a fresh bill, the cursor on Supply With, and MDA's warning when there's no
@@ -180,12 +191,12 @@ export function PurchaseInvoiceScreen() {
     : null;
   const entryTax = entryLine ? entryLine.sgstA + entryLine.cgstA + entryLine.igstA : 0;
 
-  /** A new supplier changes the tax split, so every line is recomputed with the item master's
-   *  current rate (`_onSupplierChanged` → `_recomputeAllLines`). */
-  const onSupplier = (s: Supplier) => {
-    const inter = isInterState(data.companyStateCode, s.stateCode);
-    set({ supplier: s, interState: inter });
-    setSupplierError(false);
+  /** A new State can change the tax split, so every line is recomputed with the item master's
+   *  current rate (`_onSupplierChanged` → `_recomputeAllLines`). Blank counts as the company's
+   *  own state. */
+  const applyState = (state: string, supplier: Supplier | null) => {
+    const inter = isInterState(data.companyStateCode, stateCodeOfName(state));
+    set({ supplier, state, interState: inter });
     setLines((ls) =>
       ls.map((l) =>
         purcLine({
@@ -196,7 +207,12 @@ export function PurchaseInvoiceScreen() {
         }),
       ),
     );
-    focusNav(NAV.transporter);
+  };
+
+  const onSupplier = (s: Supplier) => {
+    applyState(stateOf(s), s);
+    setSupplierError(false);
+    focusNav(NAV.state);
   };
 
   const onItem = (it: Item) => {
@@ -229,7 +245,7 @@ export function PurchaseInvoiceScreen() {
       itemName: entry.item.name,
       hsnNo: entry.item.hsnNo,
       unit: entry.item.unit,
-      location: entry.location.trim() || null,
+      location: h.location.trim() || null,
       qty: num(entry.qty),
       rate: num(entry.rate),
       disP: num(entry.discPct),
@@ -262,7 +278,6 @@ export function PurchaseInvoiceScreen() {
       rate: f2(l.rate),
       discPct: f2(l.disP),
       discAmt: f2(l.disA),
-      location: l.location ?? '',
       line: i,
     });
     focusNav(NAV.qty);
@@ -305,13 +320,15 @@ export function PurchaseInvoiceScreen() {
       recDate: h.recDate,
       transporter: h.transporter,
       narration: h.narration,
+      state: h.state,
       interState: h.interState,
       lines: lines.map((l) => ({
         itemCode: l.itemCode,
         itemName: l.itemName,
         hsnNo: l.hsnNo,
         unit: l.unit,
-        location: l.location,
+        // One Location for the whole bill.
+        location: h.location.trim() || null,
         qty: l.qty,
         rate: l.rate,
         disP: l.disP,
@@ -344,6 +361,13 @@ export function PurchaseInvoiceScreen() {
     const { bill } = await unwrap(api.api.purchases.bill.$get({ query: { no: billNo } }));
     if (!bill) return;
     const cancelled = bill.status === 'Cancelled';
+    const supplier = data.suppliers.find((s) => s.code === bill.suppCode) ?? {
+      code: bill.suppCode,
+      name: bill.suppName,
+      state: '',
+      stateCode: '',
+      gstin: '',
+    };
     setH({
       billNo: bill.billNo,
       billDate: bill.billDate,
@@ -357,12 +381,10 @@ export function PurchaseInvoiceScreen() {
       recDate: bill.recDate,
       transporter: bill.transporter,
       narration: bill.narration,
-      supplier: data.suppliers.find((s) => s.code === bill.suppCode) ?? {
-        code: bill.suppCode,
-        name: bill.suppName,
-        stateCode: '',
-        gstin: '',
-      },
+      location: bill.lines.find((l) => l.location)?.location ?? '',
+      supplier,
+      // Bills saved before the State box existed show the supplier's.
+      state: bill.state || stateOf(supplier),
       interState: bill.isInterState,
     });
     setLines(bill.lines);
@@ -388,7 +410,7 @@ export function PurchaseInvoiceScreen() {
     setSaving(false);
   };
 
-  const text = (id: keyof Header & string, nav: number, hint?: string) => (
+  const text = (id: keyof Header & string, nav?: number, hint?: string) => (
     <input
       id={`pi-${id}`}
       data-nav={nav}
@@ -439,13 +461,19 @@ export function PurchaseInvoiceScreen() {
   const chips = (
     <>
       {editing && <Chip tone="warn">Editing {editing}</Chip>}
-      {h.supplier && (
-        <Chip tone={h.interState ? 'violet' : 'ok'}>
-          {h.interState ? 'Inter-state - IGST' : 'Intra-state - CGST + SGST'}
-        </Chip>
-      )}
     </>
   );
+
+  // Filled boxes in the popup, shown on its button so nothing entered there goes unseen.
+  const otherCount = [
+    h.orderNo,
+    h.orderDate,
+    h.orderType,
+    h.goodsRecNo,
+    h.recDate,
+    h.narration,
+    h.transporter,
+  ].filter((v) => v.trim()).length;
 
   return (
     <>
@@ -454,14 +482,12 @@ export function PurchaseInvoiceScreen() {
           className="flex min-h-0 flex-1 flex-col gap-2"
           onKeyDown={(e) =>
             enterToNext(e, {
-              [NAV.narration]: NAV.item,
               [NAV.discAmt]: NAV.add,
-              [NAV.location]: NAV.add,
             })
           }
         >
           {/* ── Header ── */}
-          <div className="grid grid-cols-5 gap-x-2.5 gap-y-1.5 border border-border bg-card px-3 py-2 max-md:grid-cols-2">
+          <div className="grid grid-cols-6 gap-x-2.5 gap-y-1.5 border border-border bg-card px-3 py-2 max-lg:grid-cols-3 max-md:grid-cols-2">
             <Cell label="Purchase No." required>
               <ReadOnly text={h.billNo} strong />
             </Cell>
@@ -489,34 +515,26 @@ export function PurchaseInvoiceScreen() {
             <Cell id="pi-suppInvDate" label="Date">
               {text('suppInvDate', NAV.suppInvDate, 'Supplier bill date')}
             </Cell>
-            <Cell id="pi-orderNo" label="Order No.">
-              {text('orderNo', NAV.orderNo)}
+            <Cell id="pi-location" label="Location">
+              {data.godowns.length ? (
+                <Lookup<Godown>
+                  id="pi-location"
+                  nav={NAV.location}
+                  value={data.godowns.find((g) => g.name === h.location) ?? null}
+                  items={data.godowns}
+                  hint="Godown (optional)"
+                  searchTitle={['Select', 'Godown']}
+                  onChange={(g) => {
+                    set({ location: g.name });
+                    focusNav(NAV.supplier);
+                  }}
+                />
+              ) : (
+                text('location', NAV.location, 'Godown (optional)')
+              )}
             </Cell>
-            <Cell id="pi-orderDate" label="Order Date">
-              <DateBox
-                id="pi-orderDate"
-                data-nav={NAV.orderDate}
-                value={h.orderDate}
-                placeholder="Select date"
-                format={dmyDash}
-                className={boxClass()}
-                onChange={(orderDate) => {
-                  set({ orderDate });
-                  focusNav(NAV.orderType);
-                }}
-              />
-            </Cell>
-            <Cell id="pi-orderType" label="Order Type">
-              {text('orderType', NAV.orderType)}
-            </Cell>
-            <Cell id="pi-goodsRecNo" label="Goods Rec No">
-              {text('goodsRecNo', NAV.goodsRecNo)}
-            </Cell>
-            <Cell id="pi-recDate" label="Rec. Date">
-              {text('recDate', NAV.recDate)}
-            </Cell>
-            <div className="col-span-5 grid grid-cols-[5fr_4fr_5fr] gap-x-2.5 gap-y-1.5 max-md:col-span-2 max-md:grid-cols-1">
-              <Cell id="pi-supplier" label="Supplier Name" required>
+            <div className="col-span-6 grid grid-cols-[5fr_3fr_2fr_auto] items-end gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
+              <Cell id="pi-supplier" label="Supplier Name" required className="max-md:col-span-2">
                 <Lookup<Supplier>
                   id="pi-supplier"
                   nav={NAV.supplier}
@@ -528,12 +546,35 @@ export function PurchaseInvoiceScreen() {
                   onChange={onSupplier}
                 />
               </Cell>
-              <Cell id="pi-transporter" label="Transporter">
-                {text('transporter', NAV.transporter)}
+              <Cell id="pi-state" label="State">
+                <SearchSelect
+                  id="pi-state"
+                  nav={NAV.state}
+                  compact
+                  value={h.state}
+                  options={STATE_OPTIONS}
+                  placeholder="Search state…"
+                  onCommit={(state) => {
+                    if (state !== h.state) applyState(state, h.supplier);
+                  }}
+                  onNext={() => focusNav(NAV.item)}
+                />
               </Cell>
-              <Cell id="pi-narration" label="Narration">
-                {text('narration', NAV.narration, 'Optional')}
+              <Cell label="GST">
+                <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
               </Cell>
+              <button
+                type="button"
+                onClick={() => setOtherOpen(true)}
+                className="flex h-[34px] cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border-[1.5px] border-foreground px-3 text-[15px] font-semibold max-md:col-span-2"
+              >
+                Other Details…
+                {otherCount > 0 && (
+                  <span className="bg-primary px-1.5 text-xs text-primary-foreground">
+                    {otherCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -580,39 +621,9 @@ export function PurchaseInvoiceScreen() {
             </div>
 
             {/* Whichever of Code / Name the radio picks is the box you type in, placed first. */}
-            <div className="grid grid-cols-[4fr_4fr_3fr] gap-2.5 max-md:grid-cols-2 max-sm:grid-cols-1">
+            <div className="grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
               {byCode ? itemCodeBox(true) : itemNameBox(true)}
               {byCode ? itemNameBox(false) : itemCodeBox(false)}
-              <Cell
-                id="pi-location"
-                label="Location"
-                className="max-md:col-span-2 max-sm:col-span-1"
-              >
-                {data.godowns.length ? (
-                  <Lookup<Godown>
-                    id="pi-location"
-                    nav={NAV.location}
-                    value={data.godowns.find((g) => g.name === entry.location) ?? null}
-                    items={data.godowns}
-                    hint="Godown (optional)"
-                    searchTitle={['Select', 'Godown']}
-                    onChange={(g) => {
-                      setE({ location: g.name });
-                      focusNav(NAV.add);
-                    }}
-                  />
-                ) : (
-                  <input
-                    id="pi-location"
-                    data-nav={NAV.location}
-                    value={entry.location}
-                    placeholder="Godown (optional)"
-                    autoComplete="off"
-                    onChange={(e) => setE({ location: e.target.value })}
-                    className={boxClass()}
-                  />
-                )}
-              </Cell>
             </div>
 
             <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_auto] items-end gap-2.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
@@ -745,6 +756,57 @@ export function PurchaseInvoiceScreen() {
         onPick={(r) => void loadBill(r.billNo)}
         onClose={() => setList(null)}
       />
+      <Dialog
+        open={otherOpen}
+        onClose={() => setOtherOpen(false)}
+        title={['Other', 'Details']}
+        className="w-[560px]"
+      >
+        <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-[14px]">
+          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 max-sm:grid-cols-1">
+            <Cell id="pi-orderNo" label="Order No.">
+              {text('orderNo')}
+            </Cell>
+            <Cell id="pi-orderDate" label="Order Date">
+              <DateBox
+                id="pi-orderDate"
+                value={h.orderDate}
+                placeholder="Select date"
+                format={dmyDash}
+                className={boxClass()}
+                onChange={(orderDate) => set({ orderDate })}
+              />
+            </Cell>
+            <Cell id="pi-orderType" label="Order Type">
+              {text('orderType')}
+            </Cell>
+            <Cell id="pi-goodsRecNo" label="Goods Rec No">
+              {text('goodsRecNo')}
+            </Cell>
+            <Cell id="pi-recDate" label="Rec. Date">
+              {text('recDate')}
+            </Cell>
+            <Cell id="pi-transporter" label="Transporter">
+              {text('transporter')}
+            </Cell>
+            <Cell id="pi-narration" label="Narration" className="col-span-2 max-sm:col-span-1">
+              {text('narration', undefined, 'Optional')}
+            </Cell>
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setOtherOpen(false);
+                focusNav(NAV.item);
+              }}
+              className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </Dialog>
       <ConfirmDelete
         open={confirm}
         title={['Cancel', 'Purchase']}

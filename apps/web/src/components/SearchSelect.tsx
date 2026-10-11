@@ -21,6 +21,8 @@ export function SearchSelect({
   onNext,
   typeToSuggest,
   tall,
+  compact,
+  nav,
 }: {
   id: string;
   /** The resolved value (an option's `value`, or — when `allowNew` — arbitrary stored text). */
@@ -42,6 +44,10 @@ export function SearchSelect({
   typeToSuggest?: boolean;
   /** The taller box of the company and year pages. */
   tall?: boolean;
+  /** The smaller box of the bill screens. */
+  compact?: boolean;
+  /** The bill screens' Enter order (`data-nav`). */
+  nav?: number;
 }) {
   const labelOf = (v: string) =>
     options.find((o) => o.value === v)?.label ?? (allowNew || freeText ? v : '');
@@ -108,6 +114,7 @@ export function SearchSelect({
     <div className="relative">
       <input
         id={id}
+        data-nav={nav}
         value={text}
         placeholder={placeholder}
         autoComplete="off"
@@ -144,7 +151,7 @@ export function SearchSelect({
             setOpen(false);
           }
         }}
-        className={`${tall ? 'h-11 text-[17px]' : 'h-[42px] text-base'} w-full field-box px-3 text-foreground outline-none focus-visible:outline-none ${
+        className={`${tall ? 'h-11 px-3 text-[17px]' : compact ? 'h-[34px] px-2.5 text-[15px]' : 'h-[42px] px-3 text-base'} w-full min-w-0 field-box text-foreground outline-none focus-visible:outline-none ${
           error ? 'field-error' : ''
         }`}
       />
