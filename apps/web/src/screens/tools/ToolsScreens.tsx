@@ -129,6 +129,9 @@ function CompanyDetails() {
     setBusy(true);
     try {
       const c = await unwrap(api.api.settings.company.$put({ json: form }));
+      // One company here, so the form shows what was actually saved (upper-cased GSTIN etc.).
+      setForm(fromRecord(c as Parameters<typeof fromRecord>[0]));
+      await queryClient.invalidateQueries({ queryKey: ['settings-company'] });
       await queryClient.invalidateQueries({ queryKey: ['book-me'] });
       await queryClient.invalidateQueries({ queryKey: ['book-index'] });
       toast(sm.companyUpdated(c.compName));

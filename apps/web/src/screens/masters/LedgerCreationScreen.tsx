@@ -223,8 +223,9 @@ export function LedgerCreationScreen() {
       const l = await unwrap(
         api.api.ledgers[':accCode'].$put({ param: { accCode: editing.accCode }, json: payload() }),
       );
-      setEditing({ ...l, grpName: groupOptions.find((g) => g.value === l.grpCode)?.label ?? null });
       await refresh();
+      // A fresh form after Update too, as after Save (user's request, 2026-10-11).
+      clearForm();
       setMessage({
         kind: 'ok',
         title: ['Ledger', 'Updated'],
@@ -265,14 +266,14 @@ export function LedgerCreationScreen() {
     setListOpen(true);
   }
 
-  /** Loading a different ledger for edit leaves Aadhar/Sales Executive/Reg. Type/Country exactly
-   * as they are — MDA's own `_loadForEdit` never touches them, since nothing is ever saved there. */
+  /** Loading a ledger for edit starts from a clean form, so Aadhar/Sales Executive/Reg. Type/
+   *  Country (never saved) don't carry over from the previous one. */
   const pick = (l: Ledger) => {
     setListOpen(false);
     setEditing(l);
     setErrors({});
-    setForm((f) => ({
-      ...f,
+    setForm(() => ({
+      ...EMPTY_FORM,
       name: l.accName,
       address: l.add1 ?? '',
       city: l.city ?? '',

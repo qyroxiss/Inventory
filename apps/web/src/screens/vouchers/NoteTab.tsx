@@ -124,6 +124,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
     const no = await fetchNextNo(type);
     setErrors({ items: {} });
     setForm(blank(no));
+    setTimeout(() => document.getElementById('nt-date')?.focus(), 0);
   };
 
   const validate = () => {

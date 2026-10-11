@@ -105,6 +105,7 @@ export function JournalTab() {
     const no = await fetchNextNo('JNL');
     setErrors({});
     setForm(blank(no));
+    setTimeout(() => document.getElementById('jv-date')?.focus(), 0);
   };
 
   const validate = () => {

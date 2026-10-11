@@ -115,8 +115,9 @@ export function SubGroupMasterScreen() {
           json: { name: form.name, under: form.under || undefined },
         }),
       );
-      setEditing({ ...g, parentGrpName: editing.parentGrpName });
       await refresh();
+      // A fresh form after Update too, as after Save (user's request, 2026-10-11).
+      clearForm();
       setMessage({
         kind: 'ok',
         title: ['Sub Group', 'Updated'],

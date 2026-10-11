@@ -108,6 +108,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
     const vchrNo = await fetchNextNo(typeOf(false));
     setErrors({});
     setForm({ ...blank(), vchrNo });
+    setTimeout(() => document.getElementById('cb-date')?.focus(), 0);
   };
 
   const switchType = async (toBank: boolean) => {

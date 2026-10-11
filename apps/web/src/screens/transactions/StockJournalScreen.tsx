@@ -91,6 +91,8 @@ export function StockJournalScreen() {
 
   const fresh = async () => {
     setVchrNo(await fetchNo());
+    // Items and godowns added meanwhile (another tab) show up on the fresh voucher.
+    if (started.current) void setup.refetch();
     setDate(defaultVoucherDate(me.data?.fyFrom, me.data?.fyTo));
     setNarration('');
     setLines([]);

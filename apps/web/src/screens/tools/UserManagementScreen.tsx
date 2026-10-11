@@ -81,6 +81,7 @@ export function UserManagementScreen() {
     setEditing(null);
     setForm(BLANK);
     setErrors({});
+    setShow(false);
     focusName();
   };
   const pick = (u: User) => {
@@ -113,8 +114,7 @@ export function UserManagementScreen() {
         const u = await unwrap(
           api.api.users[':code'].$put({ param: { code: editing.userCode }, json: form }),
         );
-        setEditing(u);
-        setForm((f) => ({ ...f, password: '' }));
+        clear();
         toast(um.updated(u.userName));
       } else {
         const u = await unwrap(api.api.users.$post({ json: form }));

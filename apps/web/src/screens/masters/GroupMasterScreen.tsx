@@ -110,8 +110,9 @@ export function GroupMasterScreen() {
           json: { name: form.name, type: form.type || undefined, isLedger: form.isLedger },
         }),
       );
-      setEditing(g);
       await refresh();
+      // A fresh form after Update too, as after Save (user's request, 2026-10-11).
+      clearForm();
       setMessage({
         kind: 'ok',
         title: ['Group', 'Updated'],

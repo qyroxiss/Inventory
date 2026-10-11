@@ -306,10 +306,13 @@ export function SalesInvoiceScreen() {
 
   const newBill = async () => {
     const billNo = await nextNo(firstType()?.prefix);
+    // Masters added meanwhile (another tab) show up on the fresh bill.
+    void setup.refetch();
     setH(blankHeader(billNo));
     setLines([]);
     setEditing(null);
     setErrors({});
+    setByCode(false);
     setEntry(blankEntry());
     focusNav(NAV.saleType);
   };

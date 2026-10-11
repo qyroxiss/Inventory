@@ -290,10 +290,13 @@ export function PurchaseInvoiceScreen() {
 
   const newBill = async () => {
     const { billNo } = await unwrap(api.api.purchases.next.$get());
+    // Masters added meanwhile (another tab) show up on the fresh bill.
+    void setup.refetch();
     setH(blankHeader(billNo));
     setLines([]);
     setEditing(null);
     setSupplierError(false);
+    setByCode(false);
     clearEntry();
     focusNav(NAV.supplyWith);
   };

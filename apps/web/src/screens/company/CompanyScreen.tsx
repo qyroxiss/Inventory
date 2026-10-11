@@ -119,8 +119,9 @@ export function CompanyScreen() {
       const c = await unwrap(
         api.api.companies[':companyId'].$put({ param: { companyId: editing.id }, json: form }),
       );
-      setEditing(c);
       await refresh();
+      // A fresh form after Update too (user's request, 2026-10-11).
+      clearForm();
       toast(companyMessages.updated(c.compName));
     } catch (err) {
       failed(err, 'Error updating company');
