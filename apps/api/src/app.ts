@@ -12,6 +12,7 @@ import {
   MISC_MASTER_KINDS,
   isAdminRole,
   loginMessages,
+  partyStateCode,
   seriesMessages,
 } from '@qi/core';
 import type { Db } from '@qi/db';
@@ -793,12 +794,10 @@ export function createApp(opts: AppOptions) {
       if (!isAdminRole(book.role)) throw new UserError(seriesMessages.adminOnly);
       const company = await updateCompany(db, book.accountId, book.companyId, c.req.valid('json'));
       // The open book shows the company's name and decides GST by its state: keep both current.
-      const stored = (company.stateCode ?? '').trim();
-      const gstin = (company.gstin ?? '').trim();
       await writeBook(c, {
         ...book,
         companyName: company.compName,
-        companyStateCode: stored || (gstin.length >= 2 ? gstin.substring(0, 2) : ''),
+        companyStateCode: partyStateCode(company.stateCode, company.gstin, company.state),
       });
       return c.json(company);
     })

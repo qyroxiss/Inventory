@@ -35,6 +35,20 @@ describe('GST', () => {
     expect(partyStateCode('27', '29ABCDE1234F1Z5')).toBe('27');
     expect(partyStateCode(null, null)).toBe('');
   });
+  test('the State field decides first', () => {
+    expect(partyStateCode('', '', 'Uttar Pradesh')).toBe('09');
+    expect(partyStateCode('27', '29ABCDE1234F1Z5', 'Delhi')).toBe('07');
+    expect(partyStateCode('', '', 'Andhra Pradesh')).toBe('37');
+    expect(partyStateCode('', '', 'jammu and kashmir')).toBe('01');
+    expect(partyStateCode('', '29ABCDE1234F1Z5', 'Not Applicable')).toBe('29');
+    expect(partyStateCode(null, null, 'Not Applicable')).toBe('');
+  });
+  test('UP company: IGST outside UP, CGST + SGST inside, either one blank stays intra-state', () => {
+    const up = partyStateCode('', '', 'Uttar Pradesh');
+    expect(isInterState(up, partyStateCode('', '', 'Delhi'))).toBe(true);
+    expect(isInterState(up, partyStateCode('', '', 'Uttar Pradesh'))).toBe(false);
+    expect(isInterState(up, partyStateCode('', '', ''))).toBe(false);
+  });
   test('item rates read as numbers', () => {
     expect(gstRateNumber('18%')).toBe(18);
     expect(gstRateNumber('5')).toBe(5);

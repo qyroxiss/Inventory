@@ -2,6 +2,7 @@
 // _validate) and the GST maths it uses, GstCalculator (posting_service.dart:90-140).
 // docs/LOGIC-SPEC.md §4.3, §5, §5.2, §6.2, §9.
 
+import { GST_STATES } from './gst.ts';
 import { round2, roundOff } from './round.ts';
 
 // ── GST (GstCalculator) ─────────────────────────────────────────────────────────
@@ -14,8 +15,24 @@ export const isInterState = (company?: string | null, party?: string | null): bo
   return a !== b;
 };
 
-/** A party's state code: the stored one, else the first two characters of its GSTIN. */
-export const partyStateCode = (stored?: string | null, gstin?: string | null): string => {
+const nameKey = (name: string) =>
+  name.toLowerCase().replace(/\band\b/g, '&').replace(/\s+/g, ' ').trim();
+const CODE_BY_NAME = new Map(Object.entries(GST_STATES).map(([code, name]) => [nameKey(name), code]));
+
+/** A state name ("Uttar Pradesh") as its GST code ("09"); '' for "Not Applicable" or blank. */
+export const stateCodeOfName = (name?: string | null): string =>
+  CODE_BY_NAME.get(nameKey(name ?? '')) ?? '';
+
+/** A company's or party's state code: its State field, else the stored code, else the first
+ *  two characters of its GSTIN. MDA used only the code and GSTIN (Q-09); the State field now
+ *  decides first, so a party without a GSTIN still gets IGST across states. */
+export const partyStateCode = (
+  stored?: string | null,
+  gstin?: string | null,
+  stateName?: string | null,
+): string => {
+  const byName = stateCodeOfName(stateName);
+  if (byName) return byName;
   const s = (stored ?? '').trim();
   if (s) return s;
   const g = (gstin ?? '').trim();

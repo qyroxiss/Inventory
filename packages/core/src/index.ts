@@ -86,6 +86,7 @@ export {
   gstRateNumber,
   isInterState,
   partyStateCode,
+  stateCodeOfName,
   purcLine,
   purcTotals,
   purchaseMessages,

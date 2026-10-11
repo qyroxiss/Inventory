@@ -7,6 +7,7 @@ import {
   loginFieldErrors,
   loginMessages,
   newPasswordErrors,
+  partyStateCode,
   verifyPassword,
 } from '@qi/core';
 import { and, eq, schema, type Db } from '@qi/db';
@@ -72,10 +73,6 @@ export async function bookLogin(
   // step when an older year file is opened, db_service.dart:300-306). Nothing changes if present.
   await ensureBookSeeds(db, year.bookId);
 
-  // Company state code: stored value, else the GSTIN prefix (db_service.dart:106-123).
-  const stored = (company.stateCode ?? '').trim();
-  const gstin = (company.gstin ?? '').trim();
-
   return {
     bookId: year.bookId,
     yearId: year.id,
@@ -85,7 +82,9 @@ export async function bookLogin(
     role: row.role ?? 'User',
     mustChangePassword: row.mustChangePassword,
     companyName: company.compName,
-    companyStateCode: stored || (gstin.length >= 2 ? gstin.substring(0, 2) : ''),
+    // Company state: its State field, else the stored code, else the GSTIN prefix
+    // (db_service.dart:106-123 used only the last two).
+    companyStateCode: partyStateCode(company.stateCode, company.gstin, company.state),
     yearName: year.yearName,
     fyFrom: year.fromDate,
     fyTo: year.toDate,

@@ -187,6 +187,7 @@ roundOff(net) = round2(roundHalfAwayFromZero(net) - net)
 **Where the state codes come from:**
 - **Company:** `companies.StateCode`. If that is empty, the first 2 characters of the GSTIN. If both are empty, `''`.
 - **Party:** `ledgers.StateCode`. If that is empty, the first 2 characters of the ledger's GSTIN.
+- **Changed in the rebuild (2026-10-10, at the user's request):** for both sides, the **State** field decides first (its name is matched to the GST code, e.g. Uttar Pradesh → 09). Only when the State is blank or "Not Applicable" does the stored code, then the GSTIN, apply. This retires Q-09: a party without a GSTIN now gets IGST when its State differs from the company's (`partyStateCode` in packages/core/src/purchases.ts).
 
 **Tax-inclusive rates are not supported.** All rates are tax-exclusive.
 
@@ -567,7 +568,7 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-06 | FY dates are not checked (From < To, overlaps, match with the name) |
 | Q-07 | Editing a sale or purchase deletes its voucher and reposts it with a new SAL/PUR voucher number; the bill number is kept |
 | Q-08 | `SALEBILL`/`PURBILL.LastNo` are never updated; bill numbering runs on the highest existing number + 1 |
-| Q-09 | The ledger form never sets StateCode; the party state falls back to the GSTIN prefix, or to "unknown", which counts as intra-state |
+| Q-09 | The ledger form never sets StateCode; the party state falls back to the GSTIN prefix, or to "unknown", which counts as intra-state. **Retired 2026-10-10:** the State field now decides first (§ "Where the state codes come from") |
 | Q-10 | Company mobile/email/PIN and ledger GSTIN/PAN/mobile are not validated |
 | Q-11 | Ledger Country, Aadhar, Sales Exec and Reg. Type are shown but not saved |
 | Q-12 | The role matrix is shown in User Management but not enforced; only User Management itself checks for Admin |

@@ -109,7 +109,7 @@ export async function saleLookups(db: Db, bookId: string) {
       address: r.add1 ?? '',
       city: r.city ?? '',
       state: r.state ?? '',
-      stateCode: partyStateCode(r.stateCode, r.gstin),
+      stateCode: partyStateCode(r.stateCode, r.gstin, r.state),
       mobile: r.mobile ?? '',
       gstNo: (r.gstin ?? '').trim(),
     })),
