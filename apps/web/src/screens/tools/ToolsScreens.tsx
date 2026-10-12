@@ -32,7 +32,7 @@ import {
   useBook,
   type Col,
 } from '../reports/shared.tsx';
-import { boxClass, dmyDash } from '../transactions/shared.tsx';
+import { boxClass, dmy } from '../transactions/shared.tsx';
 
 const BTN =
   'flex h-11 cursor-pointer items-center justify-center border-[1.5px] border-foreground px-4 text-[15px] font-semibold disabled:opacity-50';
@@ -514,7 +514,7 @@ export function LogsScreen() {
   const when = (iso: string) => {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${dmyDash(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${dmy(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
   const cols: Col<LogRow>[] = [
     {
@@ -561,7 +561,7 @@ export function LogsScreen() {
     <ReportPage
       section="tools"
       title={['Logs', '']}
-      subtitle={`From ${dmyDash(p.from)} to ${dmyDash(p.to)}`}
+      subtitle={`From ${dmy(p.from)} to ${dmy(p.to)}`}
       filters={
         <>
           <PeriodDate

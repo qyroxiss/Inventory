@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { Dialog } from '../../components/Dialog.tsx';
-import { boxClass, dmyDash } from '../transactions/shared.tsx';
+import { boxClass, dmy } from '../transactions/shared.tsx';
 import {
   CheckFilter,
   PeriodDate,
@@ -30,7 +30,7 @@ function usePeriod() {
 }
 
 const periodLine = (p: { from: string; to: string }) =>
-  `From ${dmyDash(p.from)} to ${dmyDash(p.to)}`;
+  `From ${dmy(p.from)} to ${dmy(p.to)}`;
 
 const sum = <T,>(rows: T[], f: (r: T) => number) => rows.reduce((a, r) => a + f(r), 0);
 
@@ -178,7 +178,7 @@ export function DayBookScreen() {
   const rows = q.data ?? [];
   const active = rows.filter((r) => r.status !== 'Cancelled');
   const cols: Col<DayRow>[] = [
-    { head: 'Date', w: '92px', cell: (r) => dmyDash(r.date) },
+    { head: 'Date', w: '92px', cell: (r) => dmy(r.date) },
     { head: 'Voucher', w: '96px', wide: true, cell: (r) => r.vchrNo },
     { head: 'Type', w: '130px', wide: true, cell: (r) => r.typeName },
     {
@@ -233,7 +233,7 @@ export function DayBookScreen() {
         className="w-[560px]"
       >
         <p className="m-0 px-[26px] pt-1 font-mono text-xs text-muted-foreground">
-          {open && dmyDash(open.date)}
+          {open && dmy(open.date)}
           {open?.status === 'Cancelled' ? ' · Cancelled' : ''}
         </p>
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_110px_110px] gap-x-3 border-y border-border px-[26px] py-2 font-mono text-[11px] uppercase text-muted-foreground max-sm:px-4">
@@ -301,7 +301,7 @@ export function SalesRegisterScreen() {
   const active = rows.filter((r) => r.status !== 'Cancelled');
   const total = (f: (r: SaleRow) => number) => amt(sum(active, f));
   const cols: Col<SaleRow>[] = [
-    { head: 'Date', w: '92px', wide: true, cell: (r) => dmyDash(r.billDate) },
+    { head: 'Date', w: '92px', wide: true, cell: (r) => dmy(r.billDate) },
     { head: 'Bill No', w: '96px', cell: (r) => r.billNo },
     {
       head: 'Customer',
