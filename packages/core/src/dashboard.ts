@@ -163,5 +163,5 @@ export function ago(
   if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
   const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(at.getDate())}-${p(at.getMonth() + 1)}-${at.getFullYear()}`;
+  return `${p(at.getDate())}/${p(at.getMonth() + 1)}/${at.getFullYear()}`;
 }

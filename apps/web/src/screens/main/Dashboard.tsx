@@ -12,10 +12,6 @@ import { Icon } from './MainShell.tsx';
 import { ICONS, QUICK_ACTIONS, slug } from './nav.ts';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-]; // prettier-ignore
 
 /** MDA's greeting by the hour (main.dart:785-790). */
 const greeting = (h: number) =>
@@ -51,8 +47,8 @@ export function Dashboard() {
       <div className="flex flex-none flex-wrap items-end justify-between gap-5 max-md:gap-3">
         <div className="flex flex-col gap-1.5">
           <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
-            {DAYS[now.getDay()]}, {String(now.getDate()).padStart(2, '0')} {MONTHS[now.getMonth()]}{' '}
-            {now.getFullYear()}
+            {DAYS[now.getDay()]}, {String(now.getDate()).padStart(2, '0')}/
+            {String(now.getMonth() + 1).padStart(2, '0')}/{now.getFullYear()}
           </span>
           <h1 className="m-0 font-serif text-[40px] font-normal leading-none max-md:text-[30px]">
             {greeting(now.getHours())}, <span className="italic">{me.data?.userName}</span>

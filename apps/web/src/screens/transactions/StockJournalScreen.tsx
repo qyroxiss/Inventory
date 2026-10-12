@@ -31,7 +31,7 @@ import {
   Total,
   TransactionPage,
   boxClass,
-  dmyDash,
+  dmy,
   enterToNext,
   focusNav,
   type GridCol,
@@ -380,7 +380,7 @@ export function StockJournalScreen() {
                 value={date}
                 min={me.data.fyFrom}
                 max={me.data.fyTo}
-                format={dmyDash}
+                format={dmy}
                 className={boxClass()}
                 onChange={(d) => {
                   setDate(d);
@@ -522,7 +522,7 @@ function JournalList({
                 {r.vchrNo}
               </span>
               <span className="font-mono text-xs text-muted-foreground max-sm:hidden">
-                {dmyDash(r.vchrDate)}
+                {dmy(r.vchrDate)}
               </span>
               <span className="truncate">
                 <span className="hidden font-mono text-xs max-sm:inline">{r.vchrNo} · </span>

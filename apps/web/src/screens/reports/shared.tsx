@@ -9,7 +9,7 @@ import { api, unwrap } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { Heading } from '../../components/ledger.tsx';
 import { DateBox, defaultVoucherDate } from '../vouchers/shared.tsx';
-import { boxClass, dmyDash } from '../transactions/shared.tsx';
+import { boxClass, dmy } from '../transactions/shared.tsx';
 
 /** 12,34,567.89 — two decimals, Indian grouping; a negative shows its minus. */
 export const amt = (v: number) =>
@@ -117,7 +117,7 @@ export function PeriodDate({
         value={value}
         min={book?.fyFrom}
         max={book?.fyTo}
-        format={dmyDash}
+        format={dmy}
         className={boxClass()}
         onChange={onChange}
       />

@@ -141,6 +141,7 @@ export {
 export {
   B2CL_LIMIT,
   GST_STATES,
+  stateCodeFromText,
   gstMessages,
   gstr1,
   gstr3b,

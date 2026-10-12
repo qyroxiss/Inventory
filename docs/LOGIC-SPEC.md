@@ -529,7 +529,7 @@ Invoice item and party lookups show nothing until you type, and match by "contai
    - `GSTIN: … PAN: …`
 2. **Title:** Cash Receipt, Bank Receipt, Cash Payment or Bank Payment.
 3. **Body:**
-   - Voucher No., Date (`dd-MM-yyyy`)
+   - Voucher No., Date (`dd/MM/yyyy`)
    - For bank receipts only: "Debited in A/c <BANK>"
    - Party label: "Received On Account Of" or "Payment Made On Account Of"
    - Party details: name, Father's Name, address, contact, email

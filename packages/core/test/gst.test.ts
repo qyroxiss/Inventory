@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { gstr1, gstr3b, placeOfSupply, type GstBill } from '../src/index.ts';
+import { gstr1, gstr3b, isInterState, placeOfSupply, stateCodeFromText, type GstBill } from '../src/index.ts';
 
 const line = (rate: number, taxable: number, inter: boolean, hsn = '1006') => {
   const tax = Math.round(taxable * rate) / 100;
@@ -88,5 +88,23 @@ describe('GSTR-3B set-off order', () => {
       sgst: 200,
     });
     expect(r.cash.igst).toBe(100);
+  });
+});
+
+describe('stateCodeFromText', () => {
+  test('resolves a state name, a code or "code-name"', () => {
+    expect(stateCodeFromText('Maharashtra')).toBe('27');
+    expect(stateCodeFromText(' gujarat ')).toBe('24');
+    expect(stateCodeFromText('29')).toBe('29');
+    expect(stateCodeFromText('07-Delhi')).toBe('07');
+  });
+  test('is blank for an unknown or empty state, which the bill treats as intra-state', () => {
+    expect(stateCodeFromText('')).toBe('');
+    expect(stateCodeFromText('Mahar')).toBe('');
+    expect(isInterState('27', stateCodeFromText('Mahar'))).toBe(false);
+  });
+  test('drives IGST vs CGST + SGST against the company state', () => {
+    expect(isInterState('27', stateCodeFromText('Gujarat'))).toBe(true);
+    expect(isInterState('27', stateCodeFromText('Maharashtra'))).toBe(false);
   });
 });

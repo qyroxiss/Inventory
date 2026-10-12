@@ -6,7 +6,7 @@ import { reportMessages as rm, type StatementGroup } from '@qi/core';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, unwrap } from '../../api.ts';
-import { dmyDash } from '../transactions/shared.tsx';
+import { dmy } from '../transactions/shared.tsx';
 import { PeriodDate, ReportPage, amt, defaultPeriod, useBook } from './shared.tsx';
 
 type Line = {
@@ -85,7 +85,7 @@ export function ProfitLossScreen() {
     queryFn: () => unwrap(api.api.reports['profit-loss'].$get({ query: { to } })),
   });
   const r = q.data;
-  const subtitle = to ? `From ${dmyDash(book?.fyFrom ?? '')} to ${dmyDash(to)}` : '';
+  const subtitle = to ? `From ${dmy(book?.fyFrom ?? '')} to ${dmy(to)}` : '';
   return (
     <ReportPage
       title={['Profit &', 'Loss']}
@@ -164,7 +164,7 @@ export function BalanceSheetScreen() {
   return (
     <ReportPage
       title={['Balance', 'Sheet']}
-      subtitle={to ? `As on ${dmyDash(to)}` : ''}
+      subtitle={to ? `As on ${dmy(to)}` : ''}
       filters={<PeriodDate id="rp-to" label="As on" value={to} onChange={setTo} />}
     >
       {r && (

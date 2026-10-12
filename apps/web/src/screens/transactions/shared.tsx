@@ -406,10 +406,10 @@ function SearchDialog<T extends Ref>({
   );
 }
 
-/** MDA's dd-MM-yyyy (`_fmtDate`). */
-export const dmyDash = (iso: string) => {
+/** dd/MM/yyyy, the one date format shown across the software. */
+export const dmy = (iso: string) => {
   const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}-${m}-${y}` : iso;
+  return y && m && d ? `${d}/${m}/${y}` : iso;
 };
 
 export const BAR_BTN =

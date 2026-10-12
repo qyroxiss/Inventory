@@ -17,6 +17,17 @@ export const GST_STATES: Record<string, string> = {
   '38': 'Ladakh', '97': 'Other Territory', '99': 'Centre Jurisdiction',
 }; // prettier-ignore
 
+/** The GST state code for a typed state: a name ("maharashtra"), a code ("27") or "27-Maharashtra".
+ *  Blank when it matches none, which the bill treats as an unknown state. */
+export const stateCodeFromText = (text?: string | null): string => {
+  const t = (text ?? '').trim().toLowerCase();
+  if (!t) return '';
+  const lead = t.match(/^(\d{2})(?:\s*-|$)/)?.[1];
+  if (lead && GST_STATES[lead]) return lead;
+  const hit = Object.entries(GST_STATES).find(([, name]) => name.toLowerCase() === t);
+  return hit ? hit[0] : '';
+};
+
 /** "27-Maharashtra" (or the bare code when unknown, or "—"). */
 export const placeOfSupply = (code?: string | null) => {
   const c = (code ?? '').trim();

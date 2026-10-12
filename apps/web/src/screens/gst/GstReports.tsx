@@ -12,7 +12,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
-import { dmyDash } from '../transactions/shared.tsx';
+import { dmy } from '../transactions/shared.tsx';
 import {
   MonthPicker,
   PeriodDate,
@@ -41,7 +41,7 @@ function useMonth() {
   return [p, setP] as const;
 }
 
-const line = (p: Period) => `From ${dmyDash(p.from)} to ${dmyDash(p.to)}`;
+const line = (p: Period) => `From ${dmy(p.from)} to ${dmy(p.to)}`;
 const sum = <T,>(rows: T[], f: (r: T) => number) => rows.reduce((a, r) => a + f(r), 0);
 
 function Filters({
@@ -171,7 +171,7 @@ export function Gstr1Screen() {
     ...(withGstin ? [{ head: 'GSTIN', w: '150px', cell: (x: InvoiceRateRow) => x.gstin }] : []),
     { head: 'Party', w: 'minmax(120px,1fr)', wide: true, cell: (x) => x.partyName },
     { head: 'Invoice', w: '96px', cell: (x) => x.billNo },
-    { head: 'Date', w: '92px', wide: true, cell: (x) => dmyDash(x.date) },
+    { head: 'Date', w: '92px', wide: true, cell: (x) => dmy(x.date) },
     { head: 'Value', w: '104px', num: true, wide: true, cell: (x) => amt(x.value) },
     { head: 'Place of Supply', w: '150px', wide: true, cell: (x) => x.pos },
     { head: 'Rate', w: '56px', num: true, wide: true, cell: (x) => `${x.rate}%` },
@@ -451,7 +451,7 @@ export function ItcScreen() {
   const rows = q.data ?? [];
   const ok = rows.filter((r) => r.eligible);
   const cols: Col<ItcRow>[] = [
-    { head: 'Date', w: '92px', wide: true, cell: (r) => dmyDash(r.date) },
+    { head: 'Date', w: '92px', wide: true, cell: (r) => dmy(r.date) },
     { head: 'Bill No', w: '90px', cell: (r) => r.billNo },
     { head: 'Supp. Inv', w: '90px', wide: true, cell: (r) => r.suppInvNo },
     { head: 'Supplier', w: 'minmax(120px,1fr)', wide: true, cell: (r) => r.supplier },

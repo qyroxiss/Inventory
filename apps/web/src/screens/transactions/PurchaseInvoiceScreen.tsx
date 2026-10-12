@@ -43,7 +43,7 @@ import {
   ReadOnly,
   TransactionPage,
   boxClass,
-  dmyDash,
+  dmy,
   enterToNext,
   focusNav,
 } from './shared.tsx';
@@ -501,7 +501,7 @@ export function PurchaseInvoiceScreen() {
                 value={h.billDate}
                 min={me.data.fyFrom}
                 max={me.data.fyTo}
-                format={dmyDash}
+                format={dmy}
                 className={boxClass()}
                 onChange={(billDate) => {
                   set({ billDate });
@@ -775,7 +775,7 @@ export function PurchaseInvoiceScreen() {
                 id="pi-orderDate"
                 value={h.orderDate}
                 placeholder="Select date"
-                format={dmyDash}
+                format={dmy}
                 className={boxClass()}
                 onChange={(orderDate) => set({ orderDate })}
               />

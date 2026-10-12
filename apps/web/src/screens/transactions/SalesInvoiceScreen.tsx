@@ -47,7 +47,7 @@ import {
   Total,
   TransactionPage,
   boxClass,
-  dmyDash,
+  dmy,
   enterToNext,
   focusNav,
   type GridCol,
@@ -519,7 +519,7 @@ export function SalesInvoiceScreen() {
                 value={h.billDate}
                 min={me.data.fyFrom}
                 max={me.data.fyTo}
-                format={dmyDash}
+                format={dmy}
                 className={boxClass()}
                 onChange={(billDate) => {
                   set({ billDate });

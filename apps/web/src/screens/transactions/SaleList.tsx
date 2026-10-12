@@ -4,7 +4,7 @@
 import { saleMessages as sm } from '@qi/core';
 import { useState } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
-import { dmyDash } from './shared.tsx';
+import { dmy } from './shared.tsx';
 
 type Row = {
   billNo: string;
@@ -93,7 +93,7 @@ export function SaleList({
                 {r.billNo}
               </span>
               <span className="font-mono text-xs text-muted-foreground max-sm:hidden">
-                {dmyDash(r.billDate)}
+                {dmy(r.billDate)}
               </span>
               <span className="truncate">
                 <span className="hidden font-mono text-xs max-sm:inline">{r.billNo} · </span>
