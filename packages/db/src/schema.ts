@@ -14,6 +14,7 @@ import {
   boolean,
   date,
   index,
+  integer,
   numeric,
   pgTable,
   text,
@@ -115,6 +116,10 @@ export const companies = pgTable(
     /** Free text, default '1-Apr-26'; stored only, never used to open a book (as in MDA). */
     finYrFrom: text('fin_yr_from'),
     booksFrom: text('books_from'),
+    /** Decimal places shown for quantities (0-3) and for rates/amounts (0-2); Admin sets them in
+     *  Company Settings. Display only: the maths is always to the paisa. */
+    qtyDecimals: integer('qty_decimals').notNull().default(3),
+    amountDecimals: integer('amount_decimals').notNull().default(2),
     createdAt: createdAt(),
   },
   (t) => [
@@ -511,6 +516,8 @@ export const purchases = pgTable(
     cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
     igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
     roundOff: numeric('round_off', { precision: 14, scale: 2 }).notNull().default('0'),
+    /** Typed on the bill and added straight to the net, without GST. */
+    freight: numeric('freight', { precision: 14, scale: 2 }).notNull().default('0'),
     netAmount: numeric('net_amount', { precision: 14, scale: 2 }).notNull().default('0'),
     voucherId: uuid('voucher_id').references(() => vouchers.id),
     /** 'Active' or 'Cancelled'. */
@@ -554,6 +561,8 @@ export const purchaseLines = pgTable(
     igstP: numeric('igst_p', { precision: 8, scale: 2 }).notNull().default('0'),
     igstA: numeric('igst_a', { precision: 14, scale: 2 }).notNull().default('0'),
     lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
+    /** Up to four description lines, joined with newlines. */
+    description: text('description'),
   },
   (t) => [uniqueIndex('purchase_lines_purchase_line').on(t.purchaseId, t.lineNo)],
 );

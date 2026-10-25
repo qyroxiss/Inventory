@@ -28,6 +28,7 @@ import {
   type Column,
 } from '../../components/master.tsx';
 import { SearchSelect } from '../../components/SearchSelect.tsx';
+import { fa } from '../../format.ts';
 
 type Item = OkBody<Awaited<ReturnType<(typeof api.api)['stock-items']['$get']>>>[number];
 type Form = {
@@ -60,7 +61,7 @@ const EMPTY: Form = {
 const TITLE = 'Stock Item';
 const asOptions = (list: readonly string[]) => list.map((v) => ({ value: v, label: v }));
 /** A saved rate as shown in its box and the lists: blank for 0. */
-const rateText = (v: number) => (v > 0 ? v.toFixed(2) : '');
+const rateText = (v: number) => (v > 0 ? fa(v) : '');
 
 const viewColumns: Column<Item>[] = [
   { head: 'Code', width: '75px', cell: (i) => i.code, mono: true },

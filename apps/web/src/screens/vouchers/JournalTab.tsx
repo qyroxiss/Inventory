@@ -6,7 +6,6 @@
 import {
   amountProblem,
   cancelConfirm,
-  fmtTotal,
   journalDraft,
   parseAmount,
   sumRaw,
@@ -38,6 +37,7 @@ import {
   type Message,
   type VoucherRow,
 } from './shared.tsx';
+import { fa } from '../../format.ts';
 
 type Line = { key: number; ledger: string; debit: boolean; amount: string };
 type Form = {
@@ -130,7 +130,7 @@ export function JournalTab() {
       return setMessage({
         kind: 'error',
         title: ['Journal', 'Error'],
-        text: vm.notBalanced(fmtTotal(Math.abs(totalDr - totalCr))),
+        text: vm.notBalanced(fa(Math.abs(totalDr - totalCr))),
       });
     }
     setBusy(true);
@@ -185,9 +185,7 @@ export function JournalTab() {
     setList(null);
     const rows = await fetchLines(row.id);
     const known = (code: string) => (ledgers!.some((l) => l.accCode === code) ? code : '');
-    const lines = rows.map((r) =>
-      line(r.dr > 0, known(r.accCode), (r.dr > 0 ? r.dr : r.cr).toFixed(2)),
-    );
+    const lines = rows.map((r) => line(r.dr > 0, known(r.accCode), fa(r.dr > 0 ? r.dr : r.cr)));
     while (lines.length < 2) lines.push(line(lines.length === 0));
     setErrors({});
     setForm({
@@ -304,15 +302,15 @@ export function JournalTab() {
               }`}
             >
               <span>
-                <span className="text-muted-foreground">Total Dr </span>₹{fmtTotal(totalDr)}
+                <span className="text-muted-foreground">Total Dr </span>₹{fa(totalDr)}
               </span>
               <span>
-                <span className="text-muted-foreground">Total Cr </span>₹{fmtTotal(totalCr)}
+                <span className="text-muted-foreground">Total Cr </span>₹{fa(totalCr)}
               </span>
               <span
                 className={`font-semibold ${balanced ? 'text-primary-text' : 'text-destructive'}`}
               >
-                {balanced ? 'Balanced ✓' : `Diff: ₹${fmtTotal(Math.abs(totalDr - totalCr))}`}
+                {balanced ? 'Balanced ✓' : `Diff: ₹${fa(Math.abs(totalDr - totalCr))}`}
               </span>
             </div>
           </div>

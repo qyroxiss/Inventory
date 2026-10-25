@@ -64,6 +64,20 @@
       "when": 1791712247319,
       "tag": "0008_lush_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792915918296,
+      "tag": "0009_big_warstar",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792925209083,
+      "tag": "0010_lovely_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }

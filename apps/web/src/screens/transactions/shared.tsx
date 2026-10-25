@@ -5,7 +5,6 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useState, type KeyboardEvent, type ReactNode } from 'react';
 import { BackButton } from '../../components/BackButton.tsx';
-import { Dialog } from '../../components/Dialog.tsx';
 import { whenToastClosed } from '../../components/Toast.tsx';
 import { Heading } from '../../components/ledger.tsx';
 
@@ -130,11 +129,14 @@ export function NumBox({
   nav,
   value,
   onChange,
+  format,
 }: {
   id: string;
   nav?: number;
   value: string;
   onChange: (v: string) => void;
+  /** Tidies the figure on leaving the box: `fq` for a quantity, `fa` for a rate or amount. */
+  format?: (v: number) => string;
 }) {
   return (
     <input
@@ -144,6 +146,11 @@ export function NumBox({
       inputMode="decimal"
       autoComplete="off"
       onFocus={(e) => e.target.select()}
+      onBlur={(e) => {
+        if (!format) return;
+        const tidy = format(Number(e.target.value) || 0);
+        if (tidy !== e.target.value) onChange(tidy);
+      }}
       onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
       className={`${boxClass()} text-right font-mono`}
     />
@@ -186,10 +193,37 @@ export function enterToNext(e: KeyboardEvent<HTMLElement>, after: Record<number,
 
 export type Ref = { code: string; name: string; extra?: string | null };
 
+/** Records matching the typed text (code or name, anywhere), those starting with it first. */
+function matchesOf<T extends Ref>(items: T[], needle: string): T[] {
+  if (!needle) return items;
+  const hit = items.filter(
+    (o) => o.code.toLowerCase().includes(needle) || o.name.toLowerCase().includes(needle),
+  );
+  const starts = (o: T) =>
+    o.code.toLowerCase().startsWith(needle) || o.name.toLowerCase().startsWith(needle);
+  return [...hit.filter(starts), ...hit.filter((o) => !starts(o))];
+}
+
+/** The text with the typed part in bold, so it's clear why a record matched. */
+function Mark({ text, needle }: { text: string; needle: string }) {
+  const at = needle ? text.toLowerCase().indexOf(needle) : -1;
+  if (at < 0) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="bg-primary/15 font-semibold text-foreground">
+        {text.slice(at, at + needle.length)}
+      </mark>
+      {text.slice(at + needle.length)}
+    </>
+  );
+}
+
 /**
  * MDA's `_combo`: type any part of the code or name and the matches drop down (nothing shows
  * until something is typed); ↑ ↓ move, Enter or a click picks. Leaving the box shows the chosen
- * record again — typed text that wasn't picked is dropped. The "..." button opens the full list.
+ * record again — typed text that wasn't picked is dropped. A click in the box or ↓ opens the full
+ * list (the "..." picker was removed at the user's request, 2026-10-25).
  */
 export function Lookup<T extends Ref>({
   id,
@@ -199,7 +233,6 @@ export function Lookup<T extends Ref>({
   hint,
   showCode,
   error,
-  searchTitle,
   onChange,
 }: {
   id: string;
@@ -207,31 +240,39 @@ export function Lookup<T extends Ref>({
   value: T | null;
   items: T[];
   hint: string;
-  /** Item Code entry: the box reads "CODE  -  Name". */
+  /** Item Code entry: the box reads the code alone; the name has its own box beside it. MDA's
+   *  "CODE  -  Name" was changed at the user's request (2026-10-25). */
   showCode?: boolean;
   error?: boolean;
-  searchTitle: [string, string];
   onChange: (v: T) => void;
 }) {
-  const label = (o: T) => (showCode ? `${o.code}  -  ${o.name}` : o.name);
+  const label = (o: T) => (showCode ? o.code : o.name);
   const shown = value ? label(value) : '';
   const [text, setText] = useState<string | null>(null);
   const [hi, setHi] = useState(0);
-  const [picker, setPicker] = useState(false);
+  /** The whole list, opened by a click in the box or ↓ (not by Enter arriving here). */
+  const [browse, setBrowse] = useState(false);
 
   const q = (text ?? '').trim().toLowerCase();
   const matches =
-    text === null || !q || q === shown.toLowerCase()
-      ? []
-      : items.filter((o) => o.code.toLowerCase().includes(q) || o.name.toLowerCase().includes(q));
+    browse && (!q || q === shown.toLowerCase())
+      ? items
+      : text === null || !q || q === shown.toLowerCase()
+        ? []
+        : matchesOf(items, q);
 
   const pick = (o: T) => {
     setText(null);
+    setBrowse(false);
     onChange(o);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowDown' && matches.length) {
+    if (e.key === 'ArrowDown' && !matches.length && items.length) {
+      e.preventDefault();
+      setBrowse(true);
+      setHi(0);
+    } else if (e.key === 'ArrowDown' && matches.length) {
       e.preventDefault();
       setHi((h) => Math.min(h + 1, matches.length - 1));
     } else if (e.key === 'ArrowUp' && matches.length) {
@@ -241,9 +282,10 @@ export function Lookup<T extends Ref>({
       // Enter takes the highlighted match; the screen then moves on.
       e.preventDefault();
       pick(matches[hi] ?? matches[0]!);
-    } else if (e.key === 'Escape' && text !== null) {
+    } else if (e.key === 'Escape' && (text !== null || browse)) {
       e.preventDefault();
       setText(null);
+      setBrowse(false);
     }
   };
 
@@ -260,7 +302,14 @@ export function Lookup<T extends Ref>({
             setText(e.target.value);
             setHi(0);
           }}
-          onBlur={() => setText(null)}
+          onMouseDown={() => {
+            setBrowse((b) => !b);
+            setHi(0);
+          }}
+          onBlur={() => {
+            setText(null);
+            setBrowse(false);
+          }}
           onKeyDown={onKeyDown}
           className={boxClass(error)}
         />
@@ -274,135 +323,29 @@ export function Lookup<T extends Ref>({
                 key={o.code}
                 type="button"
                 tabIndex={-1}
+                ref={(el) => {
+                  if (i === hi) el?.scrollIntoView({ block: 'nearest' });
+                }}
                 onClick={() => pick(o)}
                 className={`flex w-full gap-3 px-2.5 py-2 text-left text-sm hover:bg-accent ${i === hi ? 'bg-accent' : ''}`}
               >
                 <span className="w-[74px] flex-none truncate font-mono text-xs leading-5 text-muted-foreground">
-                  {o.code}
+                  <Mark text={o.code} needle={q} />
                 </span>
-                <span className="truncate">{o.name}</span>
+                <span className="min-w-0 flex-1 truncate">
+                  <Mark text={o.name} needle={q} />
+                </span>
+                {o.extra && (
+                  <span className="flex-none text-xs leading-5 text-muted-foreground">
+                    {o.extra}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         )}
       </div>
-      <button
-        type="button"
-        tabIndex={-1}
-        aria-label={`${searchTitle.join(' ')} from the list`}
-        onClick={() => setPicker(true)}
-        className="grid h-[34px] w-9 flex-none cursor-pointer place-items-center border-[1.5px] border-border bg-card text-muted-foreground hover:border-foreground"
-      >
-        …
-      </button>
-      <SearchDialog
-        open={picker}
-        title={searchTitle}
-        items={items}
-        onPick={(o) => {
-          setPicker(false);
-          pick(o);
-        }}
-        onClose={() => setPicker(false)}
-      />
     </div>
-  );
-}
-
-/** The "..." lookup (`_SearchDialog`): every record, filtered as you type; ↑ ↓ and Enter pick. */
-function SearchDialog<T extends Ref>({
-  open,
-  title,
-  items,
-  onPick,
-  onClose,
-}: {
-  open: boolean;
-  title: [string, string];
-  items: T[];
-  onPick: (o: T) => void;
-  onClose: () => void;
-}) {
-  const [q, setQ] = useState('');
-  const [sel, setSel] = useState(0);
-  const needle = q.trim().toLowerCase();
-  const rows = needle
-    ? items.filter(
-        (e) => e.code.toLowerCase().includes(needle) || e.name.toLowerCase().includes(needle),
-      )
-    : items;
-  const close = () => {
-    setQ('');
-    setSel(0);
-    onClose();
-  };
-  const choose = (o: T) => {
-    setQ('');
-    setSel(0);
-    onPick(o);
-  };
-  return (
-    <Dialog open={open} onClose={close} title={title} className="w-[520px]">
-      <span className="absolute right-[26px] top-[30px] font-mono text-xs text-muted-foreground">
-        {rows.length}
-      </span>
-      <div className="px-[26px] pt-3 max-sm:px-4">
-        <input
-          autoFocus
-          value={q}
-          aria-label="Search"
-          placeholder="Search by code or name  -  Enter to select"
-          onChange={(e) => {
-            setQ(e.target.value);
-            setSel(0);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowDown') {
-              e.preventDefault();
-              setSel((s) => Math.min(s + 1, Math.max(rows.length - 1, 0)));
-            } else if (e.key === 'ArrowUp') {
-              e.preventDefault();
-              setSel((s) => Math.max(s - 1, 0));
-            } else if (e.key === 'Enter') {
-              e.preventDefault();
-              if (rows[sel]) choose(rows[sel]);
-            }
-          }}
-          className="h-11 w-full field-box px-3 text-base outline-none focus-visible:outline-none"
-        />
-      </div>
-      <div className="mt-3 h-[300px] overflow-y-auto border-y border-border max-sm:h-[50vh]">
-        {rows.length === 0 && (
-          <p className="m-0 py-10 text-center text-sm text-muted-foreground">Nothing found</p>
-        )}
-        {rows.map((r, i) => (
-          <button
-            key={r.code}
-            type="button"
-            ref={(el) => {
-              if (i === sel) el?.scrollIntoView({ block: 'nearest' });
-            }}
-            onClick={() => choose(r)}
-            className={`flex w-full items-center gap-3 border-b border-border px-[26px] py-2 text-left hover:bg-accent max-sm:px-4 ${i === sel ? 'bg-accent' : ''}`}
-          >
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="truncate text-sm">{r.name}</span>
-              <span className="font-mono text-xs text-muted-foreground">{r.code}</span>
-            </span>
-            {r.extra && <span className="text-xs text-muted-foreground">{r.extra}</span>}
-          </button>
-        ))}
-      </div>
-      <div className="flex justify-end px-[26px] py-3 max-sm:px-4">
-        <button
-          type="button"
-          onClick={close}
-          className="flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-[18px] text-sm font-semibold"
-        >
-          Close
-        </button>
-      </div>
-    </Dialog>
   );
 }
 

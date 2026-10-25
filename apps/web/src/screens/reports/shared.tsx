@@ -7,15 +7,14 @@ import { useNavigate } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { api, unwrap } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
+import { faIN, fqIN } from '../../format.ts';
 import { Heading } from '../../components/ledger.tsx';
 import { DateBox, defaultVoucherDate } from '../vouchers/shared.tsx';
 import { boxClass, dmy } from '../transactions/shared.tsx';
 
-/** 12,34,567.89 — two decimals, Indian grouping; a negative shows its minus. */
-export const amt = (v: number) =>
-  v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-export const qty = (v: number) =>
-  v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 3 });
+/** 12,34,567.89 — Indian grouping, the company's decimal places; a negative shows its minus. */
+export const amt = faIN;
+export const qty = fqIN;
 
 /** The open book (company, year and its dates). */
 export const useBook = () =>

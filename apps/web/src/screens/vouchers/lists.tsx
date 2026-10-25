@@ -5,6 +5,7 @@ import { formatDmy, voucherMessages } from '@qi/core';
 import { useState } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
 import type { VoucherRow } from './shared.tsx';
+import { fa } from '../../format.ts';
 
 const CLOSE =
   'flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-[18px] text-sm font-semibold';
@@ -110,7 +111,7 @@ export function CashBankList({
               <span
                 className={`text-right font-mono font-semibold ${cancelled ? 'text-muted-foreground line-through' : ''}`}
               >
-                ₹{r.netAmount.toFixed(2)}
+                ₹{fa(r.netAmount)}
               </span>
             </button>
           );
@@ -199,7 +200,7 @@ export function VoucherList({
                 {formatDmy(r.vchrDate)}
               </span>
               <span className="truncate">{r.partyName || r.narration || '—'}</span>
-              <span className="text-right font-mono font-semibold">₹{r.netAmount.toFixed(2)}</span>
+              <span className="text-right font-mono font-semibold">₹{fa(r.netAmount)}</span>
               <span className="max-sm:hidden">
                 {cancelled && (
                   <span className="block border border-destructive/40 bg-destructive-bg px-1.5 py-0.5 text-center text-[11px] font-semibold text-destructive">

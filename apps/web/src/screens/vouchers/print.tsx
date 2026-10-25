@@ -6,6 +6,7 @@ import { amountInWords, brand } from '@qi/core';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { Dialog, MessageDialog } from '../../components/Dialog.tsx';
+import { fa } from '../../format.ts';
 
 type Printed = NonNullable<
   OkBody<Awaited<ReturnType<typeof api.api.vouchers.print.$get>>>['voucher']
@@ -249,7 +250,7 @@ function Sheet({ v }: { v: Printed }) {
           {row('Contact No.', join([p?.mobile, p?.phone], ', '))}
           {row('Email', p?.email ?? '')}
           {row('A Sum Of', amountInWords(v.amount))}
-          {row(amountLabel, v.amount.toFixed(2))}
+          {row(amountLabel, fa(v.amount))}
           {row('On Account Of', onAccountOf)}
         </div>
         <div className="flex items-start border-t border-neutral-900 px-3 pb-3 pt-2.5">

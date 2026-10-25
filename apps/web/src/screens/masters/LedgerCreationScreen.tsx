@@ -32,6 +32,7 @@ import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../compo
 import { Heading } from '../../components/ledger.tsx';
 import { PhoneInput } from '../../components/PhoneInput.tsx';
 import { SearchSelect, type SearchOption } from '../../components/SearchSelect.tsx';
+import { fa } from '../../format.ts';
 
 type Ledger = OkBody<Awaited<ReturnType<typeof api.api.ledgers.$get>>>[number];
 type Form = {
@@ -791,7 +792,7 @@ function SelectLedger({
             <span className="truncate text-sm text-muted-foreground max-sm:hidden">
               {l.grpName ?? '—'}
             </span>
-            <span className="text-sm text-muted-foreground">{Number(l.opBal).toFixed(2)}</span>
+            <span className="text-sm text-muted-foreground">{fa(Number(l.opBal))}</span>
             <span className="text-sm text-muted-foreground">{l.drCr}</span>
           </div>
         ))}
@@ -839,7 +840,7 @@ function PrintSheet({ rows }: { rows: Ledger[] }) {
               <td className="py-1.5 pr-3">{l.accCode}</td>
               <td className="py-1.5 pr-3">{l.accName}</td>
               <td className="py-1.5 pr-3">{l.grpName ?? '—'}</td>
-              <td className="py-1.5 pr-3">{Number(l.opBal).toFixed(2)}</td>
+              <td className="py-1.5 pr-3">{fa(Number(l.opBal))}</td>
               <td className="py-1.5">{l.drCr}</td>
             </tr>
           ))}

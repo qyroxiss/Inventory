@@ -29,6 +29,12 @@ export const companyCreate = z.object({
   booksFrom: opt,
 });
 
+/** Company Settings › Decimal Places: Qty 0-3, Rate/Amount 0-2. */
+export const decimalsSave = z.object({
+  qty: z.number().int().min(0).max(3),
+  amount: z.number().int().min(0).max(2),
+});
+
 export const yearCreate = z.object({
   yearName: z.string(),
   /** dd/MM/yyyy as MDA's date picker writes it, or ISO yyyy-MM-dd. */
@@ -147,6 +153,7 @@ export const purchaseSave = z.object({
   narration: opt,
   state: opt,
   interState: z.boolean(),
+  freight: z.number().min(0).optional(),
   lines: z.array(
     z.object({
       itemCode: z.string(),
@@ -159,6 +166,7 @@ export const purchaseSave = z.object({
       disP: z.number(),
       disA: z.number(),
       gstRate: z.number(),
+      desc: z.array(z.string()).max(4).optional(),
     }),
   ),
 });

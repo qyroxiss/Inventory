@@ -5,6 +5,7 @@ import { saleMessages as sm } from '@qi/core';
 import { useState } from 'react';
 import { Dialog } from '../../components/Dialog.tsx';
 import { dmy } from './shared.tsx';
+import { fa } from '../../format.ts';
 
 type Row = {
   billNo: string;
@@ -102,7 +103,7 @@ export function SaleList({
               <span className="text-muted-foreground max-sm:hidden">{r.payMode}</span>
               <span className="text-muted-foreground max-sm:hidden">{r.itemCount}</span>
               <span className={`text-right font-mono font-semibold ${strike}`}>
-                {r.netAmount.toFixed(2)}
+                {fa(r.netAmount)}
               </span>
               <span className="max-sm:hidden">
                 {cancelled && (

@@ -7,7 +7,6 @@
 //   - View lists them; picking one opens it to update or cancel. Cancelling reverses the stock.
 
 import {
-  f2,
   stjLine,
   stjTotals,
   stockJournalMessages as jm,
@@ -17,6 +16,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
+import { fa, fq } from '../../format.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
@@ -43,7 +43,7 @@ type Godown = Setup['godowns'][number];
 type Row = OkBody<Awaited<ReturnType<(typeof api.api)['stock-journals']['$get']>>>[number];
 
 type Entry = { item: Item | null; godown: string; qty: string; rate: string; line: number | null };
-const blankEntry = (): Entry => ({ item: null, godown: '', qty: '0.00', rate: '0.00', line: null });
+const blankEntry = (): Entry => ({ item: null, godown: '', qty: fq(0), rate: fa(0), line: null });
 const num = (s: string) => Number(s) || 0;
 
 /** Enter order: the header, then each side's Item → Godown → Qty → Rate → Add. */
@@ -122,7 +122,7 @@ export function StockJournalScreen() {
   const onItem = async (side: StjSide, it: Item) => {
     setE(side, {
       item: it,
-      rate: num(entries[side].rate) === 0 && it.purRate > 0 ? f2(it.purRate) : entries[side].rate,
+      rate: num(entries[side].rate) === 0 && it.purRate > 0 ? fa(it.purRate) : entries[side].rate,
     });
     focusNav(NAV[side].godown);
     if (side === 'out') {
@@ -170,7 +170,7 @@ export function StockJournalScreen() {
       gstRate: 0,
       purRate: 0,
     };
-    setE(side, { item: it, godown: l.godown ?? '', qty: f2(l.qty), rate: f2(l.rate), line: i });
+    setE(side, { item: it, godown: l.godown ?? '', qty: fq(l.qty), rate: fa(l.rate), line: i });
     focusNav(NAV[side].qty);
   };
 
@@ -268,7 +268,6 @@ export function StockJournalScreen() {
               value={e.item}
               items={data.items}
               hint="Type to search by name"
-              searchTitle={['Select', 'Item']}
               onChange={(it) => void onItem(side, it)}
             />
           </Cell>
@@ -280,7 +279,6 @@ export function StockJournalScreen() {
                 value={data.godowns.find((g) => g.name === e.godown) ?? null}
                 items={data.godowns}
                 hint="Godown (optional)"
-                searchTitle={['Select', 'Godown']}
                 onChange={(g) => {
                   setE(side, { godown: g.name });
                   focusNav(nav.qty);
@@ -303,6 +301,7 @@ export function StockJournalScreen() {
           <Cell id={`sj-${side}-qty`} label="Quantity" required>
             <NumBox
               id={`sj-${side}-qty`}
+              format={fq}
               nav={nav.qty}
               value={e.qty}
               onChange={(qty) => setE(side, { qty })}
@@ -311,15 +310,16 @@ export function StockJournalScreen() {
           <Cell id={`sj-${side}-rate`} label="Rate">
             <NumBox
               id={`sj-${side}-rate`}
+              format={fa}
               nav={nav.rate}
               value={e.rate}
               onChange={(rate) => setE(side, { rate })}
             />
           </Cell>
           <Cell
-            label={side === 'out' && inHand !== null ? `Amount · In hand ${f2(inHand)}` : 'Amount'}
+            label={side === 'out' && inHand !== null ? `Amount · In hand ${fq(inHand)}` : 'Amount'}
           >
-            <ReadOnly text={f2(num(e.qty) * num(e.rate))} right />
+            <ReadOnly text={fa(num(e.qty) * num(e.rate))} right />
           </Cell>
           <button
             type="button"
@@ -340,9 +340,9 @@ export function StockJournalScreen() {
           onRemove={(k) => remove(mine[k]!.i)}
         />
         <div className="flex flex-wrap items-center gap-x-5 border border-border bg-card px-3 py-1">
-          <Total label="Qty" value={f2(side === 'out' ? totals.outQty : totals.inQty)} />
+          <Total label="Qty" value={fq(side === 'out' ? totals.outQty : totals.inQty)} />
           <span className="flex-1" />
-          <Total label="Value" value={f2(side === 'out' ? totals.outValue : totals.inValue)} />
+          <Total label="Value" value={fa(side === 'out' ? totals.outValue : totals.inValue)} />
         </div>
       </div>
     );
@@ -469,9 +469,9 @@ export function StockJournalScreen() {
 const COLS: GridCol<StjLine>[] = [
   { label: 'Item', w: 'minmax(140px,1fr)', cell: (l) => l.itemName },
   { label: 'Godown', w: '110px', cell: (l) => l.godown ?? '' },
-  { label: 'Qty.', w: '70px', num: true, cell: (l) => f2(l.qty) },
-  { label: 'Rate', w: '76px', num: true, cell: (l) => f2(l.rate) },
-  { label: 'Amount', w: '90px', num: true, cell: (l) => f2(l.amount) },
+  { label: 'Qty.', w: '70px', num: true, cell: (l) => fq(l.qty) },
+  { label: 'Rate', w: '76px', num: true, cell: (l) => fa(l.rate) },
+  { label: 'Amount', w: '90px', num: true, cell: (l) => fa(l.amount) },
 ];
 
 function JournalList({
@@ -529,9 +529,7 @@ function JournalList({
                 {r.narration || '—'}
               </span>
               <span className="text-muted-foreground max-sm:hidden">{r.lineCount}</span>
-              <span className={`text-right font-mono font-semibold ${strike}`}>
-                {r.value.toFixed(2)}
-              </span>
+              <span className={`text-right font-mono font-semibold ${strike}`}>{fa(r.value)}</span>
               <span className="max-sm:hidden">
                 {cancelled && (
                   <span className="block border border-destructive/40 bg-destructive-bg px-1.5 py-0.5 text-center text-[11px] font-semibold text-destructive">

@@ -3,6 +3,9 @@ export { UserError } from './errors.ts';
 export {
   listCompanies,
   getCompany,
+  companyDecimals,
+  setCompanyDecimals,
+  type Decimals,
   createCompany,
   updateCompany,
   deleteCompany,
@@ -95,6 +98,7 @@ export {
   type VoucherPrint,
   type VoucherRow,
 } from './vouchers.ts';
+export { purchaseForPrint, saleForPrint } from './invoice-print.ts';
 export {
   cancelPurchase,
   listPurchases,

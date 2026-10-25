@@ -30,10 +30,12 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
+import { fa, fq } from '../../format.ts';
 import { ConfirmDelete } from '../../components/Dialog.tsx';
 import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
+import { PrintInvoice } from './print.tsx';
 import { SaleList } from './SaleList.tsx';
 import {
   BAR_BTN,
@@ -110,14 +112,17 @@ type Entry = {
   rate: string;
   discPct: string;
   discAmt: string;
+  /** Which discount box was typed in; the other one is worked out from it. */
+  discBy: 'pct' | 'amt';
   line: number | null;
 };
 const blankEntry = (): Entry => ({
   item: null,
-  qty: '0.00',
-  rate: '0.00',
+  qty: fq(0),
+  rate: fa(0),
   discPct: '0.00',
-  discAmt: '0.00',
+  discAmt: fa(0),
+  discBy: 'pct',
   line: null,
 });
 const num = (s: string) => Number(s) || 0;
@@ -144,6 +149,9 @@ export function SalesInvoiceScreen() {
   const [saving, setSaving] = useState(false);
   const [list, setList] = useState<ListRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  /** The bill last saved here, offered first by Sale Print. */
+  const [lastSaved, setLastSaved] = useState('');
   const started = useRef(false);
 
   const firstType = () => data?.saleTypes[0] ?? null;
@@ -163,7 +171,7 @@ export function SalesInvoiceScreen() {
     location: '',
     interState: false,
     billDiscPct: '0.00',
-    billDiscAmt: '0.00',
+    billDiscAmt: fa(0),
   });
 
   useEffect(() => {
@@ -182,16 +190,30 @@ export function SalesInvoiceScreen() {
 
   const set = (patch: Partial<Header>) => setH((x) => ({ ...x!, ...patch }));
   const setE = (patch: Partial<Entry>) => setEntry((x) => ({ ...x, ...patch }));
+  // The lookups show each item's Unit, GST % and Rate beside it.
+  const itemRefs = data.items.map((i) => ({
+    ...i,
+    extra: [i.unit, `GST ${i.gstRate}%`, i.saleRate > 0 ? `₹${fa(i.saleRate)}` : '']
+      .filter(Boolean)
+      .join('  ·  '),
+  }));
   const gstRateOf = (code: string) => data.items.find((i) => i.code === code)?.gstRate ?? 0;
   const totals = saleTotals(lines, num(h.billDiscPct), num(h.billDiscAmt));
+  // The entry row's discount: the box typed in wins, the other shows what it comes to.
+  const disP = entry.discBy === 'pct' ? num(entry.discPct) : 0;
+  const disA = entry.discBy === 'amt' ? num(entry.discAmt) : 0;
+  const gross = num(entry.qty) * num(entry.rate);
+  const shownPct =
+    entry.discBy === 'pct' ? entry.discPct : gross > 0 ? f2((disA / gross) * 100) : '0.00';
+  const shownAmt = entry.discBy === 'amt' ? entry.discAmt : fa(Math.round(gross * disP) / 100);
   const entryLine = entry.item
     ? saleLine({
         itemCode: entry.item.code,
         itemName: entry.item.name,
         qty: num(entry.qty),
         rate: num(entry.rate),
-        disP: num(entry.discPct),
-        disA: num(entry.discAmt),
+        disP,
+        disA,
         gstRate: entry.item.gstRate,
         interState: h.interState,
       })
@@ -244,7 +266,7 @@ export function SalesInvoiceScreen() {
     setEntry((x) => ({
       ...x,
       item: it,
-      rate: it.saleRate > 0 && num(x.rate) === 0 ? f2(it.saleRate) : x.rate,
+      rate: it.saleRate > 0 && num(x.rate) === 0 ? fa(it.saleRate) : x.rate,
     }));
     focusNav(NAV.qty);
   };
@@ -266,8 +288,8 @@ export function SalesInvoiceScreen() {
       location: h.location.trim() || null,
       qty: num(entry.qty),
       rate: num(entry.rate),
-      disP: num(entry.discPct),
-      disA: num(entry.discAmt),
+      disP,
+      disA,
       gstRate: entry.item.gstRate,
       interState: h.interState,
     });
@@ -290,10 +312,11 @@ export function SalesInvoiceScreen() {
     };
     setEntry({
       item: it,
-      qty: f2(l.qty),
-      rate: f2(l.rate),
+      qty: fq(l.qty),
+      rate: fa(l.rate),
       discPct: f2(l.disP),
-      discAmt: f2(l.disA),
+      discAmt: fa(l.disA),
+      discBy: l.disP > 0 ? 'pct' : 'amt',
       line: i,
     });
     focusNav(NAV.qty);
@@ -358,6 +381,7 @@ export function SalesInvoiceScreen() {
       if (editing === null) await unwrap(api.api.sales.$post({ json: body }));
       else await unwrap(api.api.sales.$put({ json: body }));
       toast(editing === null ? sm.saved(h.billNo, totals.net) : sm.updated(h.billNo));
+      setLastSaved(h.billNo);
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       await newBill();
     } catch (err) {
@@ -395,7 +419,7 @@ export function SalesInvoiceScreen() {
       location: bill.location,
       interState: bill.isInterState,
       billDiscPct: f2(bill.billDiscPct),
-      billDiscAmt: f2(bill.billDiscAmt),
+      billDiscAmt: fa(bill.billDiscAmt),
     });
     setLines(bill.lines);
     setEditing(cancelled ? null : bill.billNo);
@@ -441,10 +465,9 @@ export function SalesInvoiceScreen() {
           id="si-item"
           nav={NAV.item}
           value={entry.item}
-          items={data.items}
+          items={itemRefs}
           hint={kind === 'code' ? 'Type to search by code' : 'Type to search by name'}
           showCode={kind === 'code'}
-          searchTitle={['Select', 'Item']}
           onChange={onItem}
         />
       ) : (
@@ -472,11 +495,7 @@ export function SalesInvoiceScreen() {
     </button>
   );
 
-  const chips = (
-    <>
-      {editing && <Chip tone="warn">Editing {editing}</Chip>}
-    </>
-  );
+  const chips = <>{editing && <Chip tone="warn">Editing {editing}</Chip>}</>;
 
   return (
     <>
@@ -501,7 +520,6 @@ export function SalesInvoiceScreen() {
                 items={data.saleTypes}
                 hint={data.saleTypes.length ? 'Type to search sale type' : sm.noSaleTypesHint}
                 error={errors.saleType}
-                searchTitle={['Select', 'Sale Type']}
                 onChange={(t) => void onSaleType(t)}
               />
             </Cell>
@@ -541,7 +559,6 @@ export function SalesInvoiceScreen() {
                   items={data.customers.map((c) => ({ ...c, extra: c.gstNo }))}
                   hint={data.customers.length ? 'Type to search customer' : sm.noCustomersHint}
                   error={errors.customer}
-                  searchTitle={['Select', 'Customer']}
                   onChange={onCustomer}
                 />
               </Cell>
@@ -604,13 +621,16 @@ export function SalesInvoiceScreen() {
             </div>
 
             <div className="grid grid-cols-[repeat(5,minmax(0,1fr))_auto] items-end gap-2.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
-              <div className="col-span-6 grid grid-cols-[5fr_4fr] gap-2.5 max-lg:col-span-3 max-sm:col-span-2 max-sm:grid-cols-1">
-                {itemBox(byCode ? 'code' : 'name', true)}
-                {itemBox(byCode ? 'name' : 'code', false)}
+              <div className="col-span-6 grid grid-cols-2 gap-2.5 max-lg:col-span-3 max-sm:col-span-2 max-sm:grid-cols-1">
+                {/* Always Item Code | Item Name, as the grid below; the radio only picks which one
+                    you type in (user's request, 2026-10-25). */}
+                {itemBox('code', byCode)}
+                {itemBox('name', !byCode)}
               </div>
               <Cell id="si-qty" label="Required Qty" required>
                 <NumBox
                   id="si-qty"
+                  format={fq}
                   nav={NAV.qty}
                   value={entry.qty}
                   onChange={(qty) => setE({ qty })}
@@ -619,6 +639,7 @@ export function SalesInvoiceScreen() {
               <Cell id="si-rate" label="Rate">
                 <NumBox
                   id="si-rate"
+                  format={fa}
                   nav={NAV.rate}
                   value={entry.rate}
                   onChange={(rate) => setE({ rate })}
@@ -628,24 +649,22 @@ export function SalesInvoiceScreen() {
                 <NumBox
                   id="si-discPct"
                   nav={NAV.discPct}
-                  value={entry.discPct}
-                  onChange={(discPct) =>
-                    setE(num(discPct) > 0 ? { discPct, discAmt: '0.00' } : { discPct })
-                  }
+                  value={shownPct}
+                  // Percent and amount are alternatives; the other box follows the one typed.
+                  onChange={(discPct) => setE({ discPct, discBy: 'pct' })}
                 />
               </Cell>
               <Cell id="si-discAmt" label="Discount Amount">
                 <NumBox
                   id="si-discAmt"
+                  format={fa}
                   nav={NAV.discAmt}
-                  value={entry.discAmt}
-                  onChange={(discAmt) =>
-                    setE(num(discAmt) > 0 ? { discAmt, discPct: '0.00' } : { discAmt })
-                  }
+                  value={shownAmt}
+                  onChange={(discAmt) => setE({ discAmt, discBy: 'amt' })}
                 />
               </Cell>
               <Cell label="Amount">
-                <ReadOnly text={f2(entryLine?.lineTotal ?? 0)} right />
+                <ReadOnly text={fa(entryLine?.lineTotal ?? 0)} right />
               </Cell>
               <div className="flex gap-2 max-lg:col-span-1 max-sm:col-span-2">
                 <button
@@ -680,18 +699,18 @@ export function SalesInvoiceScreen() {
             {/* Totals */}
             <div className="flex flex-col gap-1 border border-border bg-card px-3 py-1.5">
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-                <Total label="Qty" value={f2(totals.qty)} />
-                <Total label="Sub Total" value={f2(totals.subTotal)} />
-                <Total label="CGST" value={f2(totals.cgst)} />
-                <Total label="SGST" value={f2(totals.sgst)} />
-                <Total label="IGST" value={f2(totals.igst)} />
+                <Total label="Qty" value={fq(totals.qty)} />
+                <Total label="Sub Total" value={fa(totals.subTotal)} />
+                <Total label="CGST" value={fa(totals.cgst)} />
+                <Total label="SGST" value={fa(totals.sgst)} />
+                <Total label="IGST" value={fa(totals.igst)} />
                 {totals.itemDisc > 0 && (
-                  <Total label="Discount On Items" value={f2(totals.itemDisc)} />
+                  <Total label="Discount On Items" value={fa(totals.itemDisc)} />
                 )}
                 <span className="flex-1" />
                 <Total
                   label="Total"
-                  value={f2(round2(totals.subTotal + totals.cgst + totals.sgst + totals.igst))}
+                  value={fa(round2(totals.subTotal + totals.cgst + totals.sgst + totals.igst))}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -709,7 +728,7 @@ export function SalesInvoiceScreen() {
                     onChange={(billDiscPct) =>
                       set(
                         num(billDiscPct) > 0
-                          ? { billDiscPct, billDiscAmt: '0.00' }
+                          ? { billDiscPct, billDiscAmt: fa(0) }
                           : { billDiscPct },
                       )
                     }
@@ -724,6 +743,7 @@ export function SalesInvoiceScreen() {
                 <div className="w-28">
                   <NumBox
                     id="si-billDiscAmt"
+                    format={fa}
                     nav={NAV.billDiscAmt}
                     value={h.billDiscAmt}
                     onChange={(billDiscAmt) =>
@@ -735,12 +755,12 @@ export function SalesInvoiceScreen() {
                     }
                   />
                 </div>
-                <Total label="Round Off" value={f2(totals.roundOff)} />
+                <Total label="Round Off" value={fa(totals.roundOff)} />
                 <span className="flex-1" />
                 <span className="flex items-center gap-2">
                   <span className="text-sm font-bold text-destructive">Grand Total Rs.</span>
                   <span className="border-[1.5px] border-foreground bg-background px-3 py-0.5 font-mono text-lg font-bold">
-                    {f2(totals.net)}
+                    {fa(totals.net)}
                   </span>
                 </span>
               </div>
@@ -750,7 +770,7 @@ export function SalesInvoiceScreen() {
 
         {/* ── Footer ── */}
         <div className="flex flex-none flex-wrap items-center gap-2.5 border-t-[3px] border-double border-foreground pt-2 max-sm:[&>button]:flex-[1_1_40%]">
-          <button type="button" onClick={() => toast(sm.printLater)} className={BAR_BTN}>
+          <button type="button" onClick={() => setPrintOpen(true)} className={BAR_BTN}>
             Sale Print
           </button>
           <button type="button" onClick={() => void showAll()} className={BAR_BTN}>
@@ -783,6 +803,12 @@ export function SalesInvoiceScreen() {
         </div>
       </TransactionPage>
 
+      <PrintInvoice
+        kind="sale"
+        open={printOpen}
+        defaultNo={editing ?? lastSaved}
+        onDone={() => setPrintOpen(false)}
+      />
       <SaleList
         open={!!list}
         rows={list ?? []}
@@ -808,16 +834,16 @@ const COLS: GridCol<SaleLine>[] = [
   { label: 'SNo.', w: '42px', cell: (_, i) => String(i + 1) },
   { label: 'Itm.Code', w: '74px', cell: (l) => l.itemCode },
   { label: 'Itm.Name', w: 'minmax(130px,1fr)', cell: (l) => l.itemName },
-  { label: 'Qty.', w: '58px', num: true, cell: (l) => f2(l.qty) },
-  { label: 'Rate', w: '72px', num: true, cell: (l) => f2(l.rate) },
+  { label: 'Qty.', w: '58px', num: true, cell: (l) => fq(l.qty) },
+  { label: 'Rate', w: '72px', num: true, cell: (l) => fa(l.rate) },
   { label: 'DisP', w: '48px', num: true, cell: (l) => f2(l.disP) },
-  { label: 'DisA', w: '62px', num: true, cell: (l) => f2(l.disA) },
-  { label: 'Amount', w: '82px', num: true, cell: (l) => f2(l.amount) },
+  { label: 'DisA', w: '62px', num: true, cell: (l) => fa(l.disA) },
+  { label: 'Amount', w: '82px', num: true, cell: (l) => fa(l.amount) },
   { label: 'SGST%', w: '54px', num: true, cell: (l) => f2(l.sgstP) },
-  { label: 'SGST', w: '66px', num: true, cell: (l) => f2(l.sgstA) },
+  { label: 'SGST', w: '66px', num: true, cell: (l) => fa(l.sgstA) },
   { label: 'CGST%', w: '54px', num: true, cell: (l) => f2(l.cgstP) },
-  { label: 'CGST', w: '66px', num: true, cell: (l) => f2(l.cgstA) },
+  { label: 'CGST', w: '66px', num: true, cell: (l) => fa(l.cgstA) },
   { label: 'IGST%', w: '54px', num: true, cell: (l) => f2(l.igstP) },
-  { label: 'IGST', w: '66px', num: true, cell: (l) => f2(l.igstA) },
+  { label: 'IGST', w: '66px', num: true, cell: (l) => fa(l.igstA) },
   { label: 'HSN Code', w: '78px', cell: (l) => l.hsnNo ?? '' },
 ];

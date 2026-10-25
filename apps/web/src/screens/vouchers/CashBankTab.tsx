@@ -43,6 +43,7 @@ import {
   type Message,
   type VoucherRow,
 } from './shared.tsx';
+import { fa } from '../../format.ts';
 
 type Kind = 'receipt' | 'payment';
 type Form = {
@@ -209,7 +210,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
       vchrNo: row.vchrNo,
       account: inList(receipt ? dr : cr, cashList),
       party: inList(receipt ? cr : dr, ledgers!),
-      amount: row.netAmount.toFixed(2),
+      amount: fa(row.netAmount),
       ref: row.refNo,
       narration: row.narration,
       editId: row.status === 'Cancelled' ? null : row.id,

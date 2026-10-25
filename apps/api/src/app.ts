@@ -42,7 +42,9 @@ import {
   summarizeBackup,
   updateBookUser,
   updateSeries,
+  companyDecimals,
   getCompany,
+  setCompanyDecimals,
   gstAudit,
   gstr1Report,
   gstr3bReport,
@@ -57,6 +59,7 @@ import {
   listSales,
   nextSaleBillNo,
   saleBill,
+  saleForPrint,
   saleLookups,
   saveSale,
   updateSale,
@@ -70,6 +73,7 @@ import {
   listPurchases,
   nextPurchaseBillNo,
   purchaseBill,
+  purchaseForPrint,
   purchaseLookups,
   savePurchase,
   updatePurchase,
@@ -574,6 +578,11 @@ export function createApp(opts: AppOptions) {
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       return c.json({ bill: await purchaseBill(db, book.bookId, c.req.valid('query').no) });
     })
+    .get('/api/purchases/print', zValidator('query', z.object({ no: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ invoice: await purchaseForPrint(db, book.bookId, c.req.valid('query').no) });
+    })
     .post('/api/purchases', json(contract.purchaseSave), async (c) => {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
@@ -620,6 +629,11 @@ export function createApp(opts: AppOptions) {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       return c.json({ bill: await saleBill(db, book.bookId, c.req.valid('query').no) });
+    })
+    .get('/api/sales/print', zValidator('query', z.object({ no: z.string() })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ invoice: await saleForPrint(db, book.bookId, c.req.valid('query').no) });
     })
     .post('/api/sales', json(contract.saleSave), async (c) => {
       const book = await readBook(c);
@@ -800,6 +814,17 @@ export function createApp(opts: AppOptions) {
         companyStateCode: partyStateCode(company.stateCode, company.gstin, company.state),
       });
       return c.json(company);
+    })
+    .get('/api/settings/decimals', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await companyDecimals(db, book.companyId));
+    })
+    .put('/api/settings/decimals', json(contract.decimalsSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      if (!isAdminRole(book.role)) throw new UserError(seriesMessages.adminOnly);
+      return c.json(await setCompanyDecimals(db, book.companyId, c.req.valid('json')));
     })
     .get('/api/settings/series', async (c) => {
       const book = await readBook(c);

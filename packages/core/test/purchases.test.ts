@@ -98,8 +98,21 @@ describe('lines and totals', () => {
       cgst: 91.5,
       igst: 0,
       roundOff: 0.01,
+      freight: 0,
       net: 1233,
     });
+  });
+  test('freight is added straight to the net and posted to Freight Inward', () => {
+    const t = purcTotals([line({ qty: 1, rate: 100, disP: 0, gstRate: 18 })], 50.5);
+    expect(t.freight).toBe(50.5);
+    expect(t.net).toBe(168.5); // 100 + 18 GST + 50.50 freight
+    expect(purchasePosting('AC0004', t, false)).toEqual([
+      { accCode: 'PUR001', dr: 100, cr: 0 },
+      { accCode: 'TAX001', dr: 9, cr: 0 },
+      { accCode: 'TAX002', dr: 9, cr: 0 },
+      { accCode: 'PUR002', dr: 50.5, cr: 0 },
+      { accCode: 'AC0004', dr: 0, cr: 168.5 },
+    ]);
   });
   test('posting: Dr Purchase and input taxes and round off, Cr the supplier', () => {
     const t = purcTotals([

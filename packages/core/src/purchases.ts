@@ -16,8 +16,14 @@ export const isInterState = (company?: string | null, party?: string | null): bo
 };
 
 const nameKey = (name: string) =>
-  name.toLowerCase().replace(/\band\b/g, '&').replace(/\s+/g, ' ').trim();
-const CODE_BY_NAME = new Map(Object.entries(GST_STATES).map(([code, name]) => [nameKey(name), code]));
+  name
+    .toLowerCase()
+    .replace(/\band\b/g, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
+const CODE_BY_NAME = new Map(
+  Object.entries(GST_STATES).map(([code, name]) => [nameKey(name), code]),
+);
 
 /** A state name ("Uttar Pradesh") as its GST code ("09"); '' for "Not Applicable" or blank. */
 export const stateCodeOfName = (name?: string | null): string =>
@@ -103,6 +109,8 @@ export type PurcLine = {
   igstP: number;
   igstA: number;
   lineTotal: number;
+  /** Up to four free-text description lines (Purchase only; added 2026-10-25). */
+  desc?: string[];
 };
 
 /** `PurcLine.compute`: a line from raw entry values, with the GST split for the supply type. */
@@ -118,6 +126,7 @@ export function purcLine(p: {
   disA?: number;
   gstRate: number;
   interState: boolean;
+  desc?: string[];
 }): PurcLine {
   const disP = p.disP ?? 0;
   const disA = p.disA ?? 0;
@@ -149,6 +158,7 @@ export function purcLine(p: {
     igstP: p.interState ? p.gstRate : 0,
     igstA: split.igst,
     lineTotal: split.total,
+    ...(p.desc ? { desc: p.desc } : {}),
   };
 }
 
@@ -161,10 +171,12 @@ export type PurcTotals = {
   cgst: number;
   igst: number;
   roundOff: number;
+  /** Freight, typed on the bill and added straight to the net (no GST; added 2026-10-25). */
+  freight: number;
   net: number;
 };
 
-export function purcTotals(lines: PurcLine[]): PurcTotals {
+export function purcTotals(lines: PurcLine[], freight = 0): PurcTotals {
   const total = (f: (l: PurcLine) => number) => round2(lines.reduce((a, l) => a + f(l), 0));
   const subTotal = total((l) => l.amount);
   const sgst = total((l) => l.sgstA);
@@ -180,7 +192,8 @@ export function purcTotals(lines: PurcLine[]): PurcTotals {
     cgst,
     igst,
     roundOff: round,
-    net: round2(gross + round),
+    freight: round2(freight),
+    net: round2(gross + round + freight),
   };
 }
 
@@ -193,6 +206,7 @@ export const PURCHASE_LEDGERS = {
   inputSgst: 'TAX002',
   inputIgst: 'TAX003',
   roundOff: 'TAX007',
+  freight: 'PUR002',
 } as const;
 
 /** What `_ensureLedgers` creates when a book is missing one: ledger → name, group, Dr/Cr. */
@@ -202,12 +216,14 @@ export const PURCHASE_LEDGER_SEEDS: Record<string, [name: string, group: string,
   TAX002: ['Input SGST', 'L005', 'Dr'],
   TAX003: ['Input IGST', 'L005', 'Dr'],
   TAX007: ['Round Off', 'E002', 'Dr'],
+  PUR002: ['Freight Inward', 'E001', 'Dr'],
 };
 /** …and the group each sits under, created first if it's missing too: name, type, parent. */
 export const PURCHASE_GROUP_SEEDS: Record<string, [name: string, type: string, parent: string]> = {
   L005: ['Duties & Taxes', 'Liabilities', 'L004'],
   E003: ['Purchase Accounts', 'Expenses', 'Parent'],
   E002: ['Indirect Expenses', 'Expenses', 'Parent'],
+  E001: ['Direct Expenses', 'Expenses', 'Parent'],
 };
 
 /** The bill-number series (`PURBILL`, default PB- and 4 digits). Its LastNo is never moved on
@@ -260,6 +276,7 @@ export type PurcHeaderCheck = {
   fyFrom: string | null;
   fyTo: string | null;
   fyLabel: string;
+  freight?: number;
 };
 
 /** `_validate`: the first problem with a purchase, in MDA's order, or null. */
@@ -276,11 +293,12 @@ export function purchaseProblem(h: PurcHeaderCheck, lines: PurcLine[]): string |
     if (l.rate < 0) return m.lineRate(l.itemName);
     if (l.amount < 0) return m.lineDiscount(l.itemName);
   }
-  if (purcTotals(lines).net <= 0) return m.zero;
+  if (purcTotals(lines, h.freight).net <= 0) return m.zero;
   return null;
 }
 
-/** `_postLedger`'s double entry: Dr Purchase A/c and Input GST, Dr/Cr Round Off, Cr supplier.
+/** `_postLedger`'s double entry: Dr Purchase A/c and Input GST, Dr/Cr Round Off, Dr Freight
+ *  Inward, Cr supplier.
  *  Lines under half a paisa are left out. */
 export function purchasePosting(
   suppCode: string,
@@ -303,6 +321,7 @@ export function purchasePosting(
   }
   if (t.roundOff > 0) dr(L.roundOff, t.roundOff);
   else if (t.roundOff < 0) cr(L.roundOff, -t.roundOff);
+  dr(L.freight, t.freight);
   cr(suppCode, t.net);
   return out;
 }

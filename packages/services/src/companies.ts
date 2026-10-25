@@ -54,6 +54,31 @@ export async function getCompany(
   return row ?? null;
 }
 
+/** The company's decimal places: Qty 0-3 and Rate/Amount 0-2 (defaults 3 and 2). */
+export type Decimals = { qty: number; amount: number };
+
+export async function companyDecimals(db: Db, companyId: string): Promise<Decimals> {
+  const [row] = await db
+    .select({ qty: companies.qtyDecimals, amount: companies.amountDecimals })
+    .from(companies)
+    .where(eq(companies.id, companyId));
+  return row ?? { qty: 3, amount: 2 };
+}
+
+export async function setCompanyDecimals(
+  db: Db,
+  companyId: string,
+  d: Decimals,
+): Promise<Decimals> {
+  const qty = Math.min(3, Math.max(0, Math.trunc(d.qty)));
+  const amount = Math.min(2, Math.max(0, Math.trunc(d.amount)));
+  await db
+    .update(companies)
+    .set({ qtyDecimals: qty, amountDecimals: amount })
+    .where(eq(companies.id, companyId));
+  return { qty, amount };
+}
+
 export async function createCompany(
   db: Db,
   accountId: string,

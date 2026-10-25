@@ -9,6 +9,7 @@ import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { api, unwrap } from '../../api.ts';
 import { ConfirmUpdate, Dialog } from '../../components/Dialog.tsx';
+import { setDecimals } from '../../format.ts';
 import { getAccount } from '../../lib/account.ts';
 import { setTheme, useTheme } from '../../lib/theme.ts';
 import { ALL_ITEMS, NAV, SECTION_ICONS, findItem, findSection, slug, type NavItem } from './nav.ts';
@@ -23,6 +24,12 @@ export function MainShell() {
     gcTime: 0,
   });
   const account = useQuery({ queryKey: ['account'], queryFn: getAccount });
+  // The company's decimal places, in place before any page draws a figure.
+  const decimals = useQuery({
+    queryKey: ['decimals'],
+    queryFn: () => unwrap(api.api.settings.decimals.$get()),
+  });
+  if (decimals.data) setDecimals(decimals.data);
   const [findOpen, setFindOpen] = useState(false);
   // Phones and tablets: the sidebar is a drawer behind ☰, closed again once a page opens.
   const [menuOpen, setMenuOpen] = useState(false);
@@ -176,7 +183,7 @@ export function MainShell() {
           {/* Pages never shrink below their content ([&>*]:shrink-0): a page taller than the
               window (long forms on a phone) scrolls here instead of spilling past its paper. */}
           <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 print:block print:overflow-visible print:p-0 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2 [&>*]:shrink-0">
-            <Outlet />
+            {(decimals.data || decimals.isError) && <Outlet />}
           </main>
         </div>
       </div>

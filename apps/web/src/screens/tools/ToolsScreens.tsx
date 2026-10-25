@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { MessageDialog } from '../../components/Dialog.tsx';
 import { toast } from '../../components/Toast.tsx';
+import { setDecimals } from '../../format.ts';
 import { ImportFromMda } from '../books/ImportFromMda.tsx';
 import { BaseCurrency, FormSection, fromRecord } from '../company/CompanyScreen.tsx';
 import {
@@ -73,7 +74,7 @@ function Tabs<K extends string>({
 // ── Company Settings ───────────────────────────────────────────────────────────
 
 export function CompanySettingsScreen() {
-  const [tab, setTab] = useState<'company' | 'numbering'>('company');
+  const [tab, setTab] = useState<'company' | 'numbering' | 'decimals'>('company');
   return (
     <ReportPage
       section="tools"
@@ -87,11 +88,18 @@ export function CompanySettingsScreen() {
           options={[
             ['company', 'Company Details'],
             ['numbering', 'Voucher Numbering'],
+            ['decimals', 'Decimal Places'],
           ]}
         />
       }
     >
-      {tab === 'company' ? <CompanyDetails /> : <Numbering />}
+      {tab === 'company' ? (
+        <CompanyDetails />
+      ) : tab === 'numbering' ? (
+        <Numbering />
+      ) : (
+        <DecimalPlaces />
+      )}
     </ReportPage>
   );
 }
@@ -592,5 +600,83 @@ export function LogsScreen() {
         minWidth={720}
       />
     </ReportPage>
+  );
+}
+
+/** Decimal places for quantities (0-3) and rates/amounts (0-2), for every screen, report and
+ *  print of this company. Display only: the maths stays exact to the paisa. Admin only. */
+function DecimalPlaces() {
+  const queryClient = useQueryClient();
+  const q = useQuery({
+    queryKey: ['decimals'],
+    queryFn: () => unwrap(api.api.settings.decimals.$get()),
+  });
+  const [form, setForm] = useState<{ qty: number; amount: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (q.data && !form) setForm(q.data);
+  }, [q.data]);
+  if (!form) return null;
+
+  const sample = (v: number, d: number) =>
+    v.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const changed = form.qty !== q.data?.qty || form.amount !== q.data?.amount;
+  const update = async () => {
+    setBusy(true);
+    try {
+      const saved = await unwrap(api.api.settings.decimals.$put({ json: form }));
+      setDecimals(saved);
+      setForm(saved);
+      await queryClient.invalidateQueries({ queryKey: ['decimals'] });
+      toast('Decimal places updated');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error');
+    }
+    setBusy(false);
+  };
+  const field = (
+    id: 'qty' | 'amount',
+    label: string,
+    choices: number[],
+    example: (d: number) => string,
+  ) => (
+    <label htmlFor={`dec-${id}`} className="flex flex-col gap-1">
+      <span className="text-sm font-semibold">{label}</span>
+      <select
+        id={`dec-${id}`}
+        value={form[id]}
+        onChange={(e) => setForm({ ...form, [id]: Number(e.target.value) })}
+        className={boxClass()}
+      >
+        {choices.map((d) => (
+          <option key={d} value={d}>
+            {d} ({example(d)})
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <div className="flex max-w-[560px] flex-col gap-4">
+      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        {field('qty', 'Qty decimals', [0, 1, 2, 3], (d) => sample(10, d))}
+        {field('amount', 'Rate / Amount decimals', [0, 1, 2], (d) => sample(1450, d))}
+      </div>
+      <div>
+        <button
+          type="button"
+          disabled={!changed || busy}
+          onClick={() => void update()}
+          className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy ? 'Updating...' : 'Update'}
+        </button>
+      </div>
+      <p className="m-0 text-xs text-muted-foreground">
+        Applies to every screen, report and printed bill of this company. Only what is shown and
+        printed changes; GST, totals and the books are always worked out to the paisa. Only an Admin
+        can change these.
+      </p>
+    </div>
   );
 }

@@ -26,11 +26,13 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
+import { fa, fq } from '../../format.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import { PurchaseList } from './PurchaseList.tsx';
+import { PrintInvoice } from './print.tsx';
 import {
   BAR_BTN,
   Cell,
@@ -93,6 +95,8 @@ type Header = {
   supplier: Supplier | null;
   state: string;
   interState: boolean;
+  /** Added straight to the net, without GST. */
+  freight: string;
 };
 
 type Entry = {
@@ -101,15 +105,21 @@ type Entry = {
   rate: string;
   discPct: string;
   discAmt: string;
+  /** Which discount box was typed in; the other one is worked out from it. */
+  discBy: 'pct' | 'amt';
+  /** Up to four description lines for this item. */
+  desc: string[];
   /** Index being re-edited, null when adding. */
   line: number | null;
 };
 const blankEntry = (): Entry => ({
   item: null,
-  qty: '0.00',
-  rate: '0',
+  qty: fq(0),
+  rate: fa(0),
   discPct: '0.00',
-  discAmt: '0.00',
+  discAmt: fa(0),
+  discBy: 'pct',
+  desc: ['', '', '', ''],
   line: null,
 });
 const num = (s: string) => Number(s) || 0;
@@ -143,6 +153,7 @@ export function PurchaseInvoiceScreen() {
     supplier: null,
     state: '',
     interState: false,
+    freight: fa(0),
   });
 
   const [h, setH] = useState<Header | null>(null);
@@ -154,7 +165,11 @@ export function PurchaseInvoiceScreen() {
   const [saving, setSaving] = useState(false);
   const [list, setList] = useState<ListRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [printOpen, setPrintOpen] = useState(false);
+  /** The bill last saved here, offered first by Purchase Print. */
+  const [lastSaved, setLastSaved] = useState('');
   const [otherOpen, setOtherOpen] = useState(false);
+  const [descOpen, setDescOpen] = useState(false);
   const started = useRef(false);
 
   // First load: a fresh bill, the cursor on Supply With, and MDA's warning when there's no
@@ -173,8 +188,24 @@ export function PurchaseInvoiceScreen() {
 
   const set = (patch: Partial<Header>) => setH((x) => ({ ...x!, ...patch }));
   const setE = (patch: Partial<Entry>) => setEntry((x) => ({ ...x, ...patch }));
+  // The lookups show each item's Unit, GST % and Rate beside it.
+  const itemRefs = data.items.map((i) => ({
+    ...i,
+    extra: [i.unit, `GST ${i.gstRate}%`, i.purRate > 0 ? `₹${fa(i.purRate)}` : '']
+      .filter(Boolean)
+      .join('  ·  '),
+  }));
   const gstRateOf = (code: string) => data.items.find((i) => i.code === code)?.gstRate ?? 0;
-  const totals = purcTotals(lines);
+  const totals = purcTotals(lines, num(h.freight));
+
+  // The entry row's discount: the box typed in wins, the other shows what it comes to.
+  const disP = entry.discBy === 'pct' ? num(entry.discPct) : 0;
+  const disA = entry.discBy === 'amt' ? num(entry.discAmt) : 0;
+  const gross = num(entry.qty) * num(entry.rate);
+  const shownPct =
+    entry.discBy === 'pct' ? entry.discPct : gross > 0 ? f2((disA / gross) * 100) : '0.00';
+  const shownAmt = entry.discBy === 'amt' ? entry.discAmt : fa(Math.round(gross * disP) / 100);
+  const descCount = entry.desc.filter((d) => d.trim()).length;
 
   // The entry row's Tax and Amount, as typed.
   const entryLine = entry.item
@@ -183,8 +214,8 @@ export function PurchaseInvoiceScreen() {
         itemName: entry.item.name,
         qty: num(entry.qty),
         rate: num(entry.rate),
-        disP: num(entry.discPct),
-        disA: num(entry.discAmt),
+        disP,
+        disA,
         gstRate: entry.item.gstRate,
         interState: h.interState,
       })
@@ -204,6 +235,7 @@ export function PurchaseInvoiceScreen() {
           disA: l.disP > 0 ? 0 : l.disA,
           gstRate: gstRateOf(l.itemCode),
           interState: inter,
+          desc: l.desc,
         }),
       ),
     );
@@ -220,7 +252,7 @@ export function PurchaseInvoiceScreen() {
     setEntry((x) => ({
       ...x,
       item: it,
-      rate: it.purRate > 0 && num(x.rate) === 0 ? f2(it.purRate) : x.rate,
+      rate: it.purRate > 0 && num(x.rate) === 0 ? fa(it.purRate) : x.rate,
     }));
     focusNav(NAV.qty);
   };
@@ -248,10 +280,11 @@ export function PurchaseInvoiceScreen() {
       location: h.location.trim() || null,
       qty: num(entry.qty),
       rate: num(entry.rate),
-      disP: num(entry.discPct),
-      disA: num(entry.discAmt),
+      disP,
+      disA,
       gstRate: entry.item.gstRate,
       interState: h.interState,
+      desc: descCount ? entry.desc.map((d) => d.trim()) : undefined,
     });
     setLines((ls) =>
       entry.line !== null ? ls.map((l, i) => (i === entry.line ? line : l)) : [...ls, line],
@@ -274,10 +307,12 @@ export function PurchaseInvoiceScreen() {
     };
     setEntry({
       item: it,
-      qty: f2(l.qty),
-      rate: f2(l.rate),
+      qty: fq(l.qty),
+      rate: fa(l.rate),
       discPct: f2(l.disP),
-      discAmt: f2(l.disA),
+      discAmt: fa(l.disA),
+      discBy: l.disP > 0 ? 'pct' : 'amt',
+      desc: [0, 1, 2, 3].map((k) => l.desc?.[k] ?? ''),
       line: i,
     });
     focusNav(NAV.qty);
@@ -325,6 +360,7 @@ export function PurchaseInvoiceScreen() {
       narration: h.narration,
       state: h.state,
       interState: h.interState,
+      freight: num(h.freight),
       lines: lines.map((l) => ({
         itemCode: l.itemCode,
         itemName: l.itemName,
@@ -337,12 +373,14 @@ export function PurchaseInvoiceScreen() {
         disP: l.disP,
         disA: l.disA,
         gstRate: l.sgstP + l.cgstP + l.igstP,
+        desc: l.desc,
       })),
     };
     try {
       if (editing === null) await unwrap(api.api.purchases.$post({ json: body }));
       else await unwrap(api.api.purchases.$put({ json: body }));
       toast(editing === null ? pm.saved(h.billNo, totals.net) : pm.updated(h.billNo));
+      setLastSaved(h.billNo);
       await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       await newBill();
     } catch (err) {
@@ -389,6 +427,7 @@ export function PurchaseInvoiceScreen() {
       // Bills saved before the State box existed show the supplier's.
       state: bill.state || stateOf(supplier),
       interState: bill.isInterState,
+      freight: fa(bill.freight),
     });
     setLines(bill.lines);
     // A cancelled bill opens for reference only: saving would re-post it.
@@ -432,10 +471,9 @@ export function PurchaseInvoiceScreen() {
           id="pi-item"
           nav={NAV.item}
           value={entry.item}
-          items={data.items}
+          items={itemRefs}
           hint="Type to search by code"
           showCode
-          searchTitle={['Select', 'Item']}
           onChange={onItem}
         />
       ) : (
@@ -450,9 +488,8 @@ export function PurchaseInvoiceScreen() {
           id="pi-item"
           nav={NAV.item}
           value={entry.item}
-          items={data.items}
+          items={itemRefs}
           hint="Type to search by name"
-          searchTitle={['Select', 'Item']}
           onChange={onItem}
         />
       ) : (
@@ -461,11 +498,7 @@ export function PurchaseInvoiceScreen() {
     </Cell>
   );
 
-  const chips = (
-    <>
-      {editing && <Chip tone="warn">Editing {editing}</Chip>}
-    </>
-  );
+  const chips = <>{editing && <Chip tone="warn">Editing {editing}</Chip>}</>;
 
   // Filled boxes in the popup, shown on its button so nothing entered there goes unseen.
   const otherCount = [
@@ -526,7 +559,6 @@ export function PurchaseInvoiceScreen() {
                   value={data.godowns.find((g) => g.name === h.location) ?? null}
                   items={data.godowns}
                   hint="Godown (optional)"
-                  searchTitle={['Select', 'Godown']}
                   onChange={(g) => {
                     set({ location: g.name });
                     focusNav(NAV.supplier);
@@ -545,7 +577,6 @@ export function PurchaseInvoiceScreen() {
                   items={data.suppliers.map((s) => ({ ...s, extra: s.gstin }))}
                   hint={data.suppliers.length ? 'Type to search supplier' : pm.noSuppliersHint}
                   error={supplierError}
-                  searchTitle={['Select', 'Supplier']}
                   onChange={onSupplier}
                 />
               </Cell>
@@ -623,16 +654,31 @@ export function PurchaseInvoiceScreen() {
               )}
             </div>
 
-            {/* Whichever of Code / Name the radio picks is the box you type in, placed first. */}
-            <div className="grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
-              {byCode ? itemCodeBox(true) : itemNameBox(true)}
-              {byCode ? itemNameBox(false) : itemCodeBox(false)}
+            {/* Always Item Code | Item Name, as the grid below; the radio only picks which one you
+                type in (changed from MDA's "typed box first" at the user's request, 2026-10-25). */}
+            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2.5 max-sm:grid-cols-1">
+              {itemCodeBox(byCode)}
+              {itemNameBox(!byCode)}
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setDescOpen(true)}
+                className="flex h-[34px] cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border-[1.5px] border-foreground px-3 text-[15px] font-semibold"
+              >
+                Description
+                {descCount > 0 && (
+                  <span className="bg-primary px-1.5 text-xs text-primary-foreground">
+                    {descCount}
+                  </span>
+                )}
+              </button>
             </div>
 
             <div className="grid grid-cols-[repeat(6,minmax(0,1fr))_auto] items-end gap-2.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
               <Cell id="pi-qty" label="Quantity" required>
                 <NumBox
                   id="pi-qty"
+                  format={fq}
                   nav={NAV.qty}
                   value={entry.qty}
                   onChange={(qty) => setE({ qty })}
@@ -641,6 +687,7 @@ export function PurchaseInvoiceScreen() {
               <Cell id="pi-rate" label="Rate">
                 <NumBox
                   id="pi-rate"
+                  format={fa}
                   nav={NAV.rate}
                   value={entry.rate}
                   onChange={(rate) => setE({ rate })}
@@ -650,28 +697,25 @@ export function PurchaseInvoiceScreen() {
                 <NumBox
                   id="pi-discPct"
                   nav={NAV.discPct}
-                  value={entry.discPct}
-                  // Percent and amount are alternatives.
-                  onChange={(discPct) =>
-                    setE(num(discPct) > 0 ? { discPct, discAmt: '0.00' } : { discPct })
-                  }
+                  value={shownPct}
+                  // Percent and amount are alternatives; the other box follows the one typed.
+                  onChange={(discPct) => setE({ discPct, discBy: 'pct' })}
                 />
               </Cell>
               <Cell id="pi-discAmt" label="Disc Amount">
                 <NumBox
                   id="pi-discAmt"
+                  format={fa}
                   nav={NAV.discAmt}
-                  value={entry.discAmt}
-                  onChange={(discAmt) =>
-                    setE(num(discAmt) > 0 ? { discAmt, discPct: '0.00' } : { discAmt })
-                  }
+                  value={shownAmt}
+                  onChange={(discAmt) => setE({ discAmt, discBy: 'amt' })}
                 />
               </Cell>
               <Cell label="Tax">
-                <ReadOnly text={f2(entryTax)} right />
+                <ReadOnly text={fa(entryTax)} right />
               </Cell>
               <Cell label="Amount">
-                <ReadOnly text={f2(entryLine?.lineTotal ?? 0)} right />
+                <ReadOnly text={fa(entryLine?.lineTotal ?? 0)} right />
               </Cell>
               <div className="flex gap-2 max-lg:col-span-3 max-sm:col-span-2">
                 <button
@@ -704,18 +748,29 @@ export function PurchaseInvoiceScreen() {
 
             {/* Totals */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border border-border bg-card px-3 py-1">
-              <Total label="Qty" value={f2(totals.qty)} />
-              <Total label="Sub Total" value={f2(totals.subTotal)} />
-              {totals.discount > 0 && <Total label="Discount" value={f2(totals.discount)} />}
-              <Total label="SGST" value={f2(totals.sgst)} />
-              <Total label="CGST" value={f2(totals.cgst)} />
-              <Total label="IGST" value={f2(totals.igst)} />
-              {totals.roundOff !== 0 && <Total label="Round Off" value={f2(totals.roundOff)} />}
+              <Total label="Qty" value={fq(totals.qty)} />
+              <Total label="Sub Total" value={fa(totals.subTotal)} />
+              {totals.discount > 0 && <Total label="Discount" value={fa(totals.discount)} />}
+              <Total label="SGST" value={fa(totals.sgst)} />
+              <Total label="CGST" value={fa(totals.cgst)} />
+              <Total label="IGST" value={fa(totals.igst)} />
+              <label className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Freight</span>
+                <span className="w-[110px]">
+                  <NumBox
+                    id="pi-freight"
+                    format={fa}
+                    value={h.freight}
+                    onChange={(freight) => set({ freight })}
+                  />
+                </span>
+              </label>
+              {totals.roundOff !== 0 && <Total label="Round Off" value={fa(totals.roundOff)} />}
               <span className="flex-1" />
               <span className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-muted-foreground">Net Amount</span>
                 <span className="border-[1.5px] border-foreground bg-background px-3 py-0.5 font-mono text-lg font-bold">
-                  {f2(totals.net)}
+                  {fa(totals.net)}
                 </span>
               </span>
             </div>
@@ -724,6 +779,9 @@ export function PurchaseInvoiceScreen() {
 
         {/* ── Footer ── */}
         <div className="flex flex-none flex-wrap items-center gap-2.5 border-t-[3px] border-double border-foreground pt-2 max-sm:[&>button]:flex-[1_1_40%]">
+          <button type="button" onClick={() => setPrintOpen(true)} className={BAR_BTN}>
+            Purchase Print
+          </button>
           <button type="button" onClick={() => void showAll()} className={BAR_BTN}>
             Show All Purchase
           </button>
@@ -753,12 +811,60 @@ export function PurchaseInvoiceScreen() {
         </div>
       </TransactionPage>
 
+      <PrintInvoice
+        kind="purchase"
+        open={printOpen}
+        defaultNo={editing ?? lastSaved}
+        onDone={() => setPrintOpen(false)}
+      />
       <PurchaseList
         open={!!list}
         rows={list ?? []}
         onPick={(r) => void loadBill(r.billNo)}
         onClose={() => setList(null)}
       />
+      <Dialog
+        open={descOpen}
+        onClose={() => setDescOpen(false)}
+        title={['Item', 'Description']}
+        className="w-[520px]"
+      >
+        <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-[14px]">
+          {entry.item && <p className="m-0 text-sm font-semibold">{entry.item.name}</p>}
+          {[0, 1, 2, 3].map((k) => (
+            <Cell key={k} id={`pi-desc-${k}`} label={`Description ${k + 1}`}>
+              <input
+                id={`pi-desc-${k}`}
+                autoFocus={k === 0}
+                value={entry.desc[k]}
+                autoComplete="off"
+                onChange={(e) =>
+                  setE({ desc: entry.desc.map((d, i) => (i === k ? e.target.value : d)) })
+                }
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return;
+                  e.preventDefault();
+                  if (k < 3) document.getElementById(`pi-desc-${k + 1}`)?.focus();
+                  else setDescOpen(false);
+                }}
+                className={boxClass()}
+              />
+            </Cell>
+          ))}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setDescOpen(false);
+                focusNav(NAV.qty);
+              }}
+              className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </Dialog>
       <Dialog
         open={otherOpen}
         onClose={() => setOtherOpen(false)}
@@ -828,16 +934,21 @@ export function PurchaseInvoiceScreen() {
 const COLS: GridCol<PurcLine>[] = [
   { label: 'SNo.', w: '44px', cell: (_, i) => String(i + 1) },
   { label: 'Code', w: '78px', cell: (l) => l.itemCode },
-  { label: 'Item Name', w: 'minmax(170px,1fr)', cell: (l) => l.itemName },
-  { label: 'Qty.', w: '62px', num: true, cell: (l) => f2(l.qty) },
-  { label: 'Rate', w: '76px', num: true, cell: (l) => f2(l.rate) },
+  {
+    label: 'Item Name',
+    w: 'minmax(170px,1fr)',
+    // Description lines follow the name.
+    cell: (l) => [l.itemName, ...(l.desc ?? []).filter((d) => d.trim())].join('  ·  '),
+  },
+  { label: 'Qty.', w: '62px', num: true, cell: (l) => fq(l.qty) },
+  { label: 'Rate', w: '76px', num: true, cell: (l) => fa(l.rate) },
   { label: 'DisP', w: '52px', num: true, cell: (l) => f2(l.disP) },
-  { label: 'DisA', w: '66px', num: true, cell: (l) => f2(l.disA) },
-  { label: 'Amount', w: '86px', num: true, cell: (l) => f2(l.amount) },
+  { label: 'DisA', w: '66px', num: true, cell: (l) => fa(l.disA) },
+  { label: 'Amount', w: '86px', num: true, cell: (l) => fa(l.amount) },
   { label: 'SGSTP', w: '54px', num: true, cell: (l) => f2(l.sgstP) },
-  { label: 'SGSTA', w: '70px', num: true, cell: (l) => f2(l.sgstA) },
+  { label: 'SGSTA', w: '70px', num: true, cell: (l) => fa(l.sgstA) },
   { label: 'CGSTP', w: '54px', num: true, cell: (l) => f2(l.cgstP) },
-  { label: 'CGSTA', w: '70px', num: true, cell: (l) => f2(l.cgstA) },
+  { label: 'CGSTA', w: '70px', num: true, cell: (l) => fa(l.cgstA) },
   { label: 'IGSTP', w: '54px', num: true, cell: (l) => f2(l.igstP) },
-  { label: 'IGSTA', w: '70px', num: true, cell: (l) => f2(l.igstA) },
+  { label: 'IGSTA', w: '70px', num: true, cell: (l) => fa(l.igstA) },
 ];

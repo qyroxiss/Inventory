@@ -25,13 +25,12 @@ const { db, close } = await openDatabase({ url: process.env.DATABASE_URL, dataDi
 // Close the database before exiting. A local PGlite folder left open by a stopped process can't
 // be opened again ("Aborted()"), so Ctrl+C and a stop signal shut it down cleanly.
 let closing = false;
-for (const signal of ['SIGINT', 'SIGTERM'] as const) {
-  process.on(signal, () => {
-    if (closing) return;
-    closing = true;
-    void close().finally(() => process.exit(0));
-  });
-}
+const shutdown = () => {
+  if (closing) return;
+  closing = true;
+  void close().finally(() => process.exit(0));
+};
+for (const signal of ['SIGINT', 'SIGTERM'] as const) process.on(signal, shutdown);
 
 // LOCAL_ACCOUNT=1 skips the account layer and runs as account 'local', exactly as the desktop
 // app will. For local development only, until the account sign-in screen is built.
@@ -52,7 +51,26 @@ const app = createApp({
   secureCookies: baseURL.startsWith('https://'),
 });
 
-serve({ fetch: app.fetch, port });
+// Windows can only kill a background process outright, which leaves the PGlite folder unusable.
+// So with a local PGlite folder (never with DATABASE_URL), `POST /__dev/stop` from this same
+// machine closes the database and exits cleanly.
+const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+type NodeEnv = { incoming?: { socket?: { remoteAddress?: string } } };
+const fetch: typeof app.fetch = dataDir
+  ? (req, env, ...rest) => {
+      const url = new URL(req.url);
+      const local = LOOPBACK.has(
+        (env as NodeEnv | undefined)?.incoming?.socket?.remoteAddress ?? '',
+      );
+      if (req.method === 'POST' && url.pathname === '/__dev/stop' && local) {
+        setTimeout(shutdown, 50);
+        return new Response('stopping\n');
+      }
+      return app.fetch(req, env, ...rest);
+    }
+  : app.fetch;
+
+serve({ fetch, port });
 console.log(
   `api listening on ${baseURL} (${process.env.DATABASE_URL ? 'Postgres' : `PGlite at ${dataDir}`})` +
     (localAccount ? ' - account layer off (LOCAL_ACCOUNT=1)' : ''),

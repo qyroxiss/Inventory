@@ -173,6 +173,8 @@ export type PurchaseLineInput = {
   disP: number;
   disA: number;
   gstRate: number;
+  /** Up to four description lines. */
+  desc?: string[];
 };
 
 export type PurchaseInput = {
@@ -194,6 +196,8 @@ export type PurchaseInput = {
   state?: string;
   /** Decided by the screen from the State, and kept from the bill when it's reopened. */
   interState: boolean;
+  /** Added straight to the net, without GST. */
+  freight?: number;
   lines: PurchaseLineInput[];
 };
 
@@ -204,8 +208,18 @@ const buildLines = (input: PurchaseInput): PurcLine[] =>
       // The stored discount amount is recomputed from the percentage when one is given.
       disA: l.disP > 0 ? 0 : l.disA,
       interState: input.interState,
+      desc: cleanDesc(l.desc),
     }),
   );
+
+/** The description lines as typed, trimmed, without empty lines at the end; none → undefined. */
+function cleanDesc(desc?: string[]): string[] | undefined {
+  const d = (desc ?? []).slice(0, 4).map((x) => x.trim());
+  while (d.length && !d[d.length - 1]) d.pop();
+  return d.length ? d : undefined;
+}
+
+const freightOf = (input: PurchaseInput) => Math.max(0, Number(input.freight) || 0);
 
 function check(ctx: PostingContext, input: PurchaseInput, lines: PurcLine[]) {
   const problem = purchaseProblem(
@@ -216,6 +230,7 @@ function check(ctx: PostingContext, input: PurchaseInput, lines: PurcLine[]) {
       fyFrom: ctx.fyFrom,
       fyTo: ctx.fyTo,
       fyLabel: ctx.financialYearLabel,
+      freight: freightOf(input),
     },
     lines,
   );
@@ -244,6 +259,7 @@ const headerValues = (input: PurchaseInput, t: PurcTotals) => ({
   cgstAmt: money(t.cgst),
   igstAmt: money(t.igst),
   roundOff: money(t.roundOff),
+  freight: money(t.freight),
   netAmount: money(t.net),
 });
 
@@ -269,18 +285,25 @@ async function writeLines(db: Db, purchaseId: string, lines: PurcLine[]) {
       igstP: money(l.igstP),
       igstA: money(l.igstA),
       lineTotal: money(l.lineTotal),
+      description: l.desc?.length ? l.desc.join('\n') : null,
     })),
   );
 }
 
 /** `_ensureLedgers`: a book whose group or ledger master was edited may be missing a system
  *  ledger the posting needs. Create it, and its group first if that's missing too. */
-async function ensurePurchaseLedgers(db: Db, bookId: string, interState: boolean) {
+async function ensurePurchaseLedgers(
+  db: Db,
+  bookId: string,
+  interState: boolean,
+  freight: boolean,
+) {
   const L = PURCHASE_LEDGERS;
   const needed = [
     L.purchase,
     L.roundOff,
     ...(interState ? [L.inputIgst] : [L.inputCgst, L.inputSgst]),
+    ...(freight ? [L.freight] : []),
   ];
   for (const code of needed) {
     const [has] = await db
@@ -325,7 +348,7 @@ async function postPurchase(
   lines: PurcLine[],
   t: PurcTotals,
 ): Promise<string> {
-  await ensurePurchaseLedgers(db, ctx.bookId, input.interState);
+  await ensurePurchaseLedgers(db, ctx.bookId, input.interState, t.freight > 0);
 
   const acct = purchasePosting(input.suppCode, t, input.interState);
   const totalDr = acct.reduce((a, l) => a + l.dr, 0);
@@ -445,7 +468,7 @@ export async function savePurchase(
 ): Promise<{ billNo: string; net: number }> {
   const lines = buildLines(input);
   check(ctx, input, lines);
-  const t = purcTotals(lines);
+  const t = purcTotals(lines, freightOf(input));
   const billNo = input.billNo.trim();
 
   await db.transaction(async (raw) => {
@@ -480,7 +503,7 @@ export async function updatePurchase(
   const old = await findPurchase(db, ctx.bookId, input.billNo.trim());
   if (!old) throw new UserError(pm.notFound);
   if (old.status === CANCELLED) throw new UserError(pm.cancelledEdit);
-  const t = purcTotals(lines);
+  const t = purcTotals(lines, freightOf(input));
 
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;
@@ -604,6 +627,7 @@ export async function purchaseBill(db: Db, bookId: string, billNo: string) {
     igstP: Number(r.igstP),
     igstA: Number(r.igstA),
     lineTotal: Number(r.lineTotal),
+    ...(r.description ? { desc: r.description.split('\n') } : {}),
   }));
   return {
     billNo: p.billNo,
@@ -621,6 +645,7 @@ export async function purchaseBill(db: Db, bookId: string, billNo: string) {
     transporter: p.transporter ?? '',
     narration: p.narration ?? '',
     state: p.state ?? '',
+    freight: Number(p.freight),
     isInterState: p.isInterState,
     status: p.status,
     lines,
