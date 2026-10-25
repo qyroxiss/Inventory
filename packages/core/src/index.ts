@@ -173,7 +173,13 @@ export {
   userFieldErrors,
   userMessages,
 } from './tools.ts';
-export { parseDate, formatDmy, isInFinancialYear, financialYearLabel } from './dates.ts';
+export {
+  parseDate,
+  formatDmy,
+  readTypedDate,
+  isInFinancialYear,
+  financialYearLabel,
+} from './dates.ts';
 export {
   companyCode,
   companyStatutory,

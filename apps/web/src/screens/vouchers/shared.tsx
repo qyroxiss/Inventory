@@ -2,10 +2,10 @@
 // its tab rail, MDA's field look (select, amount, date limited to the open year), the data each
 // tab loads, and the cancel confirmation.
 
-import { formatDmy } from '@qi/core';
+import { formatDmy, readTypedDate } from '@qi/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
-import { useRef, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { Heading } from '../../components/ledger.tsx';
@@ -207,8 +207,14 @@ export const ReadBox = ({ text }: { text: string }) => (
   </div>
 );
 
-/** The date: shows dd/mm/yyyy and opens the browser's calendar, limited to the open year
- *  (`_pickVoucherDate`). */
+/**
+ * The date box: type a date (`25-10-2026`, `25/10/26`, `25-10`, `251026`…, read by
+ * `readTypedDate`), or open the calendar with the button or Alt+↓, limited to the open year
+ * (`_pickVoucherDate`). Shows dd-MM-yyyy. Enter accepts what was typed and lets the screen move
+ * on; a date that isn't real or is outside the year turns the box red and keeps the cursor here.
+ * Leaving the box keeps a good date and drops a bad one. Typing was added 2026-10-25; MDA only
+ * had the calendar.
+ */
 export function DateBox({
   id,
   value,
@@ -225,13 +231,17 @@ export function DateBox({
   min?: string | null;
   max?: string | null;
   placeholder?: string;
-  /** How the date reads in the box (dd/mm/yyyy unless a screen shows it otherwise). */
+  /** How the date reads in the box (dd-MM-yyyy unless a screen shows it otherwise). */
   format?: (iso: string) => string;
   className?: string;
-  onChange: (iso: string) => void;
+  /** `how` says whether it came from the calendar (screens move on then) or was typed (Enter
+   *  moves on by itself, and leaving the box must not pull the cursor back). */
+  onChange: (iso: string, how: 'calendar' | 'typed') => void;
   'data-nav'?: number;
 }) {
   const picker = useRef<HTMLInputElement>(null);
+  const [text, setText] = useState<string | null>(null);
+  const [bad, setBad] = useState(false);
   const open = () => {
     const p = picker.current;
     if (!p) return;
@@ -242,23 +252,74 @@ export function DateBox({
       p.focus();
     }
   };
+  /** The typed text as a date inside the range; '' for a cleared optional date; null if bad. */
+  const read = (t: string): string | null => {
+    if (!t.trim()) return placeholder ? '' : null;
+    const iso = readTypedDate(t, min, max);
+    if (!iso || (min && iso < min) || (max && iso > max)) return null;
+    return iso;
+  };
   return (
     <div className="relative">
       <input
         id={id}
-        readOnly
-        value={value ? format(value) : ''}
-        placeholder={placeholder}
-        onClick={open}
+        value={text ?? (value ? format(value) : '')}
+        placeholder={placeholder ?? 'dd-mm-yyyy'}
+        autoComplete="off"
+        inputMode="numeric"
+        aria-invalid={bad || undefined}
+        title={bad ? 'Enter a date inside the open year, e.g. 25-10-2026' : undefined}
+        onFocus={(e) => e.target.select()}
+        onChange={(e) => {
+          setText(e.target.value);
+          setBad(false);
+        }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
+          if (e.altKey && e.key === 'ArrowDown') {
             e.preventDefault();
             open();
+          } else if (e.key === 'Enter' && text !== null) {
+            const iso = read(text);
+            if (iso === null) {
+              // Stay here: the screen's Enter-to-next must not move on.
+              e.preventDefault();
+              setBad(true);
+              return;
+            }
+            setText(null);
+            if (iso !== value) onChange(iso, 'typed');
           }
         }}
-        className={`${className ?? inputClass()} cursor-pointer font-mono`}
+        onBlur={() => {
+          if (text === null) return;
+          const iso = read(text);
+          setText(null);
+          setBad(false);
+          if (iso !== null && iso !== value) onChange(iso, 'typed');
+        }}
+        className={`${className ?? inputClass()} pr-9 font-mono ${bad ? 'field-error' : ''}`}
         {...rest}
       />
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-label="Open calendar"
+        onClick={open}
+        className="absolute inset-y-0 right-0 grid w-9 cursor-pointer place-items-center text-muted-foreground hover:text-foreground"
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect
+            x="1.75"
+            y="3"
+            width="12.5"
+            height="11"
+            rx="1"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          />
+          <path d="M1.75 6.5h12.5M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.5" />
+        </svg>
+      </button>
       <input
         ref={picker}
         type="date"
@@ -266,7 +327,12 @@ export function DateBox({
         aria-hidden="true"
         min={min ?? undefined}
         max={max ?? undefined}
-        onChange={(e) => e.target.value && onChange(e.target.value)}
+        onChange={(e) => {
+          if (!e.target.value) return;
+          setText(null);
+          setBad(false);
+          onChange(e.target.value, 'calendar');
+        }}
         className="pointer-events-none absolute bottom-0 left-0 h-px w-px opacity-0"
       />
     </div>

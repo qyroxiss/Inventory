@@ -250,7 +250,7 @@ The importer (`tools/importer`) covers the one-way path, MDA desktop → cloud, 
 |---|---|
 | Errors | `PostingException(message)` → 422 → toast with the exact message. Unexpected errors → 500 + Sentry-compatible log (self-hosted GlitchTip later if needed). |
 | Audit | `audit_log` (LogAt, User, Action, Table, RecordKey, Details). The same CREATE/UPDATE/CANCEL entries as MDA, plus master changes. The "Logs" screen (unbuilt in MDA) reads it. |
-| Dates | Postgres `date` for voucher and bill dates. The FY guard (`isInFinancialYear`) runs in `core` and is enforced in services. Shown as `dd/MM/yyyy`. |
+| Dates | Postgres `date` for voucher and bill dates. The FY guard (`isInFinancialYear`) runs in `core` and is enforced in services. Shown and printed as `dd-MM-yyyy` everywhere (user's choice, 2026-10-25); date boxes also take typed dates (`readTypedDate`). |
 | i18n / currency | INR only, 2 decimals, Indian grouping, as in MDA's company form. |
 | Testing | Vitest (core + services on in-memory PGlite), Playwright (E2E on web), golden parity fixtures from Dart. See WORKFLOW. |
 | CI | GitHub Actions: typecheck, lint, test, build web, build desktop installer on tag. |

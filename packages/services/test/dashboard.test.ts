@@ -115,7 +115,7 @@ describe('Dashboard', () => {
       ['Sales Invoice', 'Acme Traders', 708, true],
       ['Purchase Invoice', 'Bharat Suppliers', 1888, false],
     ]);
-    expect(d.recent.map((r) => r.when)).toEqual(['1h ago', '3h ago', '5 days ago', '01/05/2026']);
+    expect(d.recent.map((r) => r.when)).toEqual(['1h ago', '3h ago', '5 days ago', '01-05-2026']);
   });
 
   test('a cancelled sale drops out of every figure', async () => {

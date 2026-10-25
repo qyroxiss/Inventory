@@ -11,7 +11,9 @@ import { getAccount, logoutAccount } from '../lib/account.ts';
 import { setTheme, useTheme } from '../lib/theme.ts';
 
 const today = () =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  new Date()
+    .toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    .replace(/\//g, '-');
 
 /** Signed-in account and its Logout. Shows nothing when signed out, or on desktop. */
 function AccountChip() {

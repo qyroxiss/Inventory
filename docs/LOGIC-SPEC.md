@@ -529,7 +529,7 @@ Invoice item and party lookups show nothing until you type, and match by "contai
    - `GSTIN: … PAN: …`
 2. **Title:** Cash Receipt, Bank Receipt, Cash Payment or Bank Payment.
 3. **Body:**
-   - Voucher No., Date (`dd/MM/yyyy`)
+   - Voucher No., Date (`dd-MM-yyyy`)
    - For bank receipts only: "Debited in A/c <BANK>"
    - Party label: "Received On Account Of" or "Payment Made On Account Of"
    - Party details: name, Father's Name, address, contact, email
@@ -607,7 +607,7 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 | Q-45 | A cancelled voucher opens with its details and the Save button; saving it tries its old number and is refused as already used |
 | Q-46 | Reopening a debit or credit note doesn't bring its reason back; it has to be chosen again to update |
 | Q-47 | A bank payment prints "By Cash" (receipts print "By Cash/Bank") |
-| Q-48 | The Receipt and Payment lists show the date as stored (yyyy-MM-dd); the Journal and note lists show dd/MM/yyyy |
+| Q-48 | The Receipt and Payment lists show the date as stored (yyyy-MM-dd); the Journal and note lists show dd/MM/yyyy. **Retired 2026-10-25:** every list shows dd-MM-yyyy |
 | Q-49 | A purchase saved with an empty Narration posts an empty voucher narration; MDA's fallback "Purchase <bill no>" never applies, because the box always sends text |
 | Q-50 | A cancelled purchase opens with its details and the Save button; saving it tries its own bill number and is refused as already existing (a cancelled sale does the same) |
 | Q-51 | A sale's customer can only be picked from Sundry Debtors; there's no walk-in name, even on a cash sale |

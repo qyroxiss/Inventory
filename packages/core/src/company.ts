@@ -95,8 +95,8 @@ export const yearMessages = {
 };
 
 /**
- * The usual April–March dates for a year name "2026-2027" (or "2026-27"): 01/04/2026 and
- * 31/03/2027, dd/MM/yyyy as the form shows them. Null when the name isn't such a range. Added on
+ * The usual April–March dates for a year name "2026-2027" (or "2026-27"): 01-04-2026 and
+ * 31-03-2027, dd-MM-yyyy as the form shows them. Null when the name isn't such a range. Added on
  * the owner's request; the dates stay editable.
  */
 export function yearDates(yearName: string): { from: string; to: string } | null {
@@ -105,7 +105,7 @@ export function yearDates(yearName: string): { from: string; to: string } | null
   const start = Number(m[1]);
   const end = m[2]!.length === 2 ? fullEnd(start, Number(m[2])) : Number(m[2]);
   if (end !== start + 1) return null;
-  return { from: `01/04/${start}`, to: `31/03/${end}` };
+  return { from: `01-04-${start}`, to: `31-03-${end}` };
 }
 
 /** The 4-digit year a 2-digit end stands for: the next one with those last digits. */

@@ -349,10 +349,10 @@ export function Lookup<T extends Ref>({
   );
 }
 
-/** dd/MM/yyyy, the one date format shown across the software. */
+/** dd-MM-yyyy, the one date format shown across the software. */
 export const dmy = (iso: string) => {
   const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}/${m}/${y}` : iso;
+  return y && m && d ? `${d}-${m}-${y}` : iso;
 };
 
 export const BAR_BTN =

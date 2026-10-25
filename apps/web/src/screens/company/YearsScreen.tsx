@@ -388,7 +388,7 @@ function DateField({
         ref={inputRef}
         readOnly
         value={value}
-        placeholder="dd/mm/yyyy"
+        placeholder="dd-mm-yyyy"
         aria-invalid={error ? true : undefined}
         onClick={open}
         onKeyDown={(e) => {

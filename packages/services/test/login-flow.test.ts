@@ -264,7 +264,7 @@ describe('book login (auth_page.dart)', () => {
       mustChangePassword: true,
       companyName: 'Sharma Traders',
       companyStateCode: '27',
-      financialYearLabel: '2026-2027 (01/04/2026 to 31/03/2027)',
+      financialYearLabel: '2026-2027 (01-04-2026 to 31-03-2027)',
     });
   });
 

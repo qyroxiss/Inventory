@@ -70,9 +70,9 @@ describe('company form checks', () => {
 
 describe('financial year names', () => {
   test('a range fills 1 April to 31 March; anything else gives nothing', () => {
-    expect(yearDates('2026-2027')).toEqual({ from: '01/04/2026', to: '31/03/2027' });
-    expect(yearDates('2026-27')).toEqual({ from: '01/04/2026', to: '31/03/2027' });
-    expect(yearDates('2099-00')).toEqual({ from: '01/04/2099', to: '31/03/2100' });
+    expect(yearDates('2026-2027')).toEqual({ from: '01-04-2026', to: '31-03-2027' });
+    expect(yearDates('2026-27')).toEqual({ from: '01-04-2026', to: '31-03-2027' });
+    expect(yearDates('2099-00')).toEqual({ from: '01-04-2099', to: '31-03-2100' });
     expect(yearDates('2026-2028')).toBeNull();
     expect(yearDates('2026')).toBeNull();
     expect(fullYearName('2026-27')).toBe('2026-2027');

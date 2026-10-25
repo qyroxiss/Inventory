@@ -101,9 +101,8 @@ export function CashBankList({
               >
                 {r.vchrNo}
               </span>
-              {/* MDA shows the date as stored, yyyy-MM-dd, here (unlike the other list). */}
               <span className="font-mono text-xs text-muted-foreground max-sm:hidden">
-                {r.vchrDate}
+                {formatDmy(r.vchrDate)}
               </span>
               <span className="text-muted-foreground max-sm:hidden">{bank ? 'Bank' : 'Cash'}</span>
               <span className="truncate">{cash ?? '—'}</span>
@@ -148,6 +147,7 @@ export function VoucherList({
           r.vchrNo.toLowerCase().includes(needle) ||
           (r.partyName ?? '').toLowerCase().includes(needle) ||
           r.narration.toLowerCase().includes(needle) ||
+          formatDmy(r.vchrDate).includes(q.trim()) ||
           r.vchrDate.includes(q.trim()),
       )
     : rows;

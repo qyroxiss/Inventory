@@ -25,7 +25,7 @@ describe('relative time (dashboard_service_test.dart)', () => {
   test('days, then a plain date once it is a week old', () => {
     expect(ago('2026-06-11T09:00:00.000', null, now)).toBe('Yesterday');
     expect(ago('2026-06-09T09:00:00.000', null, now)).toBe('3 days ago');
-    expect(ago('2026-06-01T09:00:00.000', null, now)).toBe('01/06/2026');
+    expect(ago('2026-06-01T09:00:00.000', null, now)).toBe('01-06-2026');
   });
 
   test('falls back to the voucher date when there is no entry time', () => {

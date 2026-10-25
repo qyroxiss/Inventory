@@ -10,6 +10,7 @@ import {
   loginFieldErrors,
   newPasswordErrors,
   parseDate,
+  readTypedDate,
   yearCode,
   yearFieldErrors,
 } from '../src/index.ts';
@@ -82,7 +83,7 @@ describe('dates (db_service.dart:29-60)', () => {
     expect(isInFinancialYear('2027-04-01', '2026-04-01', '2027-03-31')).toBe(false);
     expect(isInFinancialYear('1999-01-01', null, null)).toBe(true);
     expect(financialYearLabel('2026-2027', '2026-04-01', '2027-03-31')).toBe(
-      '2026-2027 (01/04/2026 to 31/03/2027)',
+      '2026-2027 (01-04-2026 to 31-03-2027)',
     );
     expect(financialYearLabel('2026-2027', null, null)).toBe('2026-2027');
   });
@@ -108,5 +109,35 @@ describe('book login (auth_page.dart)', () => {
       confirmPassword: 'Passwords do not match',
     });
     expect(newPasswordErrors({ newPassword: 'secret1', confirmPassword: 'secret1' })).toEqual({});
+  });
+});
+
+describe('readTypedDate (typed into a date box)', () => {
+  const F = '2026-04-01';
+  const T = '2027-03-31';
+  const today = new Date(2026, 9, 25);
+  test('full dates with any separator, and 2-digit years', () => {
+    expect(readTypedDate('25-10-2026', F, T, today)).toBe('2026-10-25');
+    expect(readTypedDate('25/10/2026', F, T, today)).toBe('2026-10-25');
+    expect(readTypedDate('5.1.27', F, T, today)).toBe('2027-01-05');
+    expect(readTypedDate(' 25 10 26 ', F, T, today)).toBe('2026-10-25');
+  });
+  test('digits only: ddmm, ddmmyy, ddmmyyyy', () => {
+    expect(readTypedDate('25102026', F, T, today)).toBe('2026-10-25');
+    expect(readTypedDate('251026', F, T, today)).toBe('2026-10-25');
+    expect(readTypedDate('2510', F, T, today)).toBe('2026-10-25');
+  });
+  test('no year: the one inside the open year', () => {
+    expect(readTypedDate('15-02', F, T, today)).toBe('2027-02-15');
+    expect(readTypedDate('15-06', F, T, today)).toBe('2026-06-15');
+    expect(readTypedDate('15-06', null, null, today)).toBe('2026-06-15');
+  });
+  test('not real dates are refused, not rolled over', () => {
+    expect(readTypedDate('31-02-2027', F, T, today)).toBeNull();
+    expect(readTypedDate('32-01-2027', F, T, today)).toBeNull();
+    expect(readTypedDate('10-13-2026', F, T, today)).toBeNull();
+    expect(readTypedDate('abc', F, T, today)).toBeNull();
+    expect(readTypedDate('25', F, T, today)).toBeNull();
+    expect(readTypedDate('', F, T, today)).toBeNull();
   });
 });

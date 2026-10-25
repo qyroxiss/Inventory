@@ -176,14 +176,14 @@ const join = (parts: (string | null | undefined)[], sep: string) =>
     .map((p) => p!.trim())
     .join(sep);
 
-/** yyyy-MM-dd → dd/MM/yyyy */
-const dmy = (iso: string) => iso.split('-').reverse().join('/');
+/** yyyy-MM-dd → dd-MM-yyyy */
+const dmy = (iso: string) => iso.split('-').reverse().join('-');
 
-/** dd/MM/yyyy h:mm am/pm */
+/** dd-MM-yyyy h:mm am/pm */
 function stamp() {
   const n = new Date();
   const h = n.getHours() % 12 || 12;
-  return `${String(n.getDate()).padStart(2, '0')}/${String(n.getMonth() + 1).padStart(2, '0')}/${n.getFullYear()}  ${h}:${String(n.getMinutes()).padStart(2, '0')} ${n.getHours() < 12 ? 'am' : 'pm'}`;
+  return `${String(n.getDate()).padStart(2, '0')}-${String(n.getMonth() + 1).padStart(2, '0')}-${n.getFullYear()}  ${h}:${String(n.getMinutes()).padStart(2, '0')} ${n.getHours() < 12 ? 'am' : 'pm'}`;
 }
 
 /** The voucher, laid out as MDA's CR.pdf (voucher_print.dart:290-465). */

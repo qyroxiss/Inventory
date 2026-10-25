@@ -539,9 +539,10 @@ export function SalesInvoiceScreen() {
                 max={me.data.fyTo}
                 format={dmy}
                 className={boxClass()}
-                onChange={(billDate) => {
+                onChange={(billDate, how) => {
                   set({ billDate });
-                  focusNav(NAV.location);
+                  // Typed + Enter moves on by itself; a calendar pick moves on here.
+                  if (how === 'calendar') focusNav(NAV.location);
                 }}
               />
             </Cell>

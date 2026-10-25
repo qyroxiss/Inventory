@@ -343,7 +343,7 @@ export function PrintList<T>({
 }) {
   const now = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${p(now.getDate())}/${p(now.getMonth() + 1)}/${now.getFullYear()}  ${p(now.getHours())}:${p(now.getMinutes())}`;
+  const stamp = `${p(now.getDate())}-${p(now.getMonth() + 1)}-${now.getFullYear()}  ${p(now.getHours())}:${p(now.getMinutes())}`;
   return (
     <div className="hidden min-h-[calc(100vh-80px)] flex-col bg-white p-10 font-sans text-black print:flex">
       <div className="mb-[22px] px-4 pb-3.5">

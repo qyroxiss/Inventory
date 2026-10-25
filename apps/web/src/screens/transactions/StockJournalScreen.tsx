@@ -382,9 +382,10 @@ export function StockJournalScreen() {
                 max={me.data.fyTo}
                 format={dmy}
                 className={boxClass()}
-                onChange={(d) => {
+                onChange={(d, how) => {
                   setDate(d);
-                  focusNav(NAV.narration);
+                  // Typed + Enter moves on by itself; a calendar pick moves on here.
+                  if (how === 'calendar') focusNav(NAV.narration);
                 }}
               />
             </Cell>

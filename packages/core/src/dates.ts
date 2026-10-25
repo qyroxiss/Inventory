@@ -31,11 +31,54 @@ export function parseDate(raw: string | null | undefined): string | null {
   return null;
 }
 
-/** 'YYYY-MM-DD' → 'dd/MM/yyyy', the format MDA shows everywhere. */
+/** 'YYYY-MM-DD' → 'dd-MM-yyyy', the one date format shown and printed across the software
+ *  (the user's choice, 2026-10-25). */
 export const formatDmy = (iso: string): string => {
   const [y, m, d] = iso.split('-');
-  return `${d}/${m}/${y}`;
+  return `${d}-${m}-${y}`;
 };
+
+/**
+ * A date as typed into a date box, for fast entry (added 2026-10-25): `25-10-2026`, `25/10/26`,
+ * `25.10.2026`, `25-10` (the year that puts it inside [from, to], else this year), or digits only
+ * (`2510`, `251026`, `25102026`). Returns 'YYYY-MM-DD', or null when it isn't a real date —
+ * 31-02 is refused here, it doesn't roll over. The caller checks the range.
+ */
+export function readTypedDate(
+  raw: string,
+  from?: string | null,
+  to?: string | null,
+  today: Date = new Date(),
+): string | null {
+  const t = raw.trim();
+  let d: number, m: number, y: number | null;
+  const digits = /^\d+$/.test(t);
+  if (digits && [4, 6, 8].includes(t.length)) {
+    d = Number(t.slice(0, 2));
+    m = Number(t.slice(2, 4));
+    y = t.length === 4 ? null : Number(t.slice(4));
+  } else {
+    const parts = t.split(/[\s/\-.]+/).filter(Boolean);
+    if (parts.length < 2 || parts.length > 3 || !parts.every((x) => /^\d+$/.test(x))) return null;
+    d = Number(parts[0]);
+    m = Number(parts[1]);
+    y = parts.length === 3 ? Number(parts[2]) : null;
+  }
+  if (y !== null && y < 100) y += 2000;
+  const real = (yy: number) => {
+    if (m < 1 || m > 12 || d < 1 || yy < 1900 || yy > 9999) return null;
+    const iso = `${pad(yy, 4)}-${pad(m)}-${pad(d)}`;
+    return normalise(yy, m, d) === iso ? iso : null;
+  };
+  if (y !== null) return real(y);
+  // No year typed: the one that lands inside the open year, else this calendar year.
+  const years = [from, to].filter((x): x is string => !!x).map((x) => Number(x.slice(0, 4)));
+  for (const yy of years) {
+    const iso = real(yy);
+    if (iso && isInFinancialYear(iso, from ?? null, to ?? null)) return iso;
+  }
+  return real(today.getFullYear());
+}
 
 /** True when [date] falls inside the open year; true when the range is unknown (MDA rule). */
 export function isInFinancialYear(date: string, from: string | null, to: string | null): boolean {

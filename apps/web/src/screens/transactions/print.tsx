@@ -206,12 +206,12 @@ const stateLine = (name?: string | null, code?: string | null) => {
 /** A percentage: always two decimals (the company's decimal places are for qty and money). */
 const pct = (v: number) => v.toFixed(2);
 
-/** dd/MM/yyyy h:mm am/pm, as the voucher print stamps it. */
+/** dd-MM-yyyy h:mm am/pm, as the voucher print stamps it. */
 function stamp() {
   const n = new Date();
   const p = (v: number) => String(v).padStart(2, '0');
   const h = n.getHours() % 12 || 12;
-  return `${p(n.getDate())}/${p(n.getMonth() + 1)}/${n.getFullYear()}  ${h}:${p(n.getMinutes())} ${n.getHours() < 12 ? 'am' : 'pm'}`;
+  return `${p(n.getDate())}-${p(n.getMonth() + 1)}-${n.getFullYear()}  ${h}:${p(n.getMinutes())} ${n.getHours() < 12 ? 'am' : 'pm'}`;
 }
 
 function Sheet({ p }: { p: Printed }) {

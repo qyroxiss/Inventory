@@ -490,7 +490,7 @@ function SelectCompany({
 function PrintSheet({ form }: { form: CompanyForm }) {
   const now = new Date();
   const p = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${p(now.getDate())}/${p(now.getMonth() + 1)}/${now.getFullYear()}  ${p(now.getHours())}:${p(now.getMinutes())}`;
+  const stamp = `${p(now.getDate())}-${p(now.getMonth() + 1)}-${now.getFullYear()}  ${p(now.getHours())}:${p(now.getMinutes())}`;
   const row = (label: string, value: string) => (
     <div key={label} className="flex py-[2.5px] text-[11pt]">
       <span className="w-[120px] flex-none text-neutral-600">{label}</span>

@@ -22,7 +22,9 @@ import {
 type Mode = 'signin' | 'create';
 
 const today = () =>
-  new Date().toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  new Date()
+    .toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    .replace(/\//g, '-');
 
 /** "Inventory." with the second half in italics, as in the design. */
 function Wordmark() {
