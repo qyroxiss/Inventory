@@ -966,11 +966,12 @@ export function createApp(opts: AppOptions) {
     )
     .get(
       '/api/reports/trial-balance',
-      zValidator('query', z.object({ to: isoDate })),
+      zValidator('query', z.object({ to: isoDate, from: isoDate.optional() })),
       async (c) => {
         const book = await readBook(c);
         if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
-        return c.json(await trialBalanceReport(db, book.bookId, c.req.valid('query').to));
+        const { to, from } = c.req.valid('query');
+        return c.json(await trialBalanceReport(db, book.bookId, to, from));
       },
     )
     .get(

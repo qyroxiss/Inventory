@@ -675,6 +675,7 @@ A full review of the code found the issues below. Each fix has a test in `packag
 
 **Reports**
 - **Trial Balance** shows opening stock as its own Debit row, as Tally does.
+- **Trial Balance between dates, group wise** (2026-11-12, user request): From / To dates. Opening Balance = each ledger's balance the day before From (its own opening balance when From is the year's start); Debit and Credit = Active voucher lines between the dates; Closing Dr / Cr = balance on To, so Opening + Debit − Credit = Closing. Ledger wise lists ledgers; Group wise sums them by top-level group (closing netted to one side); clicking a group opens its ledgers. A Group filter limits either view to one group.
 - **Credit and Debit Notes in Outstanding and the dashboard:** a note that lowers a party's dues settles their bills. That is a Credit Note to a customer, or a Debit Note to a supplier. Otherwise the note raises a bill of its own. MDA counted every note as a new bill.
 - **Dashboard pending bills** ignore post-dated entries, as Outstanding does.
 - **FIFO and Average valuation.** Units sold before the stock arrived are a shortfall, which the next stock in fills first.

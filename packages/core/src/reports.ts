@@ -230,41 +230,68 @@ export type TrialRow = {
   accCode: string;
   accName: string;
   grpName: string;
+  /** Balance before the period (Dr positive, Cr negative). */
+  opening: number;
+  /** The period's entries. */
+  trDebit: number;
+  trCredit: number;
+  /** Closing balance on its side. */
   debit: number;
   credit: number;
 };
 
-/** Every ledger with a balance, by its top-level group then name, in Debit or Credit, and the
- *  opening stock as its own Debit row (it sits on the items, not a ledger; added 2026-11-12, as
- *  Tally shows it). When the opening balances don't agree, the gap shows as its own row so the
- *  two sides still total. */
+/** A ledger's balance at the period's end, with (optionally) its balance before the period and
+ *  the period's Debit and Credit totals (added 2026-11-12, at the user's request). */
+export type TrialInput = LedgerBalance & { opening?: number; trDebit?: number; trCredit?: number };
+
+const nz = (v: number) => Math.abs(v) >= 0.005;
+
+/** Every ledger with an opening balance, an entry in the period or a closing balance, by its
+ *  top-level group then name: opening (Dr/Cr), the period's Debit and Credit, and the closing
+ *  balance in Debit or Credit. The opening stock is its own Debit row (it sits on the items, not
+ *  a ledger; added 2026-11-12, as Tally shows it). When the opening balances don't agree, the gap
+ *  is returned as `difference` so the screen can show it and the two sides still total. */
 export function trialBalance(
-  balances: LedgerBalance[],
+  balances: TrialInput[],
   groups: Map<string, ReportGroup>,
   openingStock = 0,
 ) {
   const rows: TrialRow[] = balances
-    .filter((b) => Math.abs(b.balance) >= 0.005)
     .map((b) => ({
       accCode: b.accCode,
       accName: b.accName,
       grpName: topGroupOf(b.grpCode, groups)?.grpName ?? '',
+      opening: round2(b.opening ?? 0),
+      trDebit: round2(b.trDebit ?? 0),
+      trCredit: round2(b.trCredit ?? 0),
       debit: b.balance > 0 ? round2(b.balance) : 0,
       credit: b.balance < 0 ? round2(-b.balance) : 0,
     }))
+    .filter((r) => nz(r.opening) || nz(r.trDebit) || nz(r.trCredit) || nz(r.debit) || nz(r.credit))
     .sort((a, b) => a.grpName.localeCompare(b.grpName) || a.accName.localeCompare(b.accName));
-  if (Math.abs(openingStock) >= 0.005)
+  if (nz(openingStock))
     rows.unshift({
       accCode: '',
       accName: 'Opening Stock',
       grpName: 'Stock-in-Hand',
+      opening: round2(openingStock),
+      trDebit: 0,
+      trCredit: 0,
       debit: openingStock > 0 ? round2(openingStock) : 0,
       credit: openingStock < 0 ? round2(-openingStock) : 0,
     });
-  const debit = round2(rows.reduce((a, r) => a + r.debit, 0));
-  const credit = round2(rows.reduce((a, r) => a + r.credit, 0));
-  const difference = round2(debit - credit);
-  return { rows, debit, credit, difference };
+  const total = (f: (r: TrialRow) => number) => round2(rows.reduce((a, r) => a + f(r), 0));
+  const debit = total((r) => r.debit);
+  const credit = total((r) => r.credit);
+  return {
+    rows,
+    opening: total((r) => r.opening),
+    trDebit: total((r) => r.trDebit),
+    trCredit: total((r) => r.trCredit),
+    debit,
+    credit,
+    difference: round2(debit - credit),
+  };
 }
 
 // ── Outstanding ────────────────────────────────────────────────────────────────

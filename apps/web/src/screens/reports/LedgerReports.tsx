@@ -381,61 +381,167 @@ type TrialRow = OkBody<
   Awaited<ReturnType<(typeof api.api.reports)['trial-balance']['$get']>>
 >['rows'][number];
 
+/** Each ledger (or, group wise, each top-level group) between two dates: opening balance, the
+ *  period's Debit and Credit, and the closing balance (opening, dates and group wise added
+ *  2026-11-12, at the user's request). Clicking a group opens its ledgers. */
 export function TrialBalanceScreen() {
-  const [to, setTo] = useAsOn();
+  const [p, setP] = usePeriod();
+  const [view, setView] = useState<'ledger' | 'group'>('ledger');
+  const [group, setGroup] = useState('');
   const q = useQuery({
-    queryKey: ['report', 'trial-balance', to],
-    enabled: !!to,
-    queryFn: () => unwrap(api.api.reports['trial-balance'].$get({ query: { to } })),
+    queryKey: ['report', 'trial-balance', p],
+    enabled: !!p && p.from <= p.to,
+    queryFn: () =>
+      unwrap(api.api.reports['trial-balance'].$get({ query: { from: p!.from, to: p!.to } })),
   });
   const t = q.data;
+  const groupNames = [...new Set((t?.rows ?? []).map((r) => r.grpName))].sort((a, b) =>
+    a.localeCompare(b),
+  );
   // The opening balances' gap, if any, as its own line so the two sides agree.
-  const rows: TrialRow[] = t
-    ? [
-        ...t.rows,
-        ...(Math.abs(t.difference) >= 0.005
-          ? [
-              {
-                accCode: '~diff',
-                accName: rm.differenceLabel,
-                grpName: '',
-                debit: t.difference < 0 ? -t.difference : 0,
-                credit: t.difference > 0 ? t.difference : 0,
-              },
-            ]
-          : []),
-      ]
-    : [];
+  const diff: TrialRow[] =
+    t && Math.abs(t.difference) >= 0.005
+      ? [
+          {
+            accCode: '~diff',
+            accName: rm.differenceLabel,
+            grpName: '',
+            opening: -t.difference,
+            trDebit: 0,
+            trCredit: 0,
+            debit: t.difference < 0 ? -t.difference : 0,
+            credit: t.difference > 0 ? t.difference : 0,
+          },
+        ]
+      : [];
+  const ledgerRows = (t?.rows ?? []).filter((r) => !group || r.grpName === group);
+  const groupRows: TrialRow[] = groupNames
+    .filter((g) => !group || g === group)
+    .map((g) => {
+      const of = (t?.rows ?? []).filter((r) => r.grpName === g);
+      const add = (f: (r: TrialRow) => number) => Math.round(sum(of, f) * 100) / 100;
+      // A group's closing is the net of its ledgers, on one side.
+      const net = add((r) => r.debit - r.credit);
+      return {
+        accCode: `~grp-${g}`,
+        accName: g,
+        grpName: g,
+        opening: add((r) => r.opening),
+        trDebit: add((r) => r.trDebit),
+        trCredit: add((r) => r.trCredit),
+        debit: net > 0 ? net : 0,
+        credit: net < 0 ? -net : 0,
+      };
+    });
+  const rows = [...(view === 'group' ? groupRows : ledgerRows), ...(group ? [] : diff)];
+  const money = (
+    head: string,
+    f: (r: TrialRow) => number,
+    wide = false,
+  ): Col<TrialRow> => ({
+    head,
+    w: '120px',
+    num: true,
+    wide,
+    cell: (r) => (f(r) ? amt(f(r)) : ''),
+    total: amt(sum(rows, f)),
+  });
   const cols: Col<TrialRow>[] = [
-    { head: 'Ledger', w: 'minmax(150px,1fr)', cell: (r) => r.accName, total: 'Total' },
-    { head: 'Group', w: 'minmax(120px,0.8fr)', wide: true, cell: (r) => r.grpName },
     {
-      head: 'Debit',
-      w: '130px',
-      num: true,
-      cell: (r) => (r.debit ? amt(r.debit) : ''),
-      total: amt(sum(rows, (r) => r.debit)),
+      head: view === 'group' ? 'Group' : 'Ledger',
+      w: 'minmax(150px,1fr)',
+      cell: (r) => r.accName,
+      total: 'Total',
     },
+    ...(view === 'ledger'
+      ? [{ head: 'Group', w: 'minmax(120px,0.8fr)', wide: true, cell: (r: TrialRow) => r.grpName }]
+      : []),
     {
-      head: 'Credit',
-      w: '130px',
+      head: 'Opening Balance',
+      w: '140px',
       num: true,
-      cell: (r) => (r.credit ? amt(r.credit) : ''),
-      total: amt(sum(rows, (r) => r.credit)),
+      cell: (r) => (Math.abs(r.opening) >= 0.005 ? bal(r.opening) : ''),
+      total: bal(sum(rows, (r) => r.opening)),
     },
+    money('Debit', (r) => r.trDebit, true),
+    money('Credit', (r) => r.trCredit, true),
+    money('Closing Dr', (r) => r.debit),
+    money('Closing Cr', (r) => r.credit),
   ];
+  if (!p)
+    return (
+      <ReportPage title={['Trial', 'Balance']} subtitle="" filters={null}>
+        {null}
+      </ReportPage>
+    );
   return (
     <ReportPage
       title={['Trial', 'Balance']}
-      subtitle={to ? `As on ${dmy(to)}` : ''}
-      filters={<PeriodDate id="rp-to" label="As on" value={to} onChange={setTo} />}
+      subtitle={`${group ? `${group} · ` : ''}${periodLine(p)}`}
+      filters={
+        <>
+          <PeriodFilters p={p} set={setP} />
+          <div role="radiogroup" aria-label="Show" className="flex items-end gap-1.5 pb-0.5">
+            {(
+              [
+                ['ledger', 'Ledger wise'],
+                ['group', 'Group wise'],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                type="button"
+                role="radio"
+                aria-checked={view === k}
+                onClick={() => setView(k)}
+                className={`h-[34px] cursor-pointer border-[1.5px] px-3 text-sm font-semibold ${
+                  view === k
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border bg-card text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <label
+            htmlFor="rp-group"
+            className="flex w-52 flex-col gap-0.5 text-[13px] font-semibold text-muted-foreground max-sm:w-full"
+          >
+            Group
+            <select
+              id="rp-group"
+              value={group}
+              onChange={(e) => setGroup(e.target.value)}
+              className={`${boxClass()} cursor-pointer`}
+            >
+              <option value="">All groups</option>
+              {groupNames.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </select>
+          </label>
+        </>
+      }
     >
       <ReportTable
         cols={cols}
         rows={rows}
-        rowKey={(r) => r.accCode}
+        rowKey={(r) => r.accCode || r.accName}
         empty={rm.noBalances}
-        minWidth={560}
+        minWidth={view === 'group' ? 760 : 900}
+        scrollOnPhone
+        onRow={
+          view === 'group'
+            ? (r) => {
+                if (!r.accCode.startsWith('~grp-')) return;
+                setGroup(r.grpName);
+                setView('ledger');
+              }
+            : undefined
+        }
       />
     </ReportPage>
   );
