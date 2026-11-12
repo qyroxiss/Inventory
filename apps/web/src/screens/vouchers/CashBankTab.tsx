@@ -32,6 +32,7 @@ import {
   VoucherPage,
   defaultVoucherDate,
   errorText,
+  numberTaken,
   fetchLines,
   fetchList,
   fetchNextNo,
@@ -82,6 +83,8 @@ export function CashBankTab({ kind }: { kind: Kind }) {
     editId: null,
   });
   const [form, setForm] = useState<Form | null>(null);
+  // A cancelled voucher is shown for reference only: no Save until Clear.
+  const [shownCancelled, setShownCancelled] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<VoucherRow[] | null>(null);
@@ -109,6 +112,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
   const showRef = form.bank;
 
   const clearForm = async () => {
+    setShownCancelled(false);
     const vchrNo = await fetchNextNo(typeOf(false));
     setErrors({});
     setForm({ ...blank(), vchrNo });
@@ -170,6 +174,12 @@ export function CashBankTab({ kind }: { kind: Kind }) {
       await clearForm();
     } catch (err) {
       fail(err);
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (!inEdit && numberTaken(err)) {
+        const vchrNo = await fetchNextNo(typeOf(false)).catch(() => '');
+        if (vchrNo) setForm((f) => (f ? { ...f, vchrNo } : f));
+      }
     }
     setBusy(false);
   };
@@ -208,6 +218,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
     const cr = lines.find((l) => l.cr > 0)?.accCode;
     const cashList = ofGroup(ledgers!, bank ? BANK_GROUP : CASH_GROUP);
     setErrors({});
+    setShownCancelled(row.status === 'Cancelled');
     setForm({
       bank,
       date: row.vchrDate,
@@ -375,6 +386,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
             canRemove={inEdit}
             saveLabel={inEdit ? 'Update' : 'Save'}
             busy={busy}
+            saveDisabled={shownCancelled}
             onView={() => void view()}
             onRemove={() => setConfirm(true)}
             onPrint={() => setPrinting(true)}
@@ -388,7 +400,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
         kind={kind}
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void open(r)}
+        onPick={(r) => void open(r).catch(fail)}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

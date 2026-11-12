@@ -9,7 +9,8 @@ import {
   yearFieldErrors,
   yearMessages,
 } from '@qi/core';
-import { and, asc, eq, schema, type Db } from '@qi/db';
+import { and, asc, desc, eq, lt, schema, type Db } from '@qi/db';
+import { carryOpenings, copyMasters } from './carry-forward.ts';
 import { getCompany } from './companies.ts';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 import { seedDefaultGroups } from './groups.ts';
@@ -19,7 +20,14 @@ import { ensureBookSeeds } from './vouchers.ts';
 const { books, bookUsers, financialYears } = schema;
 
 export type FinancialYear = typeof financialYears.$inferSelect;
-export type YearInput = { yearName: string; fromDate: string; toDate: string };
+export type YearInput = {
+  yearName: string;
+  fromDate: string;
+  toDate: string;
+  /** Start the year as a copy of the year before it: masters, users and opening balances
+   *  (carry-forward.ts). Only for a year whose book is new. */
+  copyFromPrevious?: boolean;
+};
 
 /** Years of a company, ordered by name (company_setup_page.dart:63-64). */
 export async function listYears(
@@ -83,6 +91,19 @@ export async function createYear(
     if (!book) {
       [book] = await tx.insert(books).values({ companyId, yearCode: code }).returning();
       await seedBook(tx as unknown as Db, book!.id, adminPassword);
+      if (input.copyFromPrevious) {
+        // The latest year ending before this one starts.
+        const [prev] = await tx
+          .select()
+          .from(financialYears)
+          .where(and(eq(financialYears.companyId, companyId), lt(financialYears.toDate, fromDate)))
+          .orderBy(desc(financialYears.toDate))
+          .limit(1);
+        if (prev) {
+          await copyMasters(tx as unknown as Db, prev.bookId, book!.id);
+          await carryOpenings(tx as unknown as Db, prev.bookId, book!.id, prev.toDate);
+        }
+      }
     }
 
     const [year] = await tx

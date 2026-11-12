@@ -6,6 +6,7 @@
 
 import { useLocation } from '@tanstack/react-router';
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { PageAccessProvider, useAccess } from '../access.tsx';
 import { LedgerCreationScreen } from '../screens/masters/LedgerCreationScreen.tsx';
 import { StockItemScreen } from '../screens/masters/StockItemScreen.tsx';
 
@@ -49,7 +50,12 @@ export function NewLedgerHost({ children }: { children: ReactNode }) {
       {req?.kind === 'ledger' && (
         <LedgerCreationScreen embedded={{ ...embedded!, under: req.under }} />
       )}
-      {req?.kind === 'item' && <StockItemScreen embedded={embedded!} />}
+      {req?.kind === 'item' && (
+        // Its Save follows Stock Item's own permission, not the bill's underneath.
+        <PageAccessProvider page="Stock Item">
+          <StockItemScreen embedded={embedded!} />
+        </PageAccessProvider>
+      )}
     </Ctx.Provider>
   );
 }
@@ -94,6 +100,8 @@ export function NewLedgerButton({
   tall?: boolean;
 }) {
   const open = useNewMaster();
+  // Role Permissions: only for someone who may open Ledger Creation.
+  if (!useAccess().view('Ledger Creation')) return null;
   return (
     <NewButton
       label="new ledger"
@@ -106,5 +114,7 @@ export function NewLedgerButton({
 /** The "+ New" button beside an item box: opens Masters › Stock Item. */
 export function NewItemButton({ onCreated }: { onCreated: (code: string) => void }) {
   const open = useNewMaster();
+  // Role Permissions: only for someone who may open Stock Item.
+  if (!useAccess().view('Stock Item')) return null;
   return <NewButton label="new item" onClick={() => open({ kind: 'item', onCreated })} />;
 }

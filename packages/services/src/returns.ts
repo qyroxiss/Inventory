@@ -19,6 +19,7 @@ import {
   returnLine,
   returnMessages as rm,
   returnTotals,
+  round2,
   saleBillDiscPct,
   salesReturnPosting,
   type BillLineForReturn,
@@ -263,7 +264,40 @@ async function build(
     lines.push({ ...returnLine(src, qty, bill.interState), srcLineNo: src.lineNo });
   }
   if (!lines.length) throw new UserError(rm.nothingReturned);
-  return { bill, lines, t: returnTotals(kind, lines, bill.billDiscPct) };
+  const t = returnTotals(kind, lines, bill.billDiscPct);
+
+  // The return that takes back the last of the bill gives back what is left of its value, not
+  // a fresh rounding: each part rounds to the rupee on its own, so three parts of a ₹101 bill
+  // would credit ₹102 (fixed 2026-11-12). The round-off takes the difference.
+  const completes = bill.lines.every((src) => {
+    const now = lines.filter((l) => l.srcLineNo === src.lineNo).reduce((a, l) => a + l.qty, 0);
+    return src.returned + now >= src.qty - 0.0005;
+  });
+  if (completes) {
+    const table = kind === 'PRT' ? purchases : sales;
+    const [b] = await db
+      .select({ net: table.netAmount })
+      .from(table)
+      .where(and(eq(table.bookId, ctx.bookId), eq(table.billNo, bill.billNo)));
+    const [r] = await db
+      .select({ net: sql<string>`coalesce(sum(${returns.netAmount}), 0)` })
+      .from(returns)
+      .where(
+        and(
+          eq(returns.bookId, ctx.bookId),
+          eq(returns.kind, kind),
+          eq(returns.againstBillNo, bill.billNo),
+          eq(returns.status, ACTIVE),
+          ...(except ? [ne(returns.returnNo, except)] : []),
+        ),
+      );
+    const left = round2(Number(b?.net ?? 0) - Number(r?.net ?? 0));
+    if (b && left >= 0 && Math.abs(left - t.net) >= 0.005 && Math.abs(left - t.net) < 1.005) {
+      t.roundOff = round2(t.roundOff + (left - t.net));
+      t.net = left;
+    }
+  }
+  return { bill, lines, t };
 }
 
 /** Creates any ledger the posting needs that the book is missing, its group first. */

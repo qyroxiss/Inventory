@@ -71,17 +71,19 @@ export async function ruleFor(call: CallInfo): Promise<Rule | null> {
 
   if (REPORTS[path]) return rule([REPORTS[path]!]);
 
-  // Accounting vouchers.
+  // Accounting vouchers. Only the seven accounting types: a bill's, return's or stock journal's
+  // voucher (SAL, PUR, STJ…) or an unknown type is never reachable from here (DENY).
   if (under(path, '/api/vouchers')) {
     if (read) {
       if (/^\/api\/vouchers\/[^/]+\/lines$/.test(path)) return null; // Day Book too
       if (path === '/api/vouchers') {
         const types = (call.query('types') ?? '').split(',').filter(Boolean);
+        if (types.some((t) => !VOUCHER_TYPE_PAGES[t])) return deny(need);
         return rule([...new Set(types.map((t) => VOUCHER_TYPE_PAGES[t]).filter(isStr))]);
       }
       if (path === '/api/vouchers/next') {
         const page = VOUCHER_TYPE_PAGES[call.query('type') ?? ''];
-        return rule(page ? [page] : VOUCHER_PAGES);
+        return page ? rule([page]) : deny(need);
       }
       if (path === '/api/vouchers/print') {
         const kind = call.query('kind');
@@ -93,12 +95,13 @@ export async function ruleFor(call: CallInfo): Promise<Rule | null> {
     }
     if (path === '/api/vouchers') {
       const page = VOUCHER_TYPE_PAGES[String((await call.body()).vchrType ?? '')];
-      return rule(page ? [page] : VOUCHER_PAGES);
+      return page ? rule([page]) : deny(need);
     }
     const id = /^\/api\/vouchers\/([^/]+)/.exec(path)?.[1];
     const type = id ? await call.voucherType(id) : null;
-    const page = type ? VOUCHER_TYPE_PAGES[type] : undefined;
-    return rule(page ? [page] : VOUCHER_PAGES);
+    if (!type) return rule(VOUCHER_PAGES); // not found: the route answers that
+    const page = VOUCHER_TYPE_PAGES[type];
+    return page ? rule([page]) : deny(need);
   }
 
   // Bills.
@@ -125,3 +128,6 @@ export async function ruleFor(call: CallInfo): Promise<Rule | null> {
 }
 
 const isStr = (v: unknown): v is string => typeof v === 'string';
+
+/** A rule nobody passes: no user has a level on this made-up page. */
+const deny = (need: Need): Rule => ({ pages: ['(none)'], need });

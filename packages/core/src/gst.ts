@@ -128,7 +128,7 @@ export function hsnSummary(bills: GstBill[]): HsnRow[] {
         };
         m.set(key, r);
       }
-      r.qty = round2(r.qty + l.qty);
+      r.qty = Math.round((r.qty + l.qty) * 1000) / 1000; // quantities keep 3 decimals (kg)
       addTo(r, l);
       r.total = round2(r.taxable + r.igst + r.cgst + r.sgst);
     }
@@ -136,7 +136,12 @@ export function hsnSummary(bills: GstBill[]): HsnRow[] {
 }
 
 /** A Sales Return (credit note) as GST sees it: the note and the bill it reduces. */
-export type GstNote = GstBill & { againstBillNo: string; againstDate: string };
+export type GstNote = GstBill & {
+  againstBillNo: string;
+  againstDate: string;
+  /** The original bill's value, to tell a B2CL bill's credit note (CDNUR) from a B2CS one. */
+  againstValue?: number;
+};
 export type NoteRateRow = InvoiceRateRow & { againstBillNo: string; againstDate: string };
 
 /** The same lines with every figure turned negative, so a return nets off its bill. */
@@ -156,6 +161,8 @@ export type Gstr1 = {
   b2cs: B2csRow[];
   /** 9B: credit notes to registered buyers (Sales Returns), rate-wise. */
   cdnr: NoteRateRow[];
+  /** 9B: credit notes to unregistered buyers against B2CL invoices (added 2026-11-12). */
+  cdnur: NoteRateRow[];
   hsn: HsnRow[];
   /** Lines at 0% (nil rated / exempt), reported separately. */
   nil: TaxSums;
@@ -163,7 +170,7 @@ export type Gstr1 = {
   totals: TaxSums;
   /** The credit notes on their own (registered and unregistered). */
   notes: TaxSums;
-  counts: { b2b: number; b2cl: number; b2c: number; cdnr: number };
+  counts: { b2b: number; b2cl: number; b2c: number; cdnr: number; cdnur: number };
 };
 
 /**
@@ -174,14 +181,15 @@ export type Gstr1 = {
  * A bill with no known buyer state is a supply within the company's own state.
  * 0% lines go to Nil rated / exempt, not to these tables.
  * Sales Returns (2026-11-09): a credit note to a registered buyer goes to CDNR (9B); one to an
- * unregistered buyer is netted off B2CS. HSN and the totals are net of all credit notes.
+ * unregistered buyer is netted off B2CS, except one against a B2CL invoice, which goes to
+ * CDNUR (2026-11-12). HSN and the totals are net of all credit notes.
  */
 export function gstr1(bills: GstBill[], companyState: string, notes: GstNote[] = []): Gstr1 {
   const b2b: InvoiceRateRow[] = [];
   const b2cl: InvoiceRateRow[] = [];
   const b2csMap = new Map<string, B2csRow>();
   const nil = zero();
-  const counts = { b2b: 0, b2cl: 0, b2c: 0, cdnr: 0 };
+  const counts = { b2b: 0, b2cl: 0, b2c: 0, cdnr: 0, cdnur: 0 };
   for (const b of bills) {
     const taxed = b.lines.filter((l) => l.rate > 0);
     b.lines.filter((l) => l.rate <= 0).forEach((l) => addTo(nil, l));
@@ -220,6 +228,7 @@ export function gstr1(bills: GstBill[], companyState: string, notes: GstNote[] =
     }
   }
   const cdnr: NoteRateRow[] = [];
+  const cdnur: NoteRateRow[] = [];
   const noteSums = zero();
   for (const n of notes) {
     const taxed = n.lines.filter((l) => l.rate > 0);
@@ -227,11 +236,14 @@ export function gstr1(bills: GstBill[], companyState: string, notes: GstNote[] =
     if (!taxed.length) continue;
     const state = n.stateCode || companyState;
     const pos = placeOfSupply(state);
-    if (n.gstin.trim()) counts.cdnr++;
+    const registered = !!n.gstin.trim();
+    const againstLarge = !registered && n.interState && (n.againstValue ?? 0) > B2CL_LIMIT;
+    if (registered) counts.cdnr++;
+    else if (againstLarge) counts.cdnur++;
     for (const [rate, t] of byRate(taxed)) {
       addTo(noteSums, t);
-      if (n.gstin.trim()) {
-        cdnr.push({
+      if (registered || againstLarge) {
+        (registered ? cdnr : cdnur).push({
           billNo: n.billNo,
           date: n.date,
           partyName: n.partyName,
@@ -259,15 +271,17 @@ export function gstr1(bills: GstBill[], companyState: string, notes: GstNote[] =
   }
   const b2cs = [...b2csMap.values()].sort((a, b) => a.pos.localeCompare(b.pos) || a.rate - b.rate);
   const gross = sumTax([...b2b, ...b2cl]);
-  const cdnrSum = sumTax(cdnr);
+  // Notes not netted into B2CS: to registered buyers (CDNR) and against B2CL bills (CDNUR).
+  const cdnrSum = sumTax([...cdnr, ...cdnur]);
   return {
     b2b,
     b2cl,
     b2cs,
     cdnr,
+    cdnur,
     hsn: hsnSummary([...bills, ...notes.map((n) => ({ ...n, lines: negateLines(n.lines) }))]),
     nil,
-    // B2CS is already net of unregistered notes; registered ones are taken off here.
+    // B2CS is already net of its own notes; CDNR and CDNUR are taken off here.
     totals: sumTax([
       gross,
       ...b2cs,
@@ -297,21 +311,25 @@ export type Gstr3b = {
 
 /**
  * GSTR-3B. Credit is set off in the order the law sets (sec. 49, rule 88A): IGST credit pays
- * IGST first, then CGST and SGST; CGST credit pays CGST, then IGST; SGST credit pays SGST, then
+ * IGST first, then CGST and SGST in whatever split leaves least to pay in cash (it goes first to
+ * what CGST and SGST credit can't cover; fixed 2026-11-12); CGST credit pays CGST, then IGST; SGST credit pays SGST, then
  * IGST. CGST credit never pays SGST, nor SGST credit CGST.
  */
 export function gstr3b(outward: TaxSums, nilExempt: number, itc: Heads): Gstr3b {
   const due = { igst: outward.igst, cgst: outward.cgst, sgst: outward.sgst };
   const credit = { ...itc };
   const used = { igst: 0, cgst: 0, sgst: 0 };
-  const apply = (from: keyof Heads, to: keyof Heads) => {
-    const n = round2(Math.min(credit[from], due[to]));
+  const apply = (from: keyof Heads, to: keyof Heads, limit = Infinity) => {
+    const n = round2(Math.min(credit[from], due[to], limit));
     if (n <= 0) return;
     credit[from] = round2(credit[from] - n);
     due[to] = round2(due[to] - n);
     used[to] = round2(used[to] + n);
   };
   apply('igst', 'igst');
+  // What CGST and SGST credit can't pay themselves gets IGST credit first.
+  apply('igst', 'cgst', Math.max(0, round2(due.cgst - credit.cgst)));
+  apply('igst', 'sgst', Math.max(0, round2(due.sgst - credit.sgst)));
   apply('igst', 'cgst');
   apply('igst', 'sgst');
   apply('cgst', 'cgst');

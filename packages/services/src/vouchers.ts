@@ -20,6 +20,7 @@ import {
   VOUCHER_SERIES,
   postingMessages,
   postingProblem,
+  ACCOUNTING_VOUCHER_TYPES,
   round2,
   sum,
   systemLedgerDrCr,
@@ -141,7 +142,17 @@ export async function nextVoucherNo(db: Db, bookId: string, vchrType: string): P
 
 /** Records the number as used; runs in the voucher's own transaction. */
 export async function commitVoucherNo(db: Db, bookId: string, vchrType: string, vchrNo: string) {
-  const used = parseInt(vchrNo.replace(/\D/g, ''), 10) || 0;
+  // The number after the series prefix (a prefix may hold digits: "R26-001" is 1, not 26001).
+  const [series] = await db
+    .select({ prefix: voucherSeries.prefix })
+    .from(voucherSeries)
+    .where(and(eq(voucherSeries.bookId, bookId), eq(voucherSeries.vchrType, vchrType)));
+  const prefix = series?.prefix ?? '';
+  const tail =
+    prefix && vchrNo.startsWith(prefix)
+      ? vchrNo.slice(prefix.length)
+      : (/(\d+)\D*$/.exec(vchrNo)?.[1] ?? '');
+  const used = parseInt(tail.replace(/\D/g, ''), 10) || 0;
   await db
     .update(voucherSeries)
     .set({ lastNo: used })
@@ -163,6 +174,20 @@ async function log(db: Db, ctx: PostingContext, action: string, key: string, det
     recordKey: key,
     details,
   });
+}
+
+/** Every code must be a ledger of this book: a stray code would post money that no report
+ *  shows, and the books would stop balancing. */
+export async function assertLedgersExist(db: Db, bookId: string, codes: string[]) {
+  const wanted = [...new Set(codes.map((c) => c.trim()).filter(Boolean))];
+  if (!wanted.length) return;
+  const found = await db
+    .select({ code: ledgers.accCode })
+    .from(ledgers)
+    .where(and(eq(ledgers.bookId, bookId), inArray(ledgers.accCode, wanted)));
+  const have = new Set(found.map((r) => r.code));
+  const missing = wanted.find((c) => !have.has(c));
+  if (missing) throw new UserError(postingMessages.unknownLedger(missing));
 }
 
 function gate(ctx: PostingContext, vchrType: string, input: VoucherInput) {
@@ -210,6 +235,7 @@ export async function saveVoucher(
   input: VoucherInput,
 ): Promise<{ id: string; vchrNo: string }> {
   gate(ctx, input.vchrType, input);
+  await assertLedgersExist(db, ctx.bookId, input.lines.map((l) => l.accCode));
   const net = sum(input.lines.map((l) => l.dr));
 
   return db.transaction(async (raw) => {
@@ -253,6 +279,7 @@ export async function saveVoucher(
 }
 
 async function findVoucher(db: Db, bookId: string, id: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null; // not an id at all
   const [v] = await db
     .select()
     .from(vouchers)
@@ -271,6 +298,7 @@ export async function updateVoucher(
   if (!hdr) throw new UserError(postingMessages.notFound);
   if (hdr.status === CANCELLED) throw new UserError(postingMessages.cancelledEdit);
   gate(ctx, hdr.vchrType, { ...input, vchrType: hdr.vchrType });
+  await assertLedgersExist(db, ctx.bookId, input.lines.map((l) => l.accCode));
   const net = sum(input.lines.map((l) => l.dr));
 
   await db.transaction(async (raw) => {
@@ -300,6 +328,8 @@ export async function updateVoucher(
 export async function cancelVoucher(db: Db, ctx: PostingContext, id: string): Promise<void> {
   const hdr = await findVoucher(db, ctx.bookId, id);
   if (!hdr) throw new UserError(postingMessages.notFound);
+  if (!ACCOUNTING_VOUCHER_TYPES.includes(hdr.vchrType))
+    throw new UserError(postingMessages.typeNotAccounting(hdr.vchrType));
   if (hdr.status === CANCELLED) return;
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;

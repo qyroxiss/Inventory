@@ -151,7 +151,7 @@ const taxCols = <T extends { taxable: number; igst: number; cgst: number; sgst: 
 
 // ── GSTR-1 ─────────────────────────────────────────────────────────────────────
 
-type Section = 'b2b' | 'b2cl' | 'b2cs' | 'cdnr' | 'hsn';
+type Section = 'b2b' | 'b2cl' | 'b2cs' | 'cdnr' | 'cdnur' | 'hsn';
 
 export function Gstr1Screen() {
   const [p, setP] = useMonth();
@@ -225,6 +225,7 @@ export function Gstr1Screen() {
               { key: 'b2cl', label: `B2C Large (${r.b2cl.length})` },
               { key: 'b2cs', label: `B2C Small (${r.b2cs.length})` },
               { key: 'cdnr', label: `Credit Notes (${r.cdnr.length})` },
+              { key: 'cdnur', label: `Credit Notes Unregd. (${r.cdnur.length})` },
               { key: 'hsn', label: `HSN (${r.hsn.length})` },
             ]}
           />
@@ -261,6 +262,15 @@ export function Gstr1Screen() {
               rows={r.cdnr}
               rowKey={(x) => `${x.billNo}|${x.rate}`}
               empty="No credit notes (Sales Returns) to registered buyers in this period"
+              minWidth={1180}
+            />
+          )}
+          {section === 'cdnur' && (
+            <ReportTable
+              cols={noteCols(r.cdnur)}
+              rows={r.cdnur}
+              rowKey={(x) => `${x.billNo}|${x.rate}`}
+              empty={`No credit notes to unregistered buyers against B2C Large invoices in this period`}
               minWidth={1180}
             />
           )}

@@ -89,6 +89,8 @@ export const BACKUP_FORMAT = 'qyroxis-inventory-backup';
 export const BACKUP_VERSION = 1;
 
 export const backupMessages = {
+  /** A backup holds every user's login, so only an Admin may take one (added 2026-11-12). */
+  adminOnly: 'Only an Admin can take a backup.',
   notBackup: 'This file is not an Inventory backup.',
   newer: 'This backup was made by a newer version of the app.',
   restored: (name: string, years: number) =>

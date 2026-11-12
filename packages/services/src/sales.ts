@@ -39,7 +39,12 @@ import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
 import { UserError } from './errors.ts';
 import { listSaleTypes } from './sale-types.ts';
 import { assertStockAvailable } from './stock.ts';
-import { commitVoucherNo, nextVoucherNo, type PostingContext } from './vouchers.ts';
+import {
+  assertLedgersExist,
+  commitVoucherNo,
+  nextVoucherNo,
+  type PostingContext,
+} from './vouchers.ts';
 
 const {
   accountGroups,
@@ -320,6 +325,7 @@ async function resolveDebtor(db: Db, bookId: string, input: SaleInput): Promise<
 
   if (!input.isCash) {
     if (!input.custCode) throw new UserError(sm.creditNoCustomer);
+    await assertLedgersExist(db, bookId, [input.custCode]);
     return input.custCode;
   }
   const [cash] = await db
@@ -507,7 +513,14 @@ export async function updateSale(
   const old = await findSale(db, ctx.bookId, input.billNo.trim());
   if (!old) throw new UserError(sm.notFound);
   if (old.status === CANCELLED) throw new UserError(sm.cancelledEdit);
-  await assertReturnsFit(db, ctx.bookId, 'SRT', old.billNo, lines);
+  await assertReturnsFit(
+    db,
+    ctx.bookId,
+    'SRT',
+    old.billNo,
+    lines,
+    (old.custCode ?? '') !== (input.custCode ?? '') || old.isInterState !== input.interState,
+  );
   const tot = saleTotals(lines, input.billDiscPct, input.billDiscAmt);
 
   await db.transaction(async (raw) => {

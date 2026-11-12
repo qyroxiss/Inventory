@@ -43,6 +43,8 @@ export function YearsScreen() {
   const [to, setTo] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
+  // Added 2026-11-12: start the year as a copy of the one before it (services carry-forward.ts).
+  const [copyPrev, setCopyPrev] = useState(true);
   const [toDelete, setToDelete] = useState<IndexYear | null>(null);
   const fromRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -54,6 +56,13 @@ export function YearsScreen() {
     new Date(),
     (sel?.years ?? []).map((y) => y.yearName),
   ).map((n) => ({ value: n, label: n }));
+  // The latest year of this company that ends before the new one starts.
+  const fromIso = parseDate(from);
+  const prevYear = fromIso
+    ? ((sel?.years ?? [])
+        .filter((y) => y.toDate < fromIso)
+        .sort((a, b) => b.toDate.localeCompare(a.toDate))[0] ?? null)
+    : null;
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ['book-index'], refetchType: 'all' });
 
@@ -85,7 +94,12 @@ export function YearsScreen() {
       await unwrap(
         api.api.companies[':companyId'].years.$post({
           param: { companyId: sel.id },
-          json: { yearName: name, fromDate: from.trim(), toDate: to.trim() },
+          json: {
+            yearName: name,
+            fromDate: from.trim(),
+            toDate: to.trim(),
+            copyFromPrevious: !!prevYear && copyPrev,
+          },
         }),
       );
       await refresh();
@@ -274,6 +288,24 @@ export function YearsScreen() {
                 </span>
               </button>
             </div>
+            {prevYear && (
+              <label className="flex cursor-pointer items-start gap-2.5 text-[15px]">
+                <input
+                  type="checkbox"
+                  checked={copyPrev}
+                  onChange={(e) => setCopyPrev(e.target.checked)}
+                  className="mt-1 size-4 flex-none"
+                />
+                <span>
+                  Copy from previous year <b>{prevYear.yearName}</b>
+                  <span className="block text-[13px] text-muted-foreground">
+                    Masters, users and permissions, with last year&apos;s closing balances and stock
+                    as the opening balances. Last year&apos;s profit or loss goes to the Profit &amp;
+                    Loss A/c.
+                  </span>
+                </span>
+              </label>
+            )}
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col gap-3 max-lg:flex-none">

@@ -201,14 +201,17 @@ async function returnNotes(
     )
     .orderBy(asc(returnLines.lineNo));
   // The party's GSTIN: the sale bill's GST No., or the supplier's ledger.
-  const saleGst = new Map<string, { gstin: string; stateCode: string | null; state: string | null }>();
+  const saleGst = new Map<
+    string,
+    { gstin: string; stateCode: string | null; state: string | null; value: number }
+  >();
   if (kind === 'SRT') {
     const nos = [...new Set(heads.map((h) => h.againstBillNo))];
     const ss = await db
-      .select({ billNo: sales.billNo, gstNo: sales.gstNo, stateCode: sales.stateCode, state: sales.state })
+      .select({ billNo: sales.billNo, gstNo: sales.gstNo, stateCode: sales.stateCode, state: sales.state, value: sales.netAmount })
       .from(sales)
       .where(and(eq(sales.bookId, bookId), inArray(sales.billNo, nos)));
-    for (const s of ss) saleGst.set(s.billNo, { gstin: s.gstNo ?? '', stateCode: s.stateCode, state: s.state });
+    for (const s of ss) saleGst.set(s.billNo, { gstin: s.gstNo ?? '', stateCode: s.stateCode, state: s.state, value: Number(s.value) });
   }
   const supp = new Map<string, { gstin: string; stateCode: string | null; state: string | null }>();
   if (kind === 'PRT') {
@@ -235,6 +238,7 @@ async function returnNotes(
       value: Number(h.netAmount),
       againstBillNo: h.againstBillNo,
       againstDate: h.againstBillDate ?? '',
+      againstValue: kind === 'SRT' ? saleGst.get(h.againstBillNo)?.value : undefined,
       lines: rows.filter((r) => r.returnId === h.id).map(line),
     };
   }); // prettier-ignore

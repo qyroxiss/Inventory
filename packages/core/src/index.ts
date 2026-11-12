@@ -66,6 +66,7 @@ export {
   journalDraft,
   parseAmount,
   paymentDraft,
+  ACCOUNTING_VOUCHER_TYPES,
   postingMessages,
   postingProblem,
   receiptDraft,
