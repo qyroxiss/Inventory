@@ -160,6 +160,7 @@ export {
   dayBook,
   ledgerBalancesAsOn,
   ledgerStatementReport,
+  ledgerStatementsReport,
   outstandingReport,
   profitLossReport,
   purchaseRegister,

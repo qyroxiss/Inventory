@@ -78,6 +78,7 @@ import {
   itcReport,
   dayBook,
   ledgerStatementReport,
+  ledgerStatementsReport,
   outstandingReport,
   purchaseRegister,
   trialBalanceReport,
@@ -946,6 +947,21 @@ export function createApp(opts: AppOptions) {
         if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
         const { acc, ...p } = c.req.valid('query');
         return c.json({ statement: await ledgerStatementReport(db, book.bookId, acc, p) });
+      },
+    )
+    // Several ledgers at once: the ones listed, or every ledger (or party) in use.
+    .get(
+      '/api/reports/ledger-statements',
+      zValidator(
+        'query',
+        period.extend({ accs: z.string().optional(), parties: z.enum(['1']).optional() }),
+      ),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { accs, parties, ...p } = c.req.valid('query');
+        const sel = { accs: accs ? accs.split(',') : [], parties: parties === '1' };
+        return c.json({ statements: await ledgerStatementsReport(db, book.bookId, sel, p) });
       },
     )
     .get(

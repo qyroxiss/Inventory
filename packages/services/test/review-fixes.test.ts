@@ -8,6 +8,7 @@ import {
   createLedger,
   createStockItem,
   createYear,
+  ledgerStatementsReport,
   nextVoucherNo,
   outstandingReport,
   saveReturn,
@@ -126,4 +127,18 @@ describe('review fixes 2026-11-12', () => {
     const tb = await trialBalanceReport(db, y2.bookId, '2027-04-01');
     expect(tb.difference).toBe(0);
   }); // prettier-ignore
+
+  test('Ledger Statement for several ledgers: all parties, all in use, or the ones picked', async () => {
+    await saveSale(db, ctx, sale());
+    const p = { from: '2026-04-01', to: '2027-03-31' };
+    const parties = await ledgerStatementsReport(db, ctx.bookId, { parties: true }, p);
+    // Acme has a bill; Bharat (a creditor) has neither opening nor entries, so it's left out.
+    expect(parties.map((s) => s.ledger.accName)).toEqual(['Acme Traders']);
+    expect(parties[0]!.closing).toBe(101);
+    const all = (await ledgerStatementsReport(db, ctx.bookId, {}, p)).map((s) => s.ledger.accName);
+    expect(all).toEqual(expect.arrayContaining(['Acme Traders', 'Cash', 'Owner Capital']));
+    expect(all).not.toContain('Rent');
+    const picked = await ledgerStatementsReport(db, ctx.bookId, { accs: ['AC0005', 'AC0003'] }, p);
+    expect(picked.map((s) => s.ledger.accName)).toEqual(['Cash', 'Rent']);
+  });
 });
