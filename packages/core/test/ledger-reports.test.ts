@@ -42,9 +42,9 @@ describe('trialBalance', () => {
       groups,
     );
     expect(t.rows).toEqual([
-      { accCode: 'AC1', accName: 'Gupta', grpName: 'Current Assets', debit: 1180, credit: 0 },
-      { accCode: 'SAL', accName: 'Sales A/c', grpName: 'Sales Accounts', debit: 0, credit: 1180 },
-    ]);
+      { accCode: 'AC1', accName: 'Gupta', grpName: 'Current Assets', opening: 0, trDebit: 0, trCredit: 0, debit: 1180, credit: 0 },
+      { accCode: 'SAL', accName: 'Sales A/c', grpName: 'Sales Accounts', opening: 0, trDebit: 0, trCredit: 0, debit: 0, credit: 1180 },
+    ]); // prettier-ignore
     expect(t).toMatchObject({ debit: 1180, credit: 1180, difference: 0 });
   });
   test('opening balances that do not agree show as the difference', () => {
@@ -53,6 +53,20 @@ describe('trialBalance', () => {
       groups,
     );
     expect(t.difference).toBe(500);
+  });
+  test("opening, the period's entries and the closing; a ledger with only an opening still shows", () => {
+    const t = trialBalance(
+      [
+        { accCode: 'AC1', accName: 'Gupta', grpCode: 'A007', balance: 700, opening: 1000, trDebit: 200, trCredit: 500 },
+        { accCode: 'AC2', accName: 'Settled', grpCode: 'A007', balance: 0, opening: 300, trDebit: 0, trCredit: 300 },
+      ],
+      groups,
+    ); // prettier-ignore
+    expect(t.rows.map((r) => [r.accName, r.opening, r.trDebit, r.trCredit, r.debit])).toEqual([
+      ['Gupta', 1000, 200, 500, 700],
+      ['Settled', 300, 0, 300, 0],
+    ]);
+    expect(t).toMatchObject({ opening: 1300, trDebit: 200, trCredit: 800, debit: 700 });
   });
 });
 

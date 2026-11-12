@@ -37,6 +37,7 @@ const REPORTS: Record<string, string> = {
   '/api/reports/trial-balance': 'Trial Balance',
   '/api/reports/day-book': 'Day Book',
   '/api/reports/ledger-statement': 'Ledger Statement',
+  '/api/reports/ledger-statements': 'Ledger Statement',
   '/api/reports/outstanding': 'Outstanding',
   '/api/gst/gstr1': 'GSTR-1',
   '/api/gst/gstr3b': 'GSTR-3B',

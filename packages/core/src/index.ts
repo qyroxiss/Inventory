@@ -150,6 +150,7 @@ export {
   type StatementLine,
   type StatementRow,
   type TrialRow,
+  type TrialInput,
 } from './reports.ts';
 export {
   B2CL_LIMIT,

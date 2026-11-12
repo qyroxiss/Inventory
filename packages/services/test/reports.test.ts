@@ -26,6 +26,7 @@ const ACC = 'acc-1';
 let db: Db;
 let ctx: PostingContext;
 const year = { from: '2026-04-01', to: '2027-03-31' };
+const dayBefore = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 
 beforeAll(async () => {
   ({ db } = await openDatabase());
@@ -194,6 +195,22 @@ describe('Ledger reports (added 2026-10-25)', () => {
     });
     expect(t.rows.find((r) => r.accName === 'Bharat Suppliers')).toMatchObject({ credit: 1888 });
     expect(t.rows.find((r) => r.accName === 'Rent')).toMatchObject({ debit: 500 });
+  });
+
+  test('Trial Balance between dates: opening = balance the day before, + Debit − Credit = closing', async () => {
+    const whole = await trialBalanceReport(db, ctx.bookId, year.to, year.from);
+    // From the year's start, the opening is each ledger's own opening balance.
+    expect(whole.rows.find((r) => r.accName === 'Owner Capital')).toMatchObject({ opening: -10000 });
+    for (const from of ['2026-04-02', '2026-05-01', '2026-08-15']) {
+      const before = await trialBalanceReport(db, ctx.bookId, dayBefore(from));
+      const t = await trialBalanceReport(db, ctx.bookId, year.to, from);
+      for (const r of t.rows) {
+        const b = before.rows.find((x) => x.accName === r.accName);
+        expect(r.opening, `${r.accName} from ${from}`).toBeCloseTo(b ? b.debit - b.credit : 0, 2);
+        expect(r.opening + r.trDebit - r.trCredit).toBeCloseTo(r.debit - r.credit, 2);
+      }
+      expect(t.debit).toBe(whole.debit);
+    }
   });
 
   test('Ledger Statement: opening, entries with the other side, running balance', async () => {

@@ -503,14 +503,99 @@ export async function ledgerStatementReport(db: Db, bookId: string, accCode: str
   };
 }
 
-/** Every ledger's balance as on `to`, Debit or Credit, grouped. */
-export async function trialBalanceReport(db: Db, bookId: string, to: string) {
-  const [balances, groups, stock] = await Promise.all([
+/** Sundry Debtors and Sundry Creditors (core groups.ts): a "party" is a ledger under either,
+ *  at any depth of sub groups. */
+const PARTY_GROUPS = new Set(['A007', 'L007']);
+
+/**
+ * Ledger Statement for several ledgers at once (added 2026-11-12, at the user's request): the
+ * ledgers picked, or else every ledger (or every party) that has an opening balance or an entry
+ * up to the period's end. One statement each, A–Z.
+ */
+export async function ledgerStatementsReport(
+  db: Db,
+  bookId: string,
+  sel: { accs?: string[]; parties?: boolean },
+  p: Period,
+) {
+  let codes = (sel.accs ?? []).map((c) => c.trim()).filter(Boolean);
+  if (!codes.length) {
+    const [all, groups, used] = await Promise.all([
+      db.select().from(ledgers).where(eq(ledgers.bookId, bookId)),
+      groupsOf(db, bookId),
+      db
+        .selectDistinct({ code: voucherLines.accCode })
+        .from(voucherLines)
+        .innerJoin(vouchers, eq(vouchers.id, voucherLines.voucherId))
+        .where(
+          and(eq(vouchers.bookId, bookId), eq(vouchers.status, 'Active'), lte(vouchers.vchrDate, p.to)),
+        ),
+    ]);
+    const hasEntries = new Set(used.map((u) => u.code));
+    const isParty = (grpCode: string) => {
+      let g: string | undefined = grpCode;
+      for (let i = 0; g && g !== 'Parent' && i < 20; i++) {
+        if (PARTY_GROUPS.has(g)) return true;
+        g = groups.get(g)?.parentGrp;
+      }
+      return false;
+    };
+    codes = all
+      .filter((l) => !sel.parties || isParty(l.grpCode))
+      .filter((l) => Number(l.opBal) !== 0 || hasEntries.has(l.accCode))
+      .map((l) => l.accCode);
+  }
+  const out = [];
+  for (const code of codes) {
+    const s = await ledgerStatementReport(db, bookId, code, p);
+    if (s) out.push(s);
+  }
+  return out.sort((a, b) => a.ledger.accName.localeCompare(b.ledger.accName));
+}
+
+/** The day before an ISO date. */
+const dayBefore = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  return d.toISOString().slice(0, 10);
+};
+
+/** Every ledger's balance as on `to`, Debit or Credit, grouped; with `from`, also its balance
+ *  before `from` and the Debit and Credit of the Active vouchers between the two dates (added
+ *  2026-11-12, at the user's request). Without `from` the opening is the ledger's own opening
+ *  balance and the entries run from the year's start. */
+export async function trialBalanceReport(db: Db, bookId: string, to: string, from?: string) {
+  const range = [eq(vouchers.bookId, bookId), eq(vouchers.status, 'Active'), lte(vouchers.vchrDate, to)];
+  if (from) range.push(gte(vouchers.vchrDate, from));
+  const [balances, before, moved, groups, stock] = await Promise.all([
     ledgerBalancesAsOn(db, bookId, to),
+    // Before any voucher: the ledgers' own opening balances.
+    ledgerBalancesAsOn(db, bookId, from ? dayBefore(from) : '1900-01-01'),
+    db
+      .select({
+        code: voucherLines.accCode,
+        dr: sql<string>`coalesce(sum(${voucherLines.drAmount}), 0)`,
+        cr: sql<string>`coalesce(sum(${voucherLines.crAmount}), 0)`,
+      })
+      .from(voucherLines)
+      .innerJoin(vouchers, eq(vouchers.id, voucherLines.voucherId))
+      .where(and(...range))
+      .groupBy(voucherLines.accCode),
     groupsOf(db, bookId),
     stockValues(db, bookId, to),
   ]);
-  return trialBalance(balances, groups, stock.opening);
+  const opening = new Map(before.map((b) => [b.accCode, b.balance]));
+  const tr = new Map(moved.map((m) => [m.code, m]));
+  return trialBalance(
+    balances.map((b) => ({
+      ...b,
+      opening: opening.get(b.accCode) ?? 0,
+      trDebit: Number(tr.get(b.accCode)?.dr ?? 0),
+      trCredit: Number(tr.get(b.accCode)?.cr ?? 0),
+    })),
+    groups,
+    stock.opening,
+  );
 }
 
 export type PurchaseRegisterRow = {
