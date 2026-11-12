@@ -10,6 +10,7 @@ import * as contract from '@qi/contract';
 import {
   MISC_CITY_CODE_PREFIX,
   MISC_MASTER_KINDS,
+  backupMessages,
   canEdit,
   canView,
   isAdminRole,
@@ -22,6 +23,7 @@ import { and, eq, schema, type Db } from '@qi/db';
 import {
   UserError,
   accessFor,
+  liveBookUser,
   createRole,
   deleteRole,
   listPermissions,
@@ -29,6 +31,8 @@ import {
   roleNames,
   saveRolePages,
   saveUserPages,
+  previousYear,
+  refreshOpenings,
   addMiscIfNew,
   bookLogin,
   changeBookPassword,
@@ -197,15 +201,29 @@ const json = <T extends ZodType>(schema: T) =>
 export function createApp(opts: AppOptions) {
   const { db, secret, accountAuth } = opts;
 
-  const readBook = async (c: Context<Env>): Promise<StoredBook | null> => {
-    const raw = await getSignedCookie(c, secret, BOOK_COOKIE);
-    if (!raw) return null;
-    try {
-      const book = JSON.parse(raw) as StoredBook;
-      return book.accountId === c.get('accountId') ? book : null;
-    } catch {
-      return null;
+  // The signed-in book user, checked against the database once per request (liveBookUser):
+  // a deleted or deactivated user, or a deleted year or company, is signed out at once, and
+  // the role, name and forced password change are always the current ones, never the cookie's.
+  const checked = new WeakMap<Request, Promise<StoredBook | null>>();
+  const readBook = (c: Context<Env>): Promise<StoredBook | null> => {
+    let p = checked.get(c.req.raw);
+    if (!p) {
+      p = (async () => {
+        const raw = await getSignedCookie(c, secret, BOOK_COOKIE);
+        if (!raw) return null;
+        let book: StoredBook;
+        try {
+          book = JSON.parse(raw) as StoredBook;
+        } catch {
+          return null;
+        }
+        if (book.accountId !== c.get('accountId')) return null;
+        const live = await liveBookUser(db, book.accountId, book);
+        return live ? { ...book, ...live } : null;
+      })();
+      checked.set(c.req.raw, p);
     }
+    return p;
   };
 
   const writeBook = (c: Context<Env>, book: StoredBook) =>
@@ -241,6 +259,16 @@ export function createApp(opts: AppOptions) {
       const session = await accountAuth.api.getSession({ headers: c.req.raw.headers });
       if (!session) return c.json({ message: 'Please sign in to your account.' }, 401);
       c.set('accountId', session.user.id);
+      return next();
+    })
+
+    // ── A forced password change comes first: nothing else until it's done. ─────────
+    .use('/api/*', async (c, next) => {
+      const open = ['/api/book/login', '/api/book/me', '/api/book/change-password', '/api/book/logout'];
+      if (open.includes(c.req.path) || !c.req.path.startsWith('/api/')) return next();
+      if (c.req.path.startsWith('/api/auth/')) return next();
+      const book = await readBook(c);
+      if (book?.mustChangePassword) return c.json({ message: loginMessages.changeRequired }, 403);
       return next();
     })
 
@@ -1041,6 +1069,18 @@ export function createApp(opts: AppOptions) {
       await saveUserPages(db, book, c.req.param('code'), c.req.valid('json').pages);
       return c.json({ ok: true });
     })
+    // ── Opening balances from the year before (services carry-forward.ts) ───────
+    .get('/api/settings/openings', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const prev = await previousYear(db, book.yearId);
+      return c.json({ previousYear: prev?.yearName ?? null });
+    })
+    .post('/api/settings/refresh-openings', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await refreshOpenings(db, book));
+    })
     .get('/api/settings/company', async (c) => {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
@@ -1095,6 +1135,7 @@ export function createApp(opts: AppOptions) {
     .get('/api/backup', async (c) => {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      if (!isAdminRole(book.role)) throw new UserError(backupMessages.adminOnly);
       const backup = await exportBackup(db, book.accountId, book.companyId);
       return c.json({ backup, summary: summarizeBackup(backup) });
     })

@@ -27,6 +27,7 @@ import {
   VoucherPage,
   defaultVoucherDate,
   errorText,
+  numberTaken,
   fetchLines,
   fetchList,
   fetchNextNo,
@@ -73,6 +74,8 @@ export function JournalTab() {
     editId: null,
   });
   const [form, setForm] = useState<Form | null>(null);
+  // A cancelled voucher is shown for reference only: no Save until Clear.
+  const [shownCancelled, setShownCancelled] = useState(false);
   const [errors, setErrors] = useState<LineErrors>({});
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<VoucherRow[] | null>(null);
@@ -103,6 +106,7 @@ export function JournalTab() {
   const balanced = Math.abs(totalDr - totalCr) < 0.001;
 
   const clear = async () => {
+    setShownCancelled(false);
     const no = await fetchNextNo('JNL');
     setErrors({});
     setForm(blank(no));
@@ -160,6 +164,12 @@ export function JournalTab() {
       await clear();
     } catch (err) {
       fail(err);
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (!inEdit && numberTaken(err)) {
+        const vchrNo = await fetchNextNo('JNL').catch(() => '');
+        if (vchrNo) setForm((f) => (f ? { ...f, vchrNo } : f));
+      }
     }
     setBusy(false);
   };
@@ -189,6 +199,7 @@ export function JournalTab() {
     const lines = rows.map((r) => line(r.dr > 0, known(r.accCode), fa(r.dr > 0 ? r.dr : r.cr)));
     while (lines.length < 2) lines.push(line(lines.length === 0));
     setErrors({});
+    setShownCancelled(row.status === 'Cancelled');
     setForm({
       date: row.vchrDate,
       vchrNo: row.vchrNo,
@@ -342,6 +353,7 @@ export function JournalTab() {
             canRemove={inEdit}
             saveLabel={inEdit ? 'Update Voucher' : 'Save Voucher'}
             busy={busy}
+            saveDisabled={shownCancelled}
             onView={async () => {
               try {
                 setList(await fetchList(['JNL']));
@@ -367,7 +379,7 @@ export function JournalTab() {
         title={['Journal', 'Vouchers']}
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void open(r)}
+        onPick={(r) => void open(r).catch(fail)}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

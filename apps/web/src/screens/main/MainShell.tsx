@@ -54,6 +54,12 @@ export function MainShell() {
   })();
   const allowed = (page ? access.view(page) : true) && sectionShown;
   const viewOnly = !!page && allowed && !access.edit(page);
+  // Signed in with the Dashboard hidden: open the first page this user may use instead.
+  useEffect(() => {
+    if (!access.ready || page !== 'Dashboard' || access.view('Dashboard')) return;
+    const first = ALL_ITEMS.find((i) => access.view(i.label));
+    if (first) void navigate({ to: '/app/$screen', params: { screen: first.slug }, replace: true });
+  }, [access, page, navigate]);
   // A change made by the Admin shows on the next page change.
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: ACCESS_KEY });
@@ -77,9 +83,11 @@ export function MainShell() {
   /** Close the open book: MDA's Logout, and the first step of changing year. */
   const closeBook = async () => {
     await api.api.book.logout.$post().catch(() => undefined);
-    queryClient.removeQueries({ queryKey: ['book-me'] });
-    queryClient.removeQueries({ queryKey: ['dashboard'] });
-    queryClient.removeQueries({ queryKey: ACCESS_KEY });
+    // Everything read from this book goes (ledgers, items, reports…), so the next book never
+    // shows its figures; only the company list and the account stay (fixed 2026-11-12).
+    queryClient.removeQueries({
+      predicate: (q) => !['book-index', 'account'].includes(String(q.queryKey[0])),
+    });
   };
   /** MDA's Logout: close the books and go back to Company & Year Setup. Asks first (added). */
   const logout = async () => {

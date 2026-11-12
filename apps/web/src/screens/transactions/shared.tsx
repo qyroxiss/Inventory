@@ -520,3 +520,18 @@ export function EntryBySwitch({
     </div>
   );
 }
+
+/** Runs a save at most once at a time: a second press (or Enter) while the first is still
+ *  going does nothing. State updates are too slow for this; a ref isn't (added 2026-11-12). */
+export function useOnce() {
+  const running = useRef(false);
+  return async (fn: () => Promise<unknown>) => {
+    if (running.current) return;
+    running.current = true;
+    try {
+      await fn();
+    } finally {
+      running.current = false;
+    }
+  };
+}

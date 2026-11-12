@@ -64,8 +64,16 @@ export const CANCELLED = 'Cancelled';
 export const ACTIVE = 'Active';
 
 /** The posting gate's messages, verbatim (posting_service.dart:436-475). */
+/** The voucher types Accounting Vouchers may save, change or cancel. Bills, returns and stock
+ *  journals have their own screens and rules; their vouchers are never touched from here. */
+export const ACCOUNTING_VOUCHER_TYPES = ['RCP', 'BNK', 'PAY', 'BPAY', 'JNL', 'DRN', 'CRN'];
+
 export const postingMessages = {
   typeMissing: 'Voucher type is missing.',
+  /** Added 2026-11-12: a code that isn't a ledger of this book is refused. */
+  unknownLedger: (code: string) => `Ledger ${code} was not found in this company.`,
+  typeNotAccounting: (type: string) =>
+    `${type} vouchers are changed from their own screen, not from Accounting Vouchers.`,
   outsideYear: (label: string) => `Voucher date is outside the open financial year (${label}).`,
   noLines: 'A voucher needs at least one ledger line.',
   lineNoLedger: 'Every line must have a ledger selected.',
@@ -91,6 +99,8 @@ export function postingProblem(input: {
   lines: PostingLine[];
 }): string | null {
   if (!input.vchrType.trim()) return postingMessages.typeMissing;
+  if (!ACCOUNTING_VOUCHER_TYPES.includes(input.vchrType))
+    return postingMessages.typeNotAccounting(input.vchrType);
   const { fyFrom, fyTo } = input;
   if (fyFrom && fyTo && (input.date < fyFrom || input.date > fyTo)) {
     return postingMessages.outsideYear(input.fyLabel);

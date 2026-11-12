@@ -11,7 +11,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
-import { MessageDialog } from '../../components/Dialog.tsx';
+import { ConfirmUpdate, MessageDialog } from '../../components/Dialog.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { setDecimals } from '../../format.ts';
 import { setPreferences, type Preferences } from '../../prefs.ts';
@@ -75,10 +75,18 @@ function Tabs<K extends string>({
 
 // ── Company Settings ───────────────────────────────────────────────────────────
 
+/** Company Settings changes need Full on the page and, as in MDA, an Admin (the server checks
+ *  both; the buttons follow, added 2026-11-12). */
+function useSettingsEdit() {
+  const canEdit = useCanEdit();
+  const book = useBook();
+  return canEdit && (book?.role ?? '').toLowerCase() === 'admin';
+}
+
 export function CompanySettingsScreen() {
-  const [tab, setTab] = useState<'company' | 'numbering' | 'decimals' | 'entry' | 'print'>(
-    'company',
-  );
+  const [tab, setTab] = useState<
+    'company' | 'numbering' | 'decimals' | 'entry' | 'print' | 'openings'
+  >('company');
   return (
     <ReportPage
       section="tools"
@@ -95,6 +103,7 @@ export function CompanySettingsScreen() {
             ['decimals', 'Decimal Places'],
             ['entry', 'Item Entry'],
             ['print', 'Print Layout'],
+            ['openings', 'Opening Balances'],
           ]}
         />
       }
@@ -105,6 +114,8 @@ export function CompanySettingsScreen() {
         <Numbering />
       ) : tab === 'decimals' ? (
         <DecimalPlaces />
+      ) : tab === 'openings' ? (
+        <OpeningBalances />
       ) : (
         <PreferenceForm part={tab} />
       )}
@@ -114,6 +125,7 @@ export function CompanySettingsScreen() {
 
 /** The open company in Company Creation's own form and checks; Update only. */
 function CompanyDetails() {
+  const canChange = useSettingsEdit();
   const queryClient = useQueryClient();
   const q = useQuery({
     queryKey: ['settings-company'],
@@ -194,7 +206,12 @@ function CompanyDetails() {
         </div>
       </div>
       <div className="flex flex-none justify-end border-t-[3px] border-double border-foreground pt-3">
-        <button type="button" disabled={busy} onClick={() => void update()} className={MAIN}>
+        <button
+          type="button"
+          disabled={busy || !canChange}
+          onClick={() => void update()}
+          className={MAIN}
+        >
           <span>Update Company</span>
           <span aria-hidden="true" className="text-xl">
             →
@@ -209,6 +226,7 @@ type Series = OkBody<Awaited<ReturnType<typeof api.api.settings.series.$get>>>[n
 
 /** Every number series: its prefix and digits, editable, with the number it will give next. */
 function Numbering() {
+  const canChange = useSettingsEdit();
   const queryClient = useQueryClient();
   const q = useQuery({
     queryKey: ['settings-series'],
@@ -295,7 +313,8 @@ function Numbering() {
           <button
             type="button"
             onClick={() => void save(s)}
-            className="h-[34px] w-full cursor-pointer bg-primary text-sm font-semibold text-primary-foreground"
+            disabled={!canChange}
+            className="h-[34px] w-full cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 bg-primary text-sm font-semibold text-primary-foreground"
           >
             Save
           </button>
@@ -617,6 +636,7 @@ export function LogsScreen() {
 /** Decimal places for quantities (0-3) and rates/amounts (0-2), for every screen, report and
  *  print of this company. Display only: the maths stays exact to the paisa. Admin only. */
 function DecimalPlaces() {
+  const canChange = useSettingsEdit();
   const queryClient = useQueryClient();
   const q = useQuery({
     queryKey: ['decimals'],
@@ -676,7 +696,7 @@ function DecimalPlaces() {
       <div>
         <button
           type="button"
-          disabled={!changed || busy}
+          disabled={!changed || busy || !canChange}
           onClick={() => void update()}
           className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -695,6 +715,7 @@ function DecimalPlaces() {
 /** Item Entry (which of Item Name / Item Code comes first on Purchase and Sales) or Print Layout
  *  (paper size and orientation for every print). One company setting each; Admin only. */
 function PreferenceForm({ part }: { part: 'entry' | 'print' }) {
+  const canChange = useSettingsEdit();
   const queryClient = useQueryClient();
   const q = useQuery({
     queryKey: ['preferences'],
@@ -774,7 +795,7 @@ function PreferenceForm({ part }: { part: 'entry' | 'print' }) {
       <div>
         <button
           type="button"
-          disabled={!changed || busy}
+          disabled={!changed || busy || !canChange}
           onClick={() => void update()}
           className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
         >
@@ -786,6 +807,86 @@ function PreferenceForm({ part }: { part: 'entry' | 'print' }) {
           ? 'Purchase Invoice and Sales Invoice open with this box first and show the grid in the same order (SNo. | Name | Code, or SNo. | Code | Name). The Code / Name switch on the bill still changes it for that bill. Only an Admin can change this.'
           : 'Every print in the software (bills, vouchers, reports, GST reports and masters) uses this paper size and orientation. Only an Admin can change this.'}
       </p>
+    </div>
+  );
+}
+
+/** Refresh Opening Balances (added 2026-11-12; services carry-forward.ts): bring this year's
+ *  openings forward again from the year before, after entries made late in that year. */
+function OpeningBalances() {
+  const book = useBook();
+  const queryClient = useQueryClient();
+  const admin = (book?.role ?? '').toLowerCase() === 'admin';
+  const info = useQuery({
+    queryKey: ['openings'],
+    queryFn: () => unwrap(api.api.settings.openings.$get()),
+  });
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const prev = info.data?.previousYear ?? null;
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const r = await unwrap(api.api.settings['refresh-openings'].$post());
+      toast(
+        `Opening balances brought forward from ${r.fromYear}: ${r.ledgers} ledgers, ${r.items} items.`,
+      );
+      await queryClient.invalidateQueries();
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error');
+    }
+    setAsk(false);
+    setBusy(false);
+  };
+
+  return (
+    <div className="flex max-w-[720px] flex-col gap-3 border border-border bg-card p-4">
+      <h2 className="m-0 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
+        OPENING BALANCES
+      </h2>
+      {info.isLoading ? (
+        <p className="m-0 text-sm text-muted-foreground">Loading…</p>
+      ) : prev ? (
+        <>
+          <p className="m-0 text-sm leading-relaxed text-muted-foreground">
+            Bring this year&apos;s opening balances forward again from <b>{prev}</b>, as on its last
+            day. Use it after entries were made or changed in {prev}. Ledgers and stock items in
+            both years get last year&apos;s closing balance, quantity and value; last year&apos;s
+            profit or loss goes to the Profit &amp; Loss A/c. Opening balances typed by hand in
+            this year are replaced.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={!admin || busy}
+              onClick={() => setAsk(true)}
+              className={MAIN}
+            >
+              <span>Refresh Opening Balances</span>
+              <span aria-hidden="true" className="text-xl">
+                →
+              </span>
+            </button>
+            {!admin && (
+              <span className="text-sm text-muted-foreground">Only an Admin can do this.</span>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="m-0 text-sm leading-relaxed text-muted-foreground">
+          There is no earlier year to bring opening balances from.
+        </p>
+      )}
+      <ConfirmUpdate
+        open={ask}
+        title={['Refresh', 'Openings']}
+        text={`Replace this year's opening balances with the closing balances of ${prev ?? ''}?`}
+        confirmLabel="Refresh"
+        busy={busy}
+        onCancel={() => setAsk(false)}
+        onConfirm={() => void run()}
+      />
     </div>
   );
 }

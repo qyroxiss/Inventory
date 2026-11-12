@@ -104,3 +104,41 @@ export async function changeBookPassword(
     .set({ password: await hashPassword(input.newPassword), mustChangePassword: false })
     .where(and(eq(bookUsers.bookId, session.bookId), eq(bookUsers.userCode, session.userCode)));
 }
+
+/**
+ * The signed-in user as the database has them now (added 2026-11-12). The book cookie is signed
+ * but never expires, so every request checks it: the user must still exist and be active, and
+ * the year and company must still be there under this account. Role, name and the forced
+ * password change come from here, never from the cookie. Null means signed out.
+ */
+export async function liveBookUser(
+  db: Db,
+  accountId: string,
+  session: Pick<BookSession, 'bookId' | 'yearId' | 'userCode'>,
+): Promise<{ role: string; userName: string; mustChangePassword: boolean } | null> {
+  const { companies, financialYears } = schema;
+  const [row] = await db
+    .select({
+      role: bookUsers.role,
+      userName: bookUsers.userName,
+      mustChangePassword: bookUsers.mustChangePassword,
+    })
+    .from(bookUsers)
+    .innerJoin(
+      financialYears,
+      and(eq(financialYears.id, session.yearId), eq(financialYears.bookId, bookUsers.bookId)),
+    )
+    .innerJoin(
+      companies,
+      and(eq(companies.id, financialYears.companyId), eq(companies.accountId, accountId)),
+    )
+    .where(
+      and(
+        eq(bookUsers.bookId, session.bookId),
+        eq(bookUsers.userCode, session.userCode),
+        eq(bookUsers.isActive, true),
+      ),
+    )
+    .limit(1);
+  return row ?? null;
+}

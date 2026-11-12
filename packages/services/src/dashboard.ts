@@ -4,7 +4,7 @@
 
 import { VCHR_KINDS, ago, round2, weekLabels, type DashboardData, type RecentTx } from '@qi/core';
 import { and, desc, eq, gte, lte, schema, sql, type Db } from '@qi/db';
-import { stockValues } from './reports.ts';
+import { noteSettles, stockValues } from './reports.ts';
 
 const { billRefs, ledgers, purchases, sales, voucherLines, vouchers } = schema;
 
@@ -111,6 +111,7 @@ async function pendingBills(db: Db, bookId: string, today: string) {
     .select({
       acc: billRefs.accCode,
       refType: billRefs.refType,
+      vchrType: vouchers.vchrType,
       billDate: billRefs.billDate,
       amount: billRefs.amount,
       creditDays: sql<number>`coalesce(${ledgers.creditDays}, 0)`,
@@ -121,14 +122,23 @@ async function pendingBills(db: Db, bookId: string, today: string) {
       ledgers,
       and(eq(ledgers.bookId, vouchers.bookId), eq(ledgers.accCode, billRefs.accCode)),
     )
-    .where(and(eq(vouchers.bookId, bookId), eq(vouchers.status, 'Active')))
+    .where(
+      and(
+        eq(vouchers.bookId, bookId),
+        eq(vouchers.status, 'Active'),
+        // Post-dated entries count from their own date, as in Outstanding (added 2026-11-12).
+        lte(vouchers.vchrDate, today),
+      ),
+    )
     .orderBy(billRefs.accCode, billRefs.billDate, billRefs.id);
 
+  const settles = noteSettles(rows.map((r) => ({ ...r, accCode: r.acc })));
   const raised = new Map<string, { due: string | null; amount: number }[]>();
   const settled = new Map<string, number>();
   for (const r of rows) {
     const amount = Number(r.amount);
-    if ((r.refType ?? 'New') !== 'New') {
+    // A note that lowers the party's dues settles bills (reports.ts noteSettles).
+    if ((r.refType ?? 'New') !== 'New' || settles({ accCode: r.acc, vchrType: r.vchrType })) {
       settled.set(r.acc, (settled.get(r.acc) ?? 0) + amount);
       continue;
     }

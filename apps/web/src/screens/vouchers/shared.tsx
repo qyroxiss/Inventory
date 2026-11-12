@@ -349,6 +349,7 @@ export function VoucherButtons({
   canRemove,
   saveLabel,
   busy,
+  saveDisabled,
   onView,
   onRemove,
   onPrint,
@@ -359,6 +360,8 @@ export function VoucherButtons({
   canRemove: boolean;
   saveLabel: string;
   busy: boolean;
+  /** A cancelled voucher shown for reference: Save stays off until Clear. */
+  saveDisabled?: boolean;
   onView: () => void;
   onRemove: () => void;
   onPrint: () => void;
@@ -390,7 +393,7 @@ export function VoucherButtons({
       <button
         type="button"
         onClick={onSave}
-        disabled={busy || !canEdit}
+        disabled={busy || !canEdit || !!saveDisabled}
         className="flex h-12 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
       >
         <span>{saveLabel}</span>
@@ -404,6 +407,9 @@ export function VoucherButtons({
 
 /** The error a failed API call shows: the server's message, as MDA's toast does. */
 export const errorText = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
+/** The server's "already exists / already used. Save again to take the next…" refusal. */
+export const numberTaken = (err: unknown) => /Save again to take the next/.test(errorText(err));
 
 /** Keeps a tab's unsaved entry while you look at another tab, as MDA's tabs stay alive. */
 const drafts = new Map<string, unknown>();

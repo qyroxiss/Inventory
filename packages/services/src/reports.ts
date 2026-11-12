@@ -505,11 +505,12 @@ export async function ledgerStatementReport(db: Db, bookId: string, accCode: str
 
 /** Every ledger's balance as on `to`, Debit or Credit, grouped. */
 export async function trialBalanceReport(db: Db, bookId: string, to: string) {
-  const [balances, groups] = await Promise.all([
+  const [balances, groups, stock] = await Promise.all([
     ledgerBalancesAsOn(db, bookId, to),
     groupsOf(db, bookId),
+    stockValues(db, bookId, to),
   ]);
-  return trialBalance(balances, groups);
+  return trialBalance(balances, groups, stock.opening);
 }
 
 export type PurchaseRegisterRow = {
@@ -595,16 +596,37 @@ export async function outstandingReport(db: Db, bookId: string, today: string) {
         lte(vouchers.vchrDate, today),
       ),
     );
+  const settles = noteSettles(rows);
   const refs: BillRef[] = rows.map((r) => ({
     accCode: r.accCode,
     accName: r.accName ?? r.accCode,
     billNo: r.billNo,
-    refType: r.refType ?? 'New',
+    // A note that lowers what the party owes (or is owed) settles bills; see noteSettles.
+    refType: settles(r) ? 'Against' : (r.refType ?? 'New'),
     // Bill dates are ISO when this app wrote them; an MDA import may hold another form.
     billDate: /^\d{4}-\d{2}-\d{2}$/.test(r.billDate ?? '') ? r.billDate! : r.vchrDate,
     amount: Number(r.amount),
     creditDays: Number(r.creditDays),
-    side: r.vchrType === 'PUR' ? 'payable' : 'receivable',
+    side:
+      r.vchrType === 'PUR' || (r.vchrType === 'CRN' && !settles(r)) ? 'payable' : 'receivable',
   }));
   return outstandingBills(refs, today);
+}
+
+/**
+ * Credit and Debit Notes (fixed 2026-11-12; MDA counts every note as a new bill). A Credit Note
+ * lowers a customer's dues and a Debit Note lowers what we owe a supplier: those settle the
+ * party's bills. Otherwise (a Credit Note to a supplier, a Debit Note to a customer) the note
+ * raises a bill of its own. A party's side is that of its sale or purchase bills.
+ */
+export function noteSettles(rows: { accCode: string; vchrType: string; refType: string | null }[]) {
+  const side = new Map<string, 'receivable' | 'payable'>();
+  for (const r of rows) {
+    if ((r.refType ?? 'New') !== 'New') continue;
+    if (r.vchrType === 'SAL') side.set(r.accCode, 'receivable');
+    else if (r.vchrType === 'PUR' && !side.has(r.accCode)) side.set(r.accCode, 'payable');
+  }
+  return (r: { accCode: string; vchrType: string }) =>
+    (r.vchrType === 'CRN' && side.get(r.accCode) === 'receivable') ||
+    (r.vchrType === 'DRN' && side.get(r.accCode) === 'payable');
 }

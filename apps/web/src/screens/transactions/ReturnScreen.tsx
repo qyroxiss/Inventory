@@ -25,7 +25,7 @@ import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { fa, fq } from '../../format.ts';
 import { preferences } from '../../prefs.ts';
-import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
+import { DateBox, defaultVoucherDate, errorText, numberTaken } from '../vouchers/shared.tsx';
 import { PrintInvoice } from './print.tsx';
 import {
   BAR_BTN,
@@ -40,6 +40,7 @@ import {
   dmy,
   enterToNext,
   focusNav,
+  useOnce,
 } from './shared.tsx';
 import { useCanEdit } from '../../access.tsx';
 
@@ -54,6 +55,9 @@ const num = (s: string) => Number(s) || 0;
 export function ReturnScreen({ kind }: { kind: ReturnKind }) {
   // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
   const canEdit = useCanEdit();
+  const once = useOnce();
+  // A cancelled document is shown for reference only: no Save until New.
+  const [shownCancelled, setShownCancelled] = useState(false);
   const title = rm.title(kind);
   const words: [string, string] = kind === 'PRT' ? ['Purchase', 'Return'] : ['Sales', 'Return'];
   const party = kind === 'PRT' ? 'Supplier' : 'Customer';
@@ -124,6 +128,7 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
   };
 
   const fresh = async () => {
+    setShownCancelled(false);
     const s = await setup.refetch();
     setReturnNo(s.data?.returnNo ?? returnNo);
     setDate(defaultVoucherDate(me.data.fyFrom, me.data.fyTo));
@@ -173,6 +178,12 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
       await fresh();
     } catch (err) {
       toast(errorText(err), 'error');
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (editing === null && numberTaken(err)) {
+        const s = await setup.refetch();
+        if (s.data?.returnNo) setReturnNo(s.data.returnNo);
+      }
     }
     setSaving(false);
   };
@@ -198,6 +209,7 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
     setQtys(Object.fromEntries(doc.lines.map((l) => [l.srcLineNo, fq(l.qty)])));
     setNarration(doc.narration);
     setEditing(cancelled ? null : doc.returnNo);
+    setShownCancelled(cancelled);
     setBillError(false);
     if (cancelled) toast(rm.shownCancelled(doc.returnNo), 'error');
   };
@@ -422,8 +434,8 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
           <button
             type="button"
             data-nav={NAV.save}
-            onClick={() => void save()}
-            disabled={saving || !canEdit}
+            onClick={() => void once(save)}
+            disabled={saving || !canEdit || shownCancelled}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
             <span>{saving ? 'Saving...' : editing === null ? 'Save' : 'Update'}</span>
@@ -445,7 +457,7 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
         party={party}
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void open(r.returnNo)}
+        onPick={(r) => void open(r.returnNo).catch((err: unknown) => toast(errorText(err), 'error'))}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

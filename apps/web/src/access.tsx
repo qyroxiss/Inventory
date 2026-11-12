@@ -42,7 +42,13 @@ export function pageOfPath(pathname: string): string | null {
 
 const PageContext = createContext<string | null>(null);
 
-export function PageAccessProvider({ page, children }: { page: string | null; children: ReactNode }) {
+export function PageAccessProvider({
+  page,
+  children,
+}: {
+  page: string | null;
+  children: ReactNode;
+}) {
   return <PageContext.Provider value={page}>{children}</PageContext.Provider>;
 }
 

@@ -20,7 +20,7 @@ import { fa, fq } from '../../format.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { NewItemButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
-import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
+import { DateBox, defaultVoucherDate, errorText, numberTaken } from '../vouchers/shared.tsx';
 import {
   BAR_BTN,
   Cell,
@@ -36,6 +36,7 @@ import {
   enterToNext,
   focusNav,
   type GridCol,
+  useOnce,
 } from './shared.tsx';
 import { useCanEdit } from '../../access.tsx';
 
@@ -67,6 +68,7 @@ const fetchNo = async () => (await unwrap(api.api['stock-journals'].next.$get())
 export function StockJournalScreen() {
   // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
   const canEdit = useCanEdit();
+  const once = useOnce();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ['book-me'], queryFn: () => unwrap(api.api.book.me.$get()) });
   const setup = useQuery({
@@ -210,6 +212,9 @@ export function StockJournalScreen() {
       await fresh();
     } catch (err) {
       toast(errorText(err), 'error');
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (!editId && numberTaken(err)) setVchrNo(await fetchNo().catch(() => vchrNo));
     }
     setSaving(false);
   };
@@ -452,7 +457,7 @@ export function StockJournalScreen() {
           <button
             type="button"
             data-nav={NAV.save}
-            onClick={() => void save()}
+            onClick={() => void once(save)}
             disabled={saving || cancelled || !canEdit}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
@@ -467,7 +472,7 @@ export function StockJournalScreen() {
       <JournalList
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void open(r)}
+        onPick={(r) => void open(r).catch((err: unknown) => toast(errorText(err), 'error'))}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

@@ -36,4 +36,11 @@ describe('valueItem', () => {
     const r = valueItem('fifo', { ...item, opRate: 0 }, [mv('2026-05-01', 0, 12, 90, 'SAL')], '2026-04-01');
     expect(r.closing).toEqual({ qty: -2, value: -80 });
   });
+  test('stock sold before it arrives is filled by the next purchase (FIFO and Average)', () => {
+    // No opening; sell 5, buy 10 @ 100, sell 3 → 2 left @ 100.
+    const it = { opQty: 0, opRate: 0, mrp: 0, fallback: 80 };
+    const m = [mv('2026-05-01', 0, 5, 120, 'SAL'), mv('2026-05-02', 10, 0, 100), mv('2026-05-03', 0, 3, 120, 'SAL')];
+    expect(valueItem('fifo', it, m, '2026-04-01').closing).toEqual({ qty: 2, value: 200 });
+    expect(valueItem('average', it, m, '2026-04-01').closing).toEqual({ qty: 2, value: 200 });
+  }); // prettier-ignore
 });

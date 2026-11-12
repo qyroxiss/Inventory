@@ -24,7 +24,7 @@ export {
   type YearInput,
 } from './years.ts';
 export { listBookIndex, type BookIndexCompany, type BookIndexYear } from './book-index.ts';
-export { bookLogin, changeBookPassword, type BookSession } from './book-auth.ts';
+export { bookLogin, changeBookPassword, liveBookUser, type BookSession } from './book-auth.ts';
 export { getDashboard } from './dashboard.ts';
 export {
   listAllGroups,
@@ -212,3 +212,12 @@ export {
   type RoleInfo,
   type UserAccessInfo,
 } from './permissions.ts';
+export {
+  PL_LEDGER_NAME,
+  carryMessages,
+  carryOpenings,
+  copyMasters,
+  previousYear,
+  refreshOpenings,
+  type CarryResult,
+} from './carry-forward.ts';

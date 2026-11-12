@@ -35,6 +35,7 @@ import {
   VoucherPage,
   defaultVoucherDate,
   errorText,
+  numberTaken,
   fetchLines,
   fetchList,
   fetchNextNo,
@@ -89,6 +90,8 @@ export function NoteTab({ kind }: { kind: Kind }) {
     editId: null,
   });
   const [form, setForm] = useState<Form | null>(null);
+  // A cancelled voucher is shown for reference only: no Save until Clear.
+  const [shownCancelled, setShownCancelled] = useState(false);
   const [errors, setErrors] = useState<Errors>({ items: {} });
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<VoucherRow[] | null>(null);
@@ -122,6 +125,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
   const total = sumRaw(form.items.map((i) => parseAmount(i.amount)));
 
   const clear = async () => {
+    setShownCancelled(false);
     const no = await fetchNextNo(type);
     setErrors({ items: {} });
     setForm(blank(no));
@@ -182,6 +186,12 @@ export function NoteTab({ kind }: { kind: Kind }) {
       await clear();
     } catch (err) {
       fail(err);
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (!inEdit && numberTaken(err)) {
+        const vchrNo = await fetchNextNo(type).catch(() => '');
+        if (vchrNo) setForm((f) => (f ? { ...f, vchrNo } : f));
+      }
     }
     setBusy(false);
   };
@@ -211,6 +221,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
       .filter((r) => (debit ? r.cr > 0 : r.dr > 0))
       .map((r) => item(known(r.accCode, ledgers!), fa(debit ? r.cr : r.dr)));
     setErrors({ items: {} });
+    setShownCancelled(row.status === 'Cancelled');
     setForm({
       date: row.vchrDate,
       vchrNo: row.vchrNo,
@@ -380,6 +391,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
             canRemove={inEdit}
             saveLabel={inEdit ? `Update ${word}` : `Save ${word}`}
             busy={busy}
+            saveDisabled={shownCancelled}
             onView={async () => {
               try {
                 setList(await fetchList([type]));
@@ -405,7 +417,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
         title={debit ? ['Debit', 'Notes'] : ['Credit', 'Notes']}
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void open(r)}
+        onPick={(r) => void open(r).catch(fail)}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

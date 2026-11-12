@@ -36,7 +36,12 @@ import {
 import { and, asc, desc, eq, inArray, or, schema, sql, type Db } from '@qi/db';
 import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
 import { UserError } from './errors.ts';
-import { commitVoucherNo, nextVoucherNo, type PostingContext } from './vouchers.ts';
+import {
+  assertLedgersExist,
+  commitVoucherNo,
+  nextVoucherNo,
+  type PostingContext,
+} from './vouchers.ts';
 
 const {
   accountGroups,
@@ -469,6 +474,7 @@ export async function savePurchase(
 ): Promise<{ billNo: string; net: number }> {
   const lines = buildLines(input);
   check(ctx, input, lines);
+  await assertLedgersExist(db, ctx.bookId, [input.suppCode]);
   const t = purcTotals(lines, freightOf(input));
   const billNo = input.billNo.trim();
 
@@ -501,10 +507,18 @@ export async function updatePurchase(
 ): Promise<{ billNo: string; net: number }> {
   const lines = buildLines(input);
   check(ctx, input, lines);
+  await assertLedgersExist(db, ctx.bookId, [input.suppCode]);
   const old = await findPurchase(db, ctx.bookId, input.billNo.trim());
   if (!old) throw new UserError(pm.notFound);
   if (old.status === CANCELLED) throw new UserError(pm.cancelledEdit);
-  await assertReturnsFit(db, ctx.bookId, 'PRT', old.billNo, lines);
+  await assertReturnsFit(
+    db,
+    ctx.bookId,
+    'PRT',
+    old.billNo,
+    lines,
+    old.suppCode !== input.suppCode || old.isInterState !== input.interState,
+  );
   const t = purcTotals(lines, freightOf(input));
 
   await db.transaction(async (raw) => {

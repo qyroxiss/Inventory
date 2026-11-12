@@ -41,7 +41,7 @@ import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { NewItemButton, NewLedgerButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
-import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
+import { DateBox, defaultVoucherDate, errorText, numberTaken } from '../vouchers/shared.tsx';
 import { PrintInvoice } from './print.tsx';
 import { SaleList } from './SaleList.tsx';
 import {
@@ -60,6 +60,7 @@ import {
   enterToNext,
   focusNav,
   type GridCol,
+  useOnce,
 } from './shared.tsx';
 import { useCanEdit } from '../../access.tsx';
 
@@ -145,6 +146,9 @@ const nextNo = async (prefix?: string) =>
 export function SalesInvoiceScreen() {
   // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
   const canEdit = useCanEdit();
+  const once = useOnce();
+  // A cancelled document is shown for reference only: no Save until New.
+  const [shownCancelled, setShownCancelled] = useState(false);
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ['book-me'], queryFn: () => unwrap(api.api.book.me.$get()) });
   const setup = useQuery({
@@ -346,6 +350,7 @@ export function SalesInvoiceScreen() {
   };
 
   const newBill = async () => {
+    setShownCancelled(false);
     const billNo = await nextNo(firstType()?.prefix);
     // Masters added meanwhile (another tab) show up on the fresh bill.
     void setup.refetch();
@@ -404,6 +409,12 @@ export function SalesInvoiceScreen() {
       await newBill();
     } catch (err) {
       toast(errorText(err), 'error');
+      // The number was taken meanwhile (another user or tab): take the next free one, so the
+      // message's "Save again" works.
+      if (editing === null && numberTaken(err)) {
+        const billNo = await nextNo(h.billNo.replace(/\d+$/, '') || undefined).catch(() => '');
+        if (billNo) setH((x) => (x ? { ...x, billNo } : x));
+      }
     }
     setSaving(false);
   };
@@ -441,6 +452,7 @@ export function SalesInvoiceScreen() {
     });
     setLines(bill.lines);
     setEditing(cancelled ? null : bill.billNo);
+    setShownCancelled(cancelled);
     setErrors({});
     setEntry(blankEntry());
     if (cancelled) toast(sm.shownCancelled(bill.billNo), 'error');
@@ -842,8 +854,8 @@ export function SalesInvoiceScreen() {
           <button
             type="button"
             data-nav={NAV.save}
-            onClick={() => void save()}
-            disabled={saving || !canEdit}
+            onClick={() => void once(save)}
+            disabled={saving || !canEdit || shownCancelled}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary max-lg:min-w-[130px] px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
             <span>{saving ? 'Saving...' : editing === null ? 'Save' : 'Update'}</span>
@@ -904,7 +916,7 @@ export function SalesInvoiceScreen() {
       <SaleList
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void loadBill(r.billNo)}
+        onPick={(r) => void loadBill(r.billNo).catch((err: unknown) => toast(errorText(err), 'error'))}
         onClose={() => setList(null)}
       />
       <ConfirmDelete

@@ -506,6 +506,23 @@ Invoice item and party lookups show nothing until you type, and match by "contai
 - `UNIQUE(company, YearCode)` → `Year … already exists for this company`.
 - Creating a year creates and seeds its book (§3).
 
+**Year-end carry-forward (beyond MDA, added 2026-11-12; `@qi/services` carry-forward.ts).**
+- **When it runs.** "Copy from previous year" is ticked by default when the company has a year ending before the new one starts. It applies only when the year's book is new.
+- **What it copies:**
+  - all masters (groups, ledgers, misc lists, stock items);
+  - users and Role Permissions;
+  - voucher numbering, with numbers restarting at 1.
+- **Openings,** as on the previous year's last day, by the Balance Sheet's own rules:
+  - Assets and Liabilities ledgers open with their closing balance.
+  - Income and Expenses ledgers open at nil.
+  - The year's net profit (Cr) or loss (Dr) is added to the **Profit & Loss A/c** ledger, which is made under Reserves & Surplus (L003) if missing.
+  - Stock items open with closing quantity, and value = quantity × MDA's stock rate (0 when quantity ≤ 0).
+- **Not carried:** unpaid bills one by one; each party opens with one total.
+- **Refresh Opening Balances** (Company Settings, Admin only, logged):
+  - re-runs the openings from the previous year;
+  - changes only ledgers and items that exist in both years;
+  - replaces any hand-typed openings.
+
 **Creating a company** does not create a year (Q-05).
 
 **FY guard:**
@@ -636,3 +653,33 @@ The register stays as a map of non-obvious behaviours, so no one "fixes" them by
 - Every product-facing name, logo and footer line comes from one config file, `packages/core/src/brand.ts`. All its values are empty or neutral for now: the app title is plain "Inventory", and printouts have no footer line.
 - Branding is added at the end by filling in that one file.
 - The *customer's* company details (their name, GSTIN, bank) still print on their invoices. That is their data, not our branding.
+
+## Review fixes (2026-11-12)
+
+A full review of the code found the issues below. Each fix has a test in `packages/services/test/review-fixes.test.ts`, `apps/api/test/security.test.ts`, `packages/core/test/gst.test.ts` or `packages/core/test/stock-valuation.test.ts`.
+
+**Security**
+- **Live sign-in check.** Every request checks the book cookie against the database. A deleted or deactivated user, or a deleted year or company, is signed out at once. Role and name always come from the database, never from the cookie.
+- **Forced password change** is enforced by the server, not only the screen.
+- **Backups** are for Admins only, because they hold every user's login.
+- **Accounting Vouchers** can only save, change or cancel the seven accounting types: RCP, BNK, PAY, BPAY, JNL, DRN and CRN. The voucher behind a bill, a return or a stock journal can't be changed from there.
+
+**Posting**
+- **Ledger codes must exist.** A code that isn't a ledger of the book is refused, for voucher lines, the customer and the supplier.
+- **No negative amounts.** Negative discounts, GST rates, bill discount and freight are refused.
+- **Voucher numbers with digits in the prefix** count from the number after the prefix. For example, `R26-001` is 1.
+- **Returns in parts.** The return that completes a bill gives back what's left of the bill's net, so parts never credit more than the bill. The round-off takes the difference.
+- **Editing a bill that has returns** must keep, on each returned line:
+  - the same rate, discount and GST rate;
+  - the same party and inter-state setting.
+
+**Reports**
+- **Trial Balance** shows opening stock as its own Debit row, as Tally does.
+- **Credit and Debit Notes in Outstanding and the dashboard:** a note that lowers a party's dues settles their bills. That is a Credit Note to a customer, or a Debit Note to a supplier. Otherwise the note raises a bill of its own. MDA counted every note as a new bill.
+- **Dashboard pending bills** ignore post-dated entries, as Outstanding does.
+- **FIFO and Average valuation.** Units sold before the stock arrived are a shortfall, which the next stock in fills first.
+
+**GST**
+- **GSTR-3B set-off.** Leftover IGST credit goes first to whatever CGST or SGST their own credit can't pay (rule 88A).
+- **GSTR-1.** A return to an unregistered buyer against a B2CL bill goes to CDNUR, not off B2CS.
+- **HSN quantities** keep 3 decimals.

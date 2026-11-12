@@ -234,9 +234,15 @@ export type TrialRow = {
   credit: number;
 };
 
-/** Every ledger with a balance, by its top-level group then name, in Debit or Credit. When the
- *  opening balances don't agree, the gap shows as its own row so the two sides still total. */
-export function trialBalance(balances: LedgerBalance[], groups: Map<string, ReportGroup>) {
+/** Every ledger with a balance, by its top-level group then name, in Debit or Credit, and the
+ *  opening stock as its own Debit row (it sits on the items, not a ledger; added 2026-11-12, as
+ *  Tally shows it). When the opening balances don't agree, the gap shows as its own row so the
+ *  two sides still total. */
+export function trialBalance(
+  balances: LedgerBalance[],
+  groups: Map<string, ReportGroup>,
+  openingStock = 0,
+) {
   const rows: TrialRow[] = balances
     .filter((b) => Math.abs(b.balance) >= 0.005)
     .map((b) => ({
@@ -247,6 +253,14 @@ export function trialBalance(balances: LedgerBalance[], groups: Map<string, Repo
       credit: b.balance < 0 ? round2(-b.balance) : 0,
     }))
     .sort((a, b) => a.grpName.localeCompare(b.grpName) || a.accName.localeCompare(b.accName));
+  if (Math.abs(openingStock) >= 0.005)
+    rows.unshift({
+      accCode: '',
+      accName: 'Opening Stock',
+      grpName: 'Stock-in-Hand',
+      debit: openingStock > 0 ? round2(openingStock) : 0,
+      credit: openingStock < 0 ? round2(-openingStock) : 0,
+    });
   const debit = round2(rows.reduce((a, r) => a + r.debit, 0));
   const credit = round2(rows.reduce((a, r) => a + r.credit, 0));
   const difference = round2(debit - credit);

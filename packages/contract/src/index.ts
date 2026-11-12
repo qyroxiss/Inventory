@@ -58,6 +58,8 @@ export const yearCreate = z.object({
   /** dd/MM/yyyy as MDA's date picker writes it, or ISO yyyy-MM-dd. */
   fromDate: z.string(),
   toDate: z.string(),
+  /** Copy masters and opening balances from the year before (services carry-forward.ts). */
+  copyFromPrevious: z.boolean().optional(),
 });
 
 export const bookLogin = z.object({

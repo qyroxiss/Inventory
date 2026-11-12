@@ -142,6 +142,7 @@ export async function saveStockJournal(
 }
 
 async function find(db: Db, bookId: string, id: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null; // not an id at all
   const [v] = await db
     .select()
     .from(vouchers)

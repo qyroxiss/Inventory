@@ -63,36 +63,48 @@ export function valueItem(
     return { opening: tidy(opening), closing: tidy({ qty, value: qty * rate }) };
   }
 
-  // Average and FIFO: lots of stock at their cost.
-  let lots: { qty: number; rate: number }[] = item.opQty ? [{ qty: item.opQty, rate: openRate }] : [];
+  // Average and FIFO: lots of stock at their cost. Units sold with none in stock are a
+  // shortfall (valued at the last cost): the next stock in fills it first, and only the rest
+  // becomes a lot (fixed 2026-11-12; before, negative lots were mixed into later costs).
+  let lots: { qty: number; rate: number }[] =
+    item.opQty > 0 ? [{ qty: item.opQty, rate: openRate }] : [];
+  let short = item.opQty < 0 ? -item.opQty : 0;
   let lastCost = openRate;
-  const qtyOf = () => lots.reduce((a, l) => a + l.qty, 0);
-  const valueOf = () => lots.reduce((a, l) => a + l.qty * l.rate, 0);
+  const lotQty = () => lots.reduce((a, l) => a + l.qty, 0);
+  const qtyOf = () => lotQty() - short;
+  const valueOf = () => lots.reduce((a, l) => a + l.qty * l.rate, 0) - short * lastCost;
   const avg = () => {
-    const q = qtyOf();
-    return q > 0 ? valueOf() / q : lastCost;
+    const q = lotQty();
+    return q > 0 ? lots.reduce((a, l) => a + l.qty * l.rate, 0) / q : lastCost;
   };
   let opening: Valued | null = null;
   for (const m of sorted) {
     if (!opening && m.date >= from) opening = { qty: qtyOf(), value: valueOf() };
     if (m.inQty > 0) {
       const cost = m.vchrType === 'SRT' || m.rate <= 0 ? avg() : m.rate;
-      if (method === 'average') {
-        const q = qtyOf() + m.inQty;
-        const v = valueOf() + m.inQty * cost;
-        lots = [{ qty: q, rate: q !== 0 ? v / q : cost }];
-      } else lots.push({ qty: m.inQty, rate: cost });
+      const fill = Math.min(short, m.inQty);
+      short -= fill;
+      const rest = m.inQty - fill;
+      if (rest > 1e-9) {
+        if (method === 'average') {
+          const q = lotQty() + rest;
+          const v = lots.reduce((a, l) => a + l.qty * l.rate, 0) + rest * cost;
+          lots = [{ qty: q, rate: v / q }];
+        } else lots.push({ qty: rest, rate: cost });
+      }
       lastCost = cost;
     }
     if (m.outQty > 0) {
+      let left = m.outQty;
       if (method === 'average') {
         const rate = avg();
-        lots = [{ qty: qtyOf() - m.outQty, rate }];
+        const take = Math.min(lotQty(), left);
+        left -= take;
+        lots = lotQty() - take > 1e-9 ? [{ qty: lotQty() - take, rate }] : [];
         lastCost = rate;
       } else {
         // First in, first out: the oldest lots go first.
-        let left = m.outQty;
-        while (left > 0 && lots.length && lots[0]!.qty > 0) {
+        while (left > 1e-9 && lots.length) {
           const lot = lots[0]!;
           const take = Math.min(lot.qty, left);
           lot.qty -= take;
@@ -100,8 +112,8 @@ export function valueItem(
           lastCost = lot.rate;
           if (lot.qty <= 1e-9) lots.shift();
         }
-        if (left > 1e-9) lots = [...lots, { qty: -left, rate: lastCost }];
       }
+      if (left > 1e-9) short += left;
     }
   }
   opening ??= { qty: qtyOf(), value: valueOf() };

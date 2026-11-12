@@ -243,6 +243,9 @@ export const purchaseMessages = {
   lineNoItem: 'Every line must have an item.',
   lineQty: (name: string) => `Quantity must be more than zero for ${name}.`,
   lineRate: (name: string) => `Rate cannot be negative for ${name}.`,
+  /** Added 2026-11-12: MDA's screen never lets these go negative; the server now checks too. */
+  lineNegative: (name: string) => `Discount and GST rate cannot be negative for ${name}.`,
+  freightNegative: 'Freight cannot be negative.',
   lineDiscount: (name: string) => `Discount is more than the value of ${name}.`,
   zero: 'Purchase value cannot be zero.',
   billUsed: (no: string) =>
@@ -295,8 +298,11 @@ export function purchaseProblem(h: PurcHeaderCheck, lines: PurcLine[]): string |
     if (!l.itemCode.trim()) return m.lineNoItem;
     if (l.qty <= 0) return m.lineQty(l.itemName);
     if (l.rate < 0) return m.lineRate(l.itemName);
+    if (l.disP < 0 || l.disA < 0 || l.sgstP < 0 || l.cgstP < 0 || l.igstP < 0)
+      return m.lineNegative(l.itemName);
     if (l.amount < 0) return m.lineDiscount(l.itemName);
   }
+  if ((h.freight ?? 0) < 0) return m.freightNegative;
   if (purcTotals(lines, h.freight).net <= 0) return m.zero;
   return null;
 }

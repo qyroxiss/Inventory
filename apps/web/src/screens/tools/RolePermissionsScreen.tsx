@@ -119,7 +119,9 @@ export function RolePermissionsScreen() {
 
   // Load the saved pages whenever another role or user is picked (or the data refreshes).
   const savedKey = JSON.stringify(saved);
-  useEffect(() => setDraft(JSON.parse(savedKey) as PageAccess), [savedKey]);
+  // ...and on every switch of role or user, so discarded changes never follow to the next one.
+  const pickKey = JSON.stringify(pick);
+  useEffect(() => setDraft(JSON.parse(savedKey) as PageAccess), [savedKey, pickKey]);
 
   const choose = (next: Pick) => {
     if (dirty) setLeaving(next);
