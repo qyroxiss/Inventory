@@ -14,7 +14,7 @@ import { DECLARATION, Sheet, pxSize, sheetFit, type SheetModel } from './print.t
 const fileName = (m: SheetModel, ext: string) =>
   `${m.title} ${m.docNo}`.replace(/[\\/:*?"<>|]+/g, '-').trim() + `.${ext}`;
 
-function download(blob: Blob, name: string) {
+export function download(blob: Blob, name: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -27,7 +27,8 @@ function download(blob: Blob, name: string) {
 
 // ── PDF ─────────────────────────────────────────────────────────────────────────
 
-export async function savePdf(m: SheetModel) {
+/** The bill as a PDF file (for saving, or sharing to WhatsApp and other apps). */
+export async function makePdf(m: SheetModel): Promise<File> {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import('html2canvas-pro'),
     import('jspdf'),
@@ -77,11 +78,16 @@ export async function savePdf(m: SheetModel) {
         h / pxPerMm,
       );
     }
-    download(pdf.output('blob'), fileName(m, 'pdf'));
+    return new File([pdf.output('blob')], fileName(m, 'pdf'), { type: 'application/pdf' });
   } finally {
     root.unmount();
     host.remove();
   }
+}
+
+export async function savePdf(m: SheetModel) {
+  const file = await makePdf(m);
+  download(file, file.name);
 }
 
 // ── Excel ───────────────────────────────────────────────────────────────────────

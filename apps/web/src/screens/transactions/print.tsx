@@ -80,7 +80,13 @@ function fromReturn(kind: 'PRT' | 'SRT', n: ReturnNote): Printed {
       inv: {
         company: n.company,
         party: n.party,
-        bill: { ...common, suppCode: d.partyCode, suppName: d.partyName, narration: d.narration, freight: 0 },
+        bill: {
+          ...common,
+          suppCode: d.partyCode,
+          suppName: d.partyName,
+          narration: d.narration,
+          freight: 0,
+        },
       } as unknown as PurchaseInvoice,
     };
   const cu = n.customer;
@@ -144,6 +150,9 @@ export function PrintInvoice({
   const [choosing, setChoosing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState<Printed | null>(null);
+  // WhatsApp: the PDF waiting for one more tap to share, or saved for attaching by hand.
+  const [shareFile, setShareFile] = useState<File | null>(null);
+  const [savedForWhatsApp, setSavedForWhatsApp] = useState<File | null>(null);
 
   useEffect(() => {
     if (open) {
@@ -185,12 +194,12 @@ export function PrintInvoice({
             r.note ? fromReturn(kind, r.note) : null,
           )
         : kind === 'sale'
-        ? await unwrap(api.api.sales.print.$get({ query: { no: n } })).then((r) =>
-            r.invoice ? { kind: 'sale' as const, inv: r.invoice } : null,
-          )
-        : await unwrap(api.api.purchases.print.$get({ query: { no: n } })).then((r) =>
-            r.invoice ? { kind: 'purchase' as const, inv: r.invoice } : null,
-          );
+          ? await unwrap(api.api.sales.print.$get({ query: { no: n } })).then((r) =>
+              r.invoice ? { kind: 'sale' as const, inv: r.invoice } : null,
+            )
+          : await unwrap(api.api.purchases.print.$get({ query: { no: n } })).then((r) =>
+              r.invoice ? { kind: 'purchase' as const, inv: r.invoice } : null,
+            );
     if (!found) {
       setInfo({
         title: ['Not', 'Found'],
@@ -206,6 +215,28 @@ export function PrintInvoice({
     }
   }
 
+  /** Opens the share sheet with the PDF. Where a browser can't share files, the PDF is saved
+   *  and WhatsApp is offered to attach it by hand. */
+  async function share(file: File) {
+    setShareFile(null);
+    if (!canShareFile(file)) {
+      (await import('./invoice-export.tsx')).download(file, file.name);
+      setChoosing(false);
+      setSavedForWhatsApp(file);
+      return;
+    }
+    try {
+      await navigator.share({ files: [file], title: file.name });
+      finish();
+    } catch (err) {
+      const name = err instanceof Error ? err.name : '';
+      if (name === 'AbortError') return finish(); // the share sheet was closed
+      // Making the PDF took long enough that the browser wants a fresh tap to share.
+      setChoosing(false);
+      setShareFile(file);
+    }
+  }
+
   async function output(o: Output) {
     const v = preview;
     if (!v) return;
@@ -214,10 +245,22 @@ export function PrintInvoice({
       setPrinting(v);
       return;
     }
-    // WhatsApp only opens WhatsApp (Web on a computer, the app on a phone); no file is saved.
+    // WhatsApp, as sharing a photo: the bill as a PDF goes to the phone's (or computer's)
+    // share sheet; pick WhatsApp, then the contact, and send (2026-11-12).
     if (o === 'whatsapp') {
-      openWhatsApp();
-      finish();
+      setBusy(true);
+      try {
+        const file = await (await import('./invoice-export.tsx')).makePdf(sheetModel(v));
+        setBusy(false);
+        await share(file);
+      } catch (err) {
+        setBusy(false);
+        setChoosing(false);
+        setInfo({
+          title: ['Export', 'Failed'],
+          text: `The file could not be made: ${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
       return;
     }
     setBusy(true);
@@ -251,7 +294,8 @@ export function PrintInvoice({
           }}
         >
           <label htmlFor="invoice-print-no" className="text-sm text-muted-foreground">
-            Enter the {word.toLowerCase()}{isNote ? "" : " bill"} number to print.
+            Enter the {word.toLowerCase()}
+            {isNote ? '' : ' bill'} number to print.
           </label>
           <input
             id="invoice-print-no"
@@ -332,11 +376,94 @@ export function PrintInvoice({
         </div>
       </Dialog>
 
+      <Dialog
+        open={!!shareFile}
+        onClose={() => {
+          setShareFile(null);
+          finish();
+        }}
+        title={['Share', 'Bill']}
+        className="w-[440px]"
+      >
+        <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-3">
+          <p className="m-0 text-sm text-muted-foreground">
+            The bill is ready as <b className="text-foreground">{shareFile?.name}</b>. Tap Share,
+            then choose WhatsApp and the contact.
+          </p>
+          <div className="flex justify-end gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setShareFile(null);
+                finish();
+              }}
+              className={BTN}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => shareFile && void share(shareFile)}
+              className={MAIN}
+            >
+              Share
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
+      <Dialog
+        open={!!savedForWhatsApp}
+        onClose={() => {
+          setSavedForWhatsApp(null);
+          finish();
+        }}
+        title={['Share via', 'WhatsApp']}
+        className="w-[460px]"
+      >
+        <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-3">
+          <p className="m-0 text-sm text-muted-foreground">
+            This browser can&apos;t send files to other apps, so the bill was saved as{' '}
+            <b className="text-foreground">{savedForWhatsApp?.name}</b>. Open WhatsApp, choose the
+            contact and attach the PDF (📎).
+          </p>
+          <div className="flex justify-end gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => {
+                setSavedForWhatsApp(null);
+                finish();
+              }}
+              className={BTN}
+            >
+              Close
+            </button>
+            <button
+              type="button"
+              autoFocus
+              onClick={() => {
+                openWhatsApp();
+                setSavedForWhatsApp(null);
+                finish();
+              }}
+              className={MAIN}
+            >
+              Open WhatsApp
+            </button>
+          </div>
+        </div>
+      </Dialog>
+
       {printing &&
         createPortal(
           <div className="print-sheet hidden print:block">
             <div style={{ zoom: fit.zoom }}>
-              <Sheet m={sheetModel(printing)} width={`${fit.widthMm}mm`} minHeight={`${fit.minHeightMm}mm`} />
+              <Sheet
+                m={sheetModel(printing)}
+                width={`${fit.widthMm}mm`}
+                minHeight={`${fit.minHeightMm}mm`}
+              />
             </div>
           </div>,
           document.body,
@@ -344,6 +471,11 @@ export function PrintInvoice({
     </>
   );
 }
+
+/** Can this browser hand files to other apps (the share sheet)? Phones can; Chrome and Edge on
+ *  Windows and Safari on a Mac can too. */
+const canShareFile = (file: File) =>
+  typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] });
 
 /** A phone or tablet (iPads report themselves as a Mac, so they're told apart by touch). */
 const onMobile = () =>
@@ -361,7 +493,9 @@ function openWhatsApp() {
 const titleOf = (p: Printed) =>
   p.note
     ? p.note.title
-    : p.kind === 'sale' ? p.inv.bill.saleType.trim() || 'Tax Invoice' : 'Purchase Invoice';
+    : p.kind === 'sale'
+      ? p.inv.bill.saleType.trim() || 'Tax Invoice'
+      : 'Purchase Invoice';
 
 const clean = (parts: (string | null | undefined)[]) =>
   parts.filter((x) => x && x.trim()).map((x) => x!.trim());
@@ -381,7 +515,8 @@ const inWords = (v: number) => amountInWords(v).replace(/^Rupees /, 'INR ');
 /** A percentage without trailing zeros: 9, 2.5, 18. */
 const pct = (v: number) => String(Math.round(v * 100) / 100);
 
-const stateText = (s: StateName | null) => (s ? `${s.name}${s.code ? `, Code : ${s.code}` : ''}` : '');
+const stateText = (s: StateName | null) =>
+  s ? `${s.name}${s.code ? `, Code : ${s.code}` : ''}` : '';
 
 // ── The sheet's contents ─────────────────────────────────────────────────────────
 // Worked out once, as text, so the printed sheet, the PDF, the Excel and the Word files all
@@ -501,38 +636,38 @@ function sheetModel(p: Printed): SheetModel {
   const boxes: [string, string][][] = p.note
     ? p.note.boxes
     : sale
-    ? [
-        [
-          ['Invoice No.', bill.billNo],
-          ['Dated', dmy(bill.billDate)],
-        ],
-        [
-          ['', ''],
-          ['Mode/Terms of Payment', p.inv.bill.payMode === 'Credit' ? 'Credit' : 'Cash'],
-        ],
-        [
-          ["Buyer's Order No.", ''],
-          ['Dated', ''],
-        ],
-      ]
-    : [
-        [
-          ['Purchase No.', bill.billNo],
-          ['Dated', dmy(bill.billDate)],
-        ],
-        [
-          ["Supplier's Invoice No.", p.inv.bill.suppInvNo],
-          ['Dated', p.inv.bill.suppInvDate ? dmy(p.inv.bill.suppInvDate) : ''],
-        ],
-        [
-          ['Order No.', p.inv.bill.orderNo],
-          ['Dated', p.inv.bill.orderDate ? dmy(p.inv.bill.orderDate) : ''],
-        ],
-        [
-          ['Goods Rec No.', p.inv.bill.goodsRecNo],
-          ['Rec. Date', p.inv.bill.recDate ? dmy(p.inv.bill.recDate) : ''],
-        ],
-      ];
+      ? [
+          [
+            ['Invoice No.', bill.billNo],
+            ['Dated', dmy(bill.billDate)],
+          ],
+          [
+            ['', ''],
+            ['Mode/Terms of Payment', p.inv.bill.payMode === 'Credit' ? 'Credit' : 'Cash'],
+          ],
+          [
+            ["Buyer's Order No.", ''],
+            ['Dated', ''],
+          ],
+        ]
+      : [
+          [
+            ['Purchase No.', bill.billNo],
+            ['Dated', dmy(bill.billDate)],
+          ],
+          [
+            ["Supplier's Invoice No.", p.inv.bill.suppInvNo],
+            ['Dated', p.inv.bill.suppInvDate ? dmy(p.inv.bill.suppInvDate) : ''],
+          ],
+          [
+            ['Order No.', p.inv.bill.orderNo],
+            ['Dated', p.inv.bill.orderDate ? dmy(p.inv.bill.orderDate) : ''],
+          ],
+          [
+            ['Goods Rec No.', p.inv.bill.goodsRecNo],
+            ['Rec. Date', p.inv.bill.recDate ? dmy(p.inv.bill.recDate) : ''],
+          ],
+        ];
   const delivery =
     sale || p.note
       ? []
@@ -581,7 +716,14 @@ function sheetModel(p: Printed): SheetModel {
   ];
 
   // ── HSN/SAC summary, by HSN code and rate ──
-  type Hsn = { code: string; taxable: number; rate: number; cgst: number; sgst: number; igst: number };
+  type Hsn = {
+    code: string;
+    taxable: number;
+    rate: number;
+    cgst: number;
+    sgst: number;
+    igst: number;
+  };
   const hsn = new Map<string, Hsn>();
   for (const l of lines) {
     const rate = inter ? l.igstP : l.cgstP;
