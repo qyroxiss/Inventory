@@ -1,7 +1,12 @@
 // Stock Summary, Day Book and Sales Register: a period, a table and its totals
 // (docs/design/REPORTS.md).
 
-import { reportMessages as rm } from '@qi/core';
+import {
+  VALUATION_LABELS,
+  VALUATION_METHODS,
+  reportMessages as rm,
+  type ValuationMethod,
+} from '@qi/core';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
@@ -29,8 +34,7 @@ function usePeriod() {
   return [p, setP] as const;
 }
 
-const periodLine = (p: { from: string; to: string }) =>
-  `From ${dmy(p.from)} to ${dmy(p.to)}`;
+const periodLine = (p: { from: string; to: string }) => `From ${dmy(p.from)} to ${dmy(p.to)}`;
 
 const sum = <T,>(rows: T[], f: (r: T) => number) => rows.reduce((a, r) => a + f(r), 0);
 
@@ -64,17 +68,34 @@ type StockRow = OkBody<
 export function StockSummaryScreen() {
   const [p, setP] = usePeriod();
   const [godown, setGodown] = useState('');
+  // How stock is valued (user's request, 2026-11-10); this browser remembers the last choice.
+  const [method, setMethodState] = useState<ValuationMethod>(() => {
+    try {
+      const m = localStorage.getItem('stock-valuation') as ValuationMethod | null;
+      return m && VALUATION_METHODS.includes(m) ? m : 'average';
+    } catch {
+      return 'average';
+    }
+  });
+  const setMethod = (m: ValuationMethod) => {
+    setMethodState(m);
+    try {
+      localStorage.setItem('stock-valuation', m);
+    } catch {
+      // Private window: the choice just isn't remembered.
+    }
+  };
   const godowns = useQuery({
     queryKey: ['misc-masters', 'godown'],
     queryFn: () => unwrap(api.api['misc-masters'][':kind'].$get({ param: { kind: 'godown' } })),
   });
   const q = useQuery({
-    queryKey: ['report', 'stock-summary', p, godown],
+    queryKey: ['report', 'stock-summary', p, godown, method],
     enabled: !!p && p.from <= p.to,
     queryFn: () =>
       unwrap(
         api.api.reports['stock-summary'].$get({
-          query: { from: p!.from, to: p!.to, ...(godown ? { godown } : {}) },
+          query: { from: p!.from, to: p!.to, method, ...(godown ? { godown } : {}) },
         }),
       ),
   });
@@ -90,6 +111,14 @@ export function StockSummaryScreen() {
     { head: 'Item', w: 'minmax(140px,1fr)', cell: (r) => r.name, total: 'Total' },
     { head: 'Unit', w: '56px', wide: true, cell: (r) => r.unit },
     { head: 'Opening', w: '90px', num: true, wide: true, cell: (r) => qty(r.opening) },
+    {
+      head: 'Op. Value',
+      w: '110px',
+      num: true,
+      wide: true,
+      cell: (r) => amt(r.openingValue),
+      total: amt(sum(rows, (r) => r.openingValue)),
+    },
     { head: 'Inward', w: '90px', num: true, wide: true, cell: (r) => qty(r.inward) },
     { head: 'Outward', w: '90px', num: true, wide: true, cell: (r) => qty(r.outward) },
     { head: 'Closing', w: '90px', num: true, cell: (r) => qty(r.closing) },
@@ -105,7 +134,7 @@ export function StockSummaryScreen() {
   return (
     <ReportPage
       title={['Stock', 'Summary']}
-      subtitle={`${periodLine(p)}${godown ? ` · ${godown}` : ''}`}
+      subtitle={`${periodLine(p)}${godown ? ` · ${godown}` : ''} · Valued at ${VALUATION_LABELS[method]}`}
       filters={
         <>
           <PeriodFilters p={p} set={setP} />
@@ -128,6 +157,24 @@ export function StockSummaryScreen() {
               ))}
             </select>
           </label>
+          <label
+            htmlFor="rp-method"
+            className="flex w-44 flex-col gap-0.5 text-[13px] font-semibold text-muted-foreground"
+          >
+            Valued at
+            <select
+              id="rp-method"
+              value={method}
+              onChange={(e) => setMethod(e.target.value as ValuationMethod)}
+              className={`${boxClass()} cursor-pointer`}
+            >
+              {VALUATION_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {VALUATION_LABELS[m]}
+                </option>
+              ))}
+            </select>
+          </label>
         </>
       }
     >
@@ -139,7 +186,17 @@ export function StockSummaryScreen() {
         minWidth={860}
       />
       <p className="m-0 text-xs text-muted-foreground print:text-black">
-        Valued at each item's purchase rate (its sale rate when it has none).
+        {
+          {
+            opening: "Every unit at the item's Opening Rate.",
+            average:
+              'At the moving average cost: opening stock and each purchase averaged as they come in.',
+            fifo: 'First in, first out: what is left is valued at the cost of the latest lots.',
+            mrp: "Every unit at the item's MRP.",
+          }[method]
+        }{' '}
+        Opening stock is the item&apos;s Opening Stock × Opening Rate; an item without an Opening
+        Rate uses its purchase rate (its sale rate when it has none).
         {godown ? ' A godown shows its own movements; opening stock carries no godown.' : ''}
       </p>
     </ReportPage>

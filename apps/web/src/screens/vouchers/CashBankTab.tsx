@@ -44,6 +44,7 @@ import {
   type VoucherRow,
 } from './shared.tsx';
 import { fa } from '../../format.ts';
+import { NewLedgerButton } from '../../components/NewLedger.tsx';
 
 type Kind = 'receipt' | 'payment';
 type Form = {
@@ -104,6 +105,8 @@ export function CashBankTab({ kind }: { kind: Kind }) {
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f!, ...patch }));
   const accounts = ofGroup(ledgers!, form.bank ? BANK_GROUP : CASH_GROUP);
   const inEdit = !!form.editId;
+  /** Cash moves no cheque, so a cash receipt or payment has no reference box. */
+  const showRef = form.bank;
 
   const clearForm = async () => {
     const vchrNo = await fetchNextNo(typeOf(false));
@@ -147,7 +150,8 @@ export function CashBankTab({ kind }: { kind: Kind }) {
       const common = {
         date: form.date,
         partyCode: d.partyCode,
-        refNo: form.ref.trim(),
+        // A number typed under Bank before switching to Cash isn't saved with it.
+        refNo: showRef ? form.ref.trim() : '',
         narration: form.narration.trim(),
         lines: d.lines,
       };
@@ -273,17 +277,29 @@ export function CashBankTab({ kind }: { kind: Kind }) {
             required
             error={errors.account}
           >
-            <Select
-              id="cb-account"
-              value={form.account}
-              options={ledgerOptions(accounts)}
-              placeholder={accounts.length ? vm.selectAccount : vm.noAccounts(form.bank)}
-              error={errors.account}
-              onChange={(account) => {
-                set({ account });
-                setErrors((x) => ({ ...x, account: undefined }));
-              }}
-            />
+            <div className="flex gap-1.5">
+              <div className="min-w-0 flex-1">
+                <Select
+                  id="cb-account"
+                  value={form.account}
+                  options={ledgerOptions(accounts)}
+                  placeholder={accounts.length ? vm.selectAccount : vm.noAccounts(form.bank)}
+                  error={errors.account}
+                  onChange={(account) => {
+                    set({ account });
+                    setErrors((x) => ({ ...x, account: undefined }));
+                  }}
+                />
+              </div>
+              <NewLedgerButton
+                tall
+                under={form.bank ? BANK_GROUP : CASH_GROUP}
+                onCreated={(code) => {
+                  set({ account: code });
+                  setErrors((x) => ({ ...x, account: undefined }));
+                }}
+              />
+            </div>
           </FieldRow>
           <FieldRow
             id="cb-party"
@@ -291,17 +307,28 @@ export function CashBankTab({ kind }: { kind: Kind }) {
             required
             error={errors.party}
           >
-            <Select
-              id="cb-party"
-              value={form.party}
-              options={ledgerOptions(ledgers!)}
-              placeholder="Select party / account"
-              error={errors.party}
-              onChange={(party) => {
-                set({ party });
-                setErrors((x) => ({ ...x, party: undefined }));
-              }}
-            />
+            <div className="flex gap-1.5">
+              <div className="min-w-0 flex-1">
+                <Select
+                  id="cb-party"
+                  value={form.party}
+                  options={ledgerOptions(ledgers!)}
+                  placeholder="Select party / account"
+                  error={errors.party}
+                  onChange={(party) => {
+                    set({ party });
+                    setErrors((x) => ({ ...x, party: undefined }));
+                  }}
+                />
+              </div>
+              <NewLedgerButton
+                tall
+                onCreated={(code) => {
+                  set({ party: code });
+                  setErrors((x) => ({ ...x, party: undefined }));
+                }}
+              />
+            </div>
           </FieldRow>
           <FieldRow id="cb-amount" label="Amount (₹)" required error={errors.amount}>
             <AmountBox
@@ -314,18 +341,23 @@ export function CashBankTab({ kind }: { kind: Kind }) {
               }}
             />
           </FieldRow>
-          <FieldRow id="cb-ref" label={receipt ? 'Reference No' : 'Cheque / Ref No'}>
-            <input
-              id="cb-ref"
-              value={form.ref}
-              placeholder={
-                receipt ? 'Cheque / NEFT / UTR reference' : 'Cheque number or reference (optional)'
-              }
-              autoComplete="off"
-              onChange={(e) => set({ ref: e.target.value })}
-              className={inputClass()}
-            />
-          </FieldRow>
+          {/* No cheque on a cash receipt or payment (user's request, 2026-11-11): box hidden. */}
+          {showRef && (
+            <FieldRow id="cb-ref" label={receipt ? 'Reference No' : 'Cheque / Ref No'}>
+              <input
+                id="cb-ref"
+                value={form.ref}
+                placeholder={
+                  receipt
+                    ? 'Cheque / NEFT / UTR reference'
+                    : 'Cheque number or reference (optional)'
+                }
+                autoComplete="off"
+                onChange={(e) => set({ ref: e.target.value })}
+                className={inputClass()}
+              />
+            </FieldRow>
+          )}
           <FieldRow id="cb-narration" label="Narration">
             <textarea
               id="cb-narration"

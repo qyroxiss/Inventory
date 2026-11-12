@@ -3,8 +3,10 @@
 // Rules and messages come from @qi/core and the API, so they stay exactly MDA's.
 
 import { loginFieldErrors, loginMessages, newPasswordErrors } from '@qi/core';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from 'react';
+import { ACCESS_KEY } from '../../access.tsx';
 import { ApiError, api, unwrap } from '../../api.ts';
 import { Heading, OutlineButton, PrimaryButton, LabeledField } from '../../components/ledger.tsx';
 import { loadRemembered, saveRemembered } from '../../lib/remember.ts';
@@ -39,6 +41,7 @@ export function SignInPanel({
   passRef: RefObject<HTMLInputElement | null>;
 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const remembered = useRef(loadRemembered());
 
   const [stage, setStage] = useState<'login' | 'change'>('login');
@@ -89,6 +92,8 @@ export function SignInPanel({
         api.api.book.login.$post({ json: { yearId: year.id, username: user, password: pass } }),
       );
       saveRemembered(remember, user);
+      // Role Permissions: forget the pages of whoever was signed in before.
+      queryClient.removeQueries({ queryKey: ACCESS_KEY });
       if (book.mustChangePassword) {
         setSignedInAs(book.userName);
         setStage('change');

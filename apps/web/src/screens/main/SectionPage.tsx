@@ -2,12 +2,21 @@
 // and a card per screen — "Open →", or "Not built yet" for MDA's own placeholders.
 
 import { Link, useParams } from '@tanstack/react-router';
+import { useAccess } from '../../access.tsx';
 import { Icon, NotBuiltTag } from './MainShell.tsx';
 import { SECTION_ICONS, findItem, findSection, slug } from './nav.ts';
 
 export function SectionPage() {
   const { section } = useParams({ strict: false }) as { section: string };
-  const s = findSection(section);
+  const access = useAccess();
+  const found = findSection(section);
+  // Role Permissions: only the pages this user may open.
+  const s = found && {
+    ...found,
+    groups: found.groups
+      .map((g) => ({ ...g, items: g.items.filter((l) => access.view(l)) }))
+      .filter((g) => g.items.length),
+  };
   if (!s) return <h1 className="m-0 font-serif text-[42px] font-normal">No such section</h1>;
 
   const count = s.groups.reduce((n, g) => n + g.items.length, 0);

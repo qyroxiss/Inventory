@@ -11,6 +11,7 @@ import { useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { ConfirmDelete, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { FieldRow, FormBlock, MasterPage, inputClass } from '../../components/master.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type SaleType = OkBody<Awaited<ReturnType<(typeof api.api)['sale-types']['$get']>>>[number];
 type Form = { name: string; prefix: string; saleBy: string };
@@ -23,6 +24,8 @@ const BTN =
   'flex h-12 cursor-pointer items-center justify-center border-[1.5px] px-5 text-[15px] font-semibold disabled:cursor-wait disabled:opacity-70 max-sm:flex-1';
 
 export function SaleTypeScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const types = useQuery({
     queryKey: ['sale-types'],
@@ -203,6 +206,7 @@ export function SaleTypeScreen() {
                   <button
                     type="button"
                     onClick={() => setRemoveConfirm(true)}
+                    disabled={!canEdit}
                     className={`${BTN} border-destructive text-destructive`}
                   >
                     Remove
@@ -216,7 +220,7 @@ export function SaleTypeScreen() {
                 type="button"
                 ref={saveRef}
                 onClick={() => void saveOrUpdate()}
-                disabled={busy}
+                disabled={busy || !canEdit}
                 className={`${BTN} min-w-[180px] justify-between gap-4 border-primary bg-primary px-[22px] text-primary-foreground max-sm:order-last max-sm:w-full max-sm:flex-none`}
               >
                 <span>{editing ? 'Update' : 'Save'}</span>

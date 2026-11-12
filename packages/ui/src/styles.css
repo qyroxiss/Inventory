@@ -202,4 +202,9 @@ html {
   body {
     background: #fff;
   }
+  /* A bill prints from its own sheet beside the app, so nothing of the app's layout (sidebar,
+     padding, screen zoom) can squeeze or shift it. */
+  body.printing-sheet > :not(.print-sheet) {
+    display: none !important;
+  }
 }

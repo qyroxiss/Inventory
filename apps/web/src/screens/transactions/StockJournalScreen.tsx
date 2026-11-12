@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { fa, fq } from '../../format.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
+import { NewItemButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import {
@@ -36,6 +37,7 @@ import {
   focusNav,
   type GridCol,
 } from './shared.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type Setup = OkBody<Awaited<ReturnType<typeof api.api.purchases.setup.$get>>>;
 type Item = Setup['items'][number];
@@ -63,6 +65,8 @@ const SIDES: { side: StjSide; title: string }[] = [
 const fetchNo = async () => (await unwrap(api.api['stock-journals'].next.$get())).vchrNo;
 
 export function StockJournalScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ['book-me'], queryFn: () => unwrap(api.api.book.me.$get()) });
   const setup = useQuery({
@@ -262,14 +266,27 @@ export function StockJournalScreen() {
         </div>
         <div className="grid grid-cols-[3fr_2fr] gap-2 max-sm:grid-cols-1">
           <Cell id={`sj-${side}-item`} label="Item Name" required>
-            <Lookup<Item>
-              id={`sj-${side}-item`}
-              nav={nav.item}
-              value={e.item}
-              items={data.items}
-              hint="Type to search by name"
-              onChange={(it) => void onItem(side, it)}
-            />
+            <div className="flex gap-1.5">
+              <div className="min-w-0 flex-1">
+                <Lookup<Item>
+                  id={`sj-${side}-item`}
+                  nav={nav.item}
+                  value={e.item}
+                  items={data.items}
+                  hint="Type to search by name"
+                  onChange={(it) => void onItem(side, it)}
+                />
+              </div>
+              {/* A new stock item (Masters › Stock Item), picked here once saved. */}
+              <NewItemButton
+                onCreated={(code) =>
+                  void setup.refetch().then((r) => {
+                    const it = r.data?.items.find((x) => x.code === code);
+                    if (it) void onItem(side, it);
+                  })
+                }
+              />
+            </div>
           </Cell>
           <Cell id={`sj-${side}-godown`} label="Godown">
             {data.godowns.length ? (
@@ -425,7 +442,7 @@ export function StockJournalScreen() {
           </button>
           <button
             type="button"
-            disabled={!editId}
+            disabled={!editId || !canEdit}
             onClick={() => setConfirm(true)}
             className={`${BAR_BTN} border-destructive text-destructive`}
           >
@@ -436,7 +453,7 @@ export function StockJournalScreen() {
             type="button"
             data-nav={NAV.save}
             onClick={() => void save()}
-            disabled={saving || cancelled}
+            disabled={saving || cancelled || !canEdit}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-60 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
             <span>{saving ? 'Saving...' : editId ? 'Update' : 'Save'}</span>

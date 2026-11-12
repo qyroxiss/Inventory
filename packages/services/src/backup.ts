@@ -18,6 +18,7 @@ type Row = Record<string, unknown>;
 /** The book tables in a backup, in the order they're restored (parents first). */
 const BOOK_TABLES = [
   'bookUsers',
+  'bookRoles',
   'accountGroups',
   'ledgers',
   'miscList',
@@ -33,6 +34,8 @@ const BOOK_TABLES = [
   'purchaseLines',
   'sales',
   'saleLines',
+  'returns',
+  'returnLines',
   'auditLog',
 ] as const;
 type BookTable = (typeof BOOK_TABLES)[number];
@@ -75,10 +78,12 @@ export async function exportBackup(db: Db, accountId: string, companyId: string)
     const vIds = vouchers.map((v) => v.id);
     const purchases = await db.select().from(S.purchases).where(eq(S.purchases.bookId, b));
     const sales = await db.select().from(S.sales).where(eq(S.sales.bookId, b));
+    const returns = await db.select().from(S.returns).where(eq(S.returns.bookId, b));
     const ofVouchers = async <T>(q: (ids: string[]) => Promise<T[]>) =>
       vIds.length ? q(vIds) : [];
     const tables: Backup['years'][number]['tables'] = {
       bookUsers: await db.select().from(S.bookUsers).where(eq(S.bookUsers.bookId, b)),
+      bookRoles: await db.select().from(S.bookRoles).where(eq(S.bookRoles.bookId, b)),
       accountGroups: await db.select().from(S.accountGroups).where(eq(S.accountGroups.bookId, b)),
       ledgers: await db.select().from(S.ledgers).where(eq(S.ledgers.bookId, b)),
       miscList: await db.select().from(S.miscList).where(eq(S.miscList.bookId, b)),
@@ -119,6 +124,18 @@ export async function exportBackup(db: Db, accountId: string, companyId: string)
               inArray(
                 S.saleLines.saleId,
                 sales.map((s) => s.id),
+              ),
+            )
+        : [],
+      returns,
+      returnLines: returns.length
+        ? await db
+            .select()
+            .from(S.returnLines)
+            .where(
+              inArray(
+                S.returnLines.returnId,
+                returns.map((r) => r.id),
               ),
             )
         : [],
@@ -217,6 +234,7 @@ export async function restoreBackup(
           (t[name] ?? []).map((r) => prepare(r, {}, bookId)!),
         );
       await plain('bookUsers', S.bookUsers);
+      await plain('bookRoles', S.bookRoles);
       await plain('accountGroups', S.accountGroups);
       await plain('ledgers', S.ledgers);
       await plain('miscList', S.miscList);
@@ -267,6 +285,19 @@ export async function restoreBackup(
         if (oldId) sMap.set(String(oldId), ns!.id);
       }
       await insertAll(tx, S.saleLines, linked('saleLines', { saleId: sMap }));
+      // Purchase / Sales Returns (2026-11-09); a backup from before then simply has none.
+      const rMap = new Map<string, string>();
+      for (const r of linked('returns', byVoucher, true)) {
+        const oldId = (t.returns ?? []).find(
+          (x) => x.kind === r.kind && x.returnNo === r.returnNo,
+        )?.id;
+        const [nr] = await tx
+          .insert(S.returns)
+          .values(r as typeof S.returns.$inferInsert)
+          .returning({ id: S.returns.id });
+        if (oldId) rMap.set(String(oldId), nr!.id);
+      }
+      await insertAll(tx, S.returnLines, linked('returnLines', { returnId: rMap }));
       await plain('auditLog', S.auditLog);
 
       const yr = y.year;

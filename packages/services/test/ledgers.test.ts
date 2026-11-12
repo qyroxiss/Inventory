@@ -64,6 +64,17 @@ describe('createLedger', () => {
     expect(l.drCr).toBe('Cr');
   });
 
+  test('an opening balance typed as 1,00,000 saves; text is refused on the field (2026-11-11)', async () => {
+    const l = await createLedger(db, bookId, { ...valid, openingBalance: '1,00,000' });
+    expect(Number(l.opBal)).toBe(100000);
+    const e = await createLedger(db, bookId, { ...valid, name: 'Other', openingBalance: 'abc' }).then(
+      () => null,
+      (x: unknown) => x,
+    );
+    expect(e).toBeInstanceOf(UserError);
+    expect((e as UserError).fieldErrors?.openingBalance).toBeTruthy();
+  });
+
   test('rejects a duplicate ledger name', async () => {
     await createLedger(db, bookId, valid);
     await rejects(createLedger(db, bookId, valid), 'Name is Already Exists..');

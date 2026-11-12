@@ -6,6 +6,9 @@ export {
   companyDecimals,
   setCompanyDecimals,
   type Decimals,
+  companyPreferences,
+  setCompanyPreferences,
+  type Preferences,
   createCompany,
   updateCompany,
   deleteCompany,
@@ -98,7 +101,22 @@ export {
   type VoucherPrint,
   type VoucherRow,
 } from './vouchers.ts';
-export { purchaseForPrint, saleForPrint } from './invoice-print.ts';
+export { purchaseForPrint, returnForPrint, saleForPrint } from './invoice-print.ts';
+export {
+  billForReturn,
+  cancelReturn,
+  listReturns,
+  nextReturnNo,
+  returnDoc,
+  returnableBills,
+  saveReturn,
+  updateReturn,
+  type BillForReturn,
+  type ReturnDoc,
+  type ReturnInput,
+  type ReturnRow,
+  type ReturnableBill,
+} from './returns.ts';
 export {
   cancelPurchase,
   listPurchases,
@@ -141,11 +159,17 @@ export {
   balanceSheetReport,
   dayBook,
   ledgerBalancesAsOn,
+  ledgerStatementReport,
+  outstandingReport,
   profitLossReport,
+  purchaseRegister,
   salesRegister,
+  stockRegister,
   stockSummary,
   stockValues,
+  trialBalanceReport,
   type DayBookRow,
+  type PurchaseRegisterRow,
   type SalesRegisterRow,
   type StockSummaryRow,
 } from './reports.ts';
@@ -175,3 +199,16 @@ export {
 } from './tools.ts';
 export { exportBackup, restoreBackup, summarizeBackup, type Backup } from './backup.ts';
 export { importMda, type MdaImport, type MdaImportResult } from './mda-import.ts';
+export {
+  accessFor,
+  createRole,
+  deleteRole,
+  listPermissions,
+  renameRole,
+  roleNames,
+  saveRolePages,
+  saveUserPages,
+  type PermissionsView,
+  type RoleInfo,
+  type UserAccessInfo,
+} from './permissions.ts';

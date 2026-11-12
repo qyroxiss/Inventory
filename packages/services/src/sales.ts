@@ -35,6 +35,7 @@ import {
   type SaleTotals,
 } from '@qi/core';
 import { and, asc, desc, eq, inArray, or, schema, sql, type Db } from '@qi/db';
+import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
 import { UserError } from './errors.ts';
 import { listSaleTypes } from './sale-types.ts';
 import { assertStockAvailable } from './stock.ts';
@@ -506,6 +507,7 @@ export async function updateSale(
   const old = await findSale(db, ctx.bookId, input.billNo.trim());
   if (!old) throw new UserError(sm.notFound);
   if (old.status === CANCELLED) throw new UserError(sm.cancelledEdit);
+  await assertReturnsFit(db, ctx.bookId, 'SRT', old.billNo, lines);
   const tot = saleTotals(lines, input.billDiscPct, input.billDiscAmt);
 
   await db.transaction(async (raw) => {
@@ -538,6 +540,7 @@ export async function cancelSale(db: Db, ctx: PostingContext, billNo: string): P
   const s = await findSale(db, ctx.bookId, billNo);
   if (!s) throw new UserError(sm.notFound);
   if (s.status === CANCELLED) return;
+  await assertNoReturns(db, ctx.bookId, 'SRT', s.billNo);
   const now = new Date();
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;

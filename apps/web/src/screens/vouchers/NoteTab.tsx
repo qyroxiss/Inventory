@@ -47,6 +47,7 @@ import {
   type VoucherRow,
 } from './shared.tsx';
 import { fa } from '../../format.ts';
+import { NewLedgerButton } from '../../components/NewLedger.tsx';
 
 type Kind = 'debit' | 'credit';
 type Item = { key: number; ledger: string; amount: string };
@@ -245,17 +246,29 @@ export function NoteTab({ kind }: { kind: Kind }) {
           </div>
           <div className="grid grid-cols-2 gap-x-6 max-lg:grid-cols-1">
             <FieldRow id="nt-party" label="Party Account" required error={errors.party}>
-              <Select
-                id="nt-party"
-                value={form.party}
-                options={ledgerOptions(parties)}
-                placeholder={vm.selectParty}
-                error={errors.party}
-                onChange={(party) => {
-                  set({ party });
-                  setErrors((x) => ({ ...x, party: undefined }));
-                }}
-              />
+              <div className="flex gap-1.5">
+                <div className="min-w-0 flex-1">
+                  <Select
+                    id="nt-party"
+                    value={form.party}
+                    options={ledgerOptions(parties)}
+                    placeholder={vm.selectParty}
+                    error={errors.party}
+                    onChange={(party) => {
+                      set({ party });
+                      setErrors((x) => ({ ...x, party: undefined }));
+                    }}
+                  />
+                </div>
+                <NewLedgerButton
+                  tall
+                  under={debit ? CREDITORS_GROUP : DEBTORS_GROUP}
+                  onCreated={(code) => {
+                    set({ party: code });
+                    setErrors((x) => ({ ...x, party: undefined }));
+                  }}
+                />
+              </div>
             </FieldRow>
             <FieldRow id="nt-reason" label="Reason" required error={errors.reason}>
               <Select
@@ -297,13 +310,21 @@ export function NoteTab({ kind }: { kind: Kind }) {
               return (
                 <div key={i.key} className={`${COLS} items-start`}>
                   <div className="flex flex-col gap-1">
-                    <Select
-                      value={i.ledger}
-                      options={ledgerOptions(ledgers!)}
-                      placeholder={vm.selectLedger}
-                      error={e.ledger}
-                      onChange={(ledger) => setItem(i.key, { ledger })}
-                    />
+                    <div className="flex gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          value={i.ledger}
+                          options={ledgerOptions(ledgers!)}
+                          placeholder={vm.selectLedger}
+                          error={e.ledger}
+                          onChange={(ledger) => setItem(i.key, { ledger })}
+                        />
+                      </div>
+                      <NewLedgerButton
+                        tall
+                        onCreated={(code) => setItem(i.key, { ledger: code })}
+                      />
+                    </div>
                     {e.ledger && <span className="text-[13px] text-destructive">{e.ledger}</span>}
                   </div>
                   <div className="flex flex-col gap-1">

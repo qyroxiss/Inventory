@@ -1,18 +1,21 @@
 // User Management (user_management_page.dart): the users list on the left, the form on the
 // right, and MDA's ROLE PERMISSIONS grid below. Wording, rules and button sets are MDA's:
 //   - New: Cancel · Save User; editing: Cancel · Delete · Update User.
-//   - A new user's role starts as "User", which isn't in the list (Q-02); the grid is shown
-//     only, nothing enforces it (Q-12).
+//   - A new user's role starts as "User", which isn't in the list (Q-02).
+//   - The grid shows each role's live settings from Role Permissions (2026-11-12), which are
+//     enforced; the list of roles includes the ones the Admin added there.
 //   - Only an Admin can save, update or delete; you can't delete yourself or the last Admin.
 
 import {
   NEW_USER_ROLE,
+  PERMISSION_SECTIONS,
   ROLES,
   ROLE_PERMISSIONS,
   userFieldErrors,
   userMessages as um,
 } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { ConfirmDelete } from '../../components/Dialog.tsx';
@@ -57,6 +60,13 @@ const BTN =
 export function UserManagementScreen() {
   const queryClient = useQueryClient();
   const users = useQuery({ queryKey: ['users'], queryFn: () => unwrap(api.api.users.$get()) });
+  const roleList = useQuery({ queryKey: ['roles'], queryFn: () => unwrap(api.api.roles.$get()) });
+  const perms = useQuery({
+    queryKey: ['permissions'],
+    queryFn: () => unwrap(api.api.permissions.$get()),
+    retry: false,
+  });
+  const roleNames: string[] = roleList.data ?? [...ROLES];
   const [editing, setEditing] = useState<User | null>(null);
   const [form, setForm] = useState<Form>(BLANK);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -96,7 +106,12 @@ export function UserManagementScreen() {
     setErrors({});
     focusName();
   };
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['users'] });
+  const refresh = () =>
+    Promise.all(
+      ['users', 'roles', 'permissions'].map((k) =>
+        queryClient.invalidateQueries({ queryKey: [k] }),
+      ),
+    );
 
   const fail = (err: unknown) => {
     if (err instanceof ApiError && err.body.fieldErrors && Object.keys(err.body.fieldErrors).length)
@@ -294,12 +309,12 @@ export function UserManagementScreen() {
                     className={`${boxClass()} cursor-pointer`}
                   >
                     {/* "User" is a new user's role, but not one of the choices (Q-02). */}
-                    {!ROLES.includes(form.role as (typeof ROLES)[number]) && (
+                    {!roleNames.includes(form.role) && (
                       <option value={form.role} disabled hidden>
                         {form.role}
                       </option>
                     )}
-                    {ROLES.map((r) => (
+                    {roleNames.map((r) => (
                       <option key={r} value={r}>
                         {r}
                       </option>
@@ -353,39 +368,97 @@ export function UserManagementScreen() {
           </div>
         </div>
 
-        {/* ROLE PERMISSIONS (display only, Q-12) */}
+        {/* ROLE PERMISSIONS: each role's live settings (Role Permissions page). Before they load,
+            or for a non-Admin, MDA's own grid. */}
         <div className="flex min-h-0 flex-col border border-border bg-card">
-          <div className="border-b border-border px-3 py-2 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
-            ROLE PERMISSIONS
+          <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+            <span className="flex-1 font-mono text-xs font-medium tracking-[0.12em] text-primary-text">
+              ROLE PERMISSIONS
+            </span>
+            {perms.data && (
+              <Link
+                to="/app/$screen"
+                params={{ screen: 'role-permissions' }}
+                className="text-xs font-semibold text-primary-text underline underline-offset-2"
+              >
+                Change →
+              </Link>
+            )}
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] border-collapse text-sm">
-              <thead>
-                <tr className="bg-muted text-left text-xs">
-                  <th className="px-3 py-1.5 font-bold text-muted-foreground">Module / Feature</th>
-                  {ROLES.map((r) => (
-                    <th key={r} className="px-3 py-1.5 text-center font-bold">
-                      {r}
+            {perms.data ? (
+              <table className="w-full min-w-[520px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-muted text-left text-xs">
+                    <th className="px-3 py-1.5 font-bold text-muted-foreground">
+                      Module / Feature
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {ROLE_PERMISSIONS.map(([feature, ...allowed]) => (
-                  <tr key={feature} className="border-t border-border/60">
-                    <td className="px-3 py-1 text-muted-foreground">{feature}</td>
-                    {allowed.map((ok, i) => (
-                      <td
-                        key={i}
-                        className={`px-3 py-1 text-center ${ok ? 'text-primary-text' : 'text-muted-foreground'}`}
-                      >
-                        {ok ? '✓' : '–'}
-                      </td>
+                    {perms.data.roles.map((r) => (
+                      <th key={r.name} className="px-3 py-1.5 text-center font-bold">
+                        {r.name}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {PERMISSION_SECTIONS.map((sec) => (
+                    <tr key={sec.label} className="border-t border-border/60">
+                      <td className="px-3 py-1 text-muted-foreground">{sec.label}</td>
+                      {perms.data.roles.map((r) => {
+                        const levels = new Set(sec.pages.map((p) => r.pages[p]));
+                        const [only] = levels;
+                        const mark =
+                          levels.size > 1
+                            ? 'Some'
+                            : only === 'full'
+                              ? '✓'
+                              : only === 'view'
+                                ? 'View'
+                                : '–';
+                        return (
+                          <td
+                            key={r.name}
+                            className={`px-3 py-1 text-center ${mark === '–' ? 'text-muted-foreground' : 'text-primary-text'}`}
+                          >
+                            {mark}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="w-full min-w-[520px] border-collapse text-sm">
+                <thead>
+                  <tr className="bg-muted text-left text-xs">
+                    <th className="px-3 py-1.5 font-bold text-muted-foreground">
+                      Module / Feature
+                    </th>
+                    {ROLES.map((r) => (
+                      <th key={r} className="px-3 py-1.5 text-center font-bold">
+                        {r}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {ROLE_PERMISSIONS.map(([feature, ...allowed]) => (
+                    <tr key={feature} className="border-t border-border/60">
+                      <td className="px-3 py-1 text-muted-foreground">{feature}</td>
+                      {allowed.map((ok, i) => (
+                        <td
+                          key={i}
+                          className={`px-3 py-1 text-center ${ok ? 'text-primary-text' : 'text-muted-foreground'}`}
+                        >
+                          {ok ? '✓' : '–'}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </ReportPage>

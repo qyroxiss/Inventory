@@ -170,6 +170,9 @@ export function ReportTable<T>({
   onRow,
   minWidth = 0,
   grow = true,
+  fullRow,
+  rowClass,
+  scrollOnPhone = false,
 }: {
   cols: Col<T>[];
   rows: T[];
@@ -177,22 +180,27 @@ export function ReportTable<T>({
   empty: string;
   /** Struck-through rows (cancelled). */
   muted?: (r: T) => boolean;
+  /** A heading row across every column, in place of the cells (Stock Register's item). */
+  fullRow?: (r: T) => ReactNode | null;
+  /** Extra classes for a row (bold opening and closing lines). */
+  rowClass?: (r: T) => string;
   onRow?: (r: T) => void;
   minWidth?: number;
   /** Fill the space left (one table on the page); false sizes it to its rows. */
   grow?: boolean;
+  /** Keep every column on phones and scroll sideways inside the table instead. */
+  scrollOnPhone?: boolean;
 }) {
   const tracks = cols.map((c) => c.w).join(' ');
   const phone = cols
-    .filter((c) => !c.wide)
+    .filter((c) => scrollOnPhone || !c.wide)
     .map((c) => c.w)
     .join(' ');
   const style = { '--cols': tracks, '--cols-sm': phone, minWidth } as React.CSSProperties;
-  const grid =
-    'grid gap-x-3 [grid-template-columns:var(--cols)] max-sm:[grid-template-columns:var(--cols-sm)] max-sm:!min-w-0';
+  const grid = `grid gap-x-3 [grid-template-columns:var(--cols)] max-sm:[grid-template-columns:var(--cols-sm)] ${scrollOnPhone ? '' : 'max-sm:!min-w-0'}`;
   const hasTotals = cols.some((c) => c.total !== undefined);
   const cellClass = (c: Col<T>) =>
-    `truncate px-1 ${c.num ? 'text-right font-mono' : ''} ${c.wide ? 'max-sm:hidden' : ''}`;
+    `truncate px-1 ${c.num ? 'text-right font-mono' : ''} ${c.wide && !scrollOnPhone ? 'max-sm:hidden' : ''}`;
   return (
     <div
       className={`flex flex-col overflow-auto border border-border bg-card ${grow ? 'min-h-[120px] flex-1' : 'flex-none'} print:overflow-visible print:border-black print:bg-white`}
@@ -210,20 +218,33 @@ export function ReportTable<T>({
       {rows.length === 0 && (
         <p className="sticky left-0 m-0 py-8 text-center text-sm text-muted-foreground">{empty}</p>
       )}
-      {rows.map((r) => (
-        <div
-          key={rowKey(r)}
-          style={style}
-          onClick={onRow ? () => onRow(r) : undefined}
-          className={`${grid} items-center border-b border-border/70 px-2 py-1.5 text-[13.5px] print:break-inside-avoid ${onRow ? 'cursor-pointer hover:bg-accent' : ''} ${muted?.(r) ? 'text-muted-foreground line-through' : ''}`}
-        >
-          {cols.map((c) => (
-            <span key={c.head} className={cellClass(c)}>
-              {c.cell(r)}
-            </span>
-          ))}
-        </div>
-      ))}
+      {rows.map((r) => {
+        const full = fullRow?.(r);
+        if (full != null)
+          return (
+            <div
+              key={rowKey(r)}
+              style={{ minWidth }}
+              className={`border-b border-foreground/40 bg-muted/60 px-3 pb-1.5 pt-3 text-[14px] font-semibold ${scrollOnPhone ? '' : 'max-sm:!min-w-0'} print:break-after-avoid print:bg-white`}
+            >
+              {full}
+            </div>
+          );
+        return (
+          <div
+            key={rowKey(r)}
+            style={style}
+            onClick={onRow ? () => onRow(r) : undefined}
+            className={`${grid} items-center border-b border-border/70 px-2 py-1.5 text-[13.5px] print:break-inside-avoid ${onRow ? 'cursor-pointer hover:bg-accent' : ''} ${muted?.(r) ? 'text-muted-foreground line-through' : ''} ${rowClass?.(r) ?? ''}`}
+          >
+            {cols.map((c) => (
+              <span key={c.head} className={cellClass(c)}>
+                {c.cell(r)}
+              </span>
+            ))}
+          </div>
+        );
+      })}
       {hasTotals && rows.length > 0 && (
         <div
           style={style}

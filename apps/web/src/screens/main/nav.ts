@@ -34,14 +34,37 @@ export const NAV: NavSection[] = [
   },
   {
     label: 'Transactions',
-    groups: [{ label: '', items: ['Purchase Invoice', 'Sales Invoice', 'Stock Journal'] }],
+    groups: [
+      {
+        label: '',
+        items: [
+          'Purchase Invoice',
+          'Sales Invoice',
+          'Purchase Return',
+          'Sales Return',
+          'Stock Journal',
+        ],
+      },
+    ],
   },
   {
     label: 'Reports',
     groups: [
+      // Split in two at the user's request (2026-11-10), as Masters is.
       {
-        label: '',
-        items: ['Stock Summary', 'Profit & Loss', 'Balance Sheet', 'Day Book', 'Sales Register'],
+        label: 'Inventory Reports',
+        items: ['Stock Summary', 'Stock Register', 'Sales Register', 'Purchase Register'],
+      },
+      {
+        label: 'Accounting Reports',
+        items: [
+          'Profit & Loss',
+          'Balance Sheet',
+          'Trial Balance',
+          'Day Book',
+          'Ledger Statement',
+          'Outstanding',
+        ],
       },
     ],
   },
@@ -56,7 +79,15 @@ export const NAV: NavSection[] = [
     groups: [
       {
         label: '',
-        items: ['Backup Data', 'User Management', 'Company Settings', 'Import Data', 'Logs'],
+        // Role Permissions added 2026-11-12 (beyond MDA), next to User Management.
+        items: [
+          'Backup Data',
+          'User Management',
+          'Role Permissions',
+          'Company Settings',
+          'Import Data',
+          'Logs',
+        ],
       },
     ],
   },

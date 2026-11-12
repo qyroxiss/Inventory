@@ -11,6 +11,7 @@ import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type Group = OkBody<Awaited<ReturnType<typeof api.api.groups.$get>>>[number];
 type Form = { name: string; type: GroupType | ''; isLedger: 'Yes' | 'No' };
@@ -20,6 +21,8 @@ const BAR_BTN =
   'flex h-12 cursor-pointer items-center border-[1.5px] border-foreground px-5 text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
 
 export function GroupMasterScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const groups = useQuery({
@@ -305,7 +308,7 @@ export function GroupMasterScreen() {
                 if (editingTopLevel) setUpdateConfirm(true);
                 else void save();
               }}
-              disabled={busy}
+              disabled={busy || !canEdit}
               className={`flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait ${editingTopLevel ? 'opacity-60' : 'disabled:opacity-70'}`}
             >
               <span>{editing ? 'Update' : 'Save Group'}</span>

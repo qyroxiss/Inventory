@@ -35,6 +35,24 @@ export const decimalsSave = z.object({
   amount: z.number().int().min(0).max(2),
 });
 
+/** Purchase Return / Sales Return (added 2026-11-09): which bill lines go back, and how many. */
+export const returnKind = z.enum(['PRT', 'SRT']);
+export const returnSave = z.object({
+  kind: returnKind,
+  returnNo: z.string(),
+  returnDate: z.string(),
+  againstBillNo: z.string(),
+  narration: z.string().optional(),
+  lines: z.array(z.object({ srcLineNo: z.number().int(), qty: z.number() })),
+});
+
+/** Company Settings › Item Entry and Print Layout (added 2026-11-09). */
+export const preferencesSave = z.object({
+  itemEntry: z.enum(['name', 'code']),
+  paperSize: z.enum(['A4', 'A5', 'Letter', 'Legal']),
+  paperOrientation: z.enum(['portrait', 'landscape']),
+});
+
 export const yearCreate = z.object({
   yearName: z.string(),
   /** dd/MM/yyyy as MDA's date picker writes it, or ISO yyyy-MM-dd. */
@@ -104,6 +122,10 @@ export const stockItemSave = z.object({
   hsn: opt,
   purRate: opt,
   saleRate: opt,
+  /** Opening Stock, Opening Rate and MRP (2026-11-10). */
+  opQty: opt,
+  opRate: opt,
+  mrp: opt,
 });
 
 /** A voucher as the tabs build it (receiptDraft, journalDraft, …). Rules are checked in @qi/core. */
@@ -291,3 +313,10 @@ export const mdaImport = z.object({
     }),
   ),
 });
+
+// ── Role Permissions (core permissions.ts) ──────────────────────────────────────
+const pageLevels = z.record(z.string(), z.enum(['hidden', 'view', 'full']));
+export const rolePagesSave = z.object({ pages: pageLevels });
+export const roleCreate = z.object({ name: z.string(), copyFrom: z.string().optional() });
+export const roleRename = z.object({ name: z.string() });
+export const userPagesSave = z.object({ pages: pageLevels });

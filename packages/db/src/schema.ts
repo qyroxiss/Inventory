@@ -15,6 +15,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   numeric,
   pgTable,
   text,
@@ -120,6 +121,12 @@ export const companies = pgTable(
      *  Company Settings. Display only: the maths is always to the paisa. */
     qtyDecimals: integer('qty_decimals').notNull().default(3),
     amountDecimals: integer('amount_decimals').notNull().default(2),
+    /** Purchase / Sales item entry: 'name' puts Item Name first (box and grid), 'code' puts Item
+     *  Code first. Admin sets it in Company Settings (user's request, 2026-11-09). */
+    itemEntry: text('item_entry').notNull().default('name'),
+    /** Page layout for every print: A4 / A5 / Letter / Legal, portrait / landscape. */
+    paperSize: text('paper_size').notNull().default('A4'),
+    paperOrientation: text('paper_orientation').notNull().default('portrait'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -176,12 +183,30 @@ export const bookUsers = pgTable(
     role: text('role').notNull().default('User'),
     isActive: boolean('is_active').notNull().default(true),
     mustChangePassword: boolean('must_change_password').notNull().default(false),
+    /** Role Permissions: this user's own page levels, over their role's (core permissions.ts). */
+    pageAccess: jsonb('page_access').$type<Record<string, string>>().notNull().default({}),
     createdAt: createdAt(),
   },
   (t) => [
     uniqueIndex('book_users_code').on(t.bookId, t.userCode),
     uniqueIndex('book_users_name').on(t.bookId, t.userName),
   ],
+);
+
+/** Role Permissions (core permissions.ts): a role's page levels. MDA's four roles get a row only
+ *  once the Admin changes them; until then they use MDA's grid. Added roles always have one. */
+export const bookRoles = pgTable(
+  'book_roles',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    name: text('name').notNull(),
+    pageAccess: jsonb('page_access').$type<Record<string, string>>().notNull().default({}),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('book_roles_name').on(t.bookId, t.name)],
 );
 
 /** Maacct2: accounting groups and sub groups, one table for both (docs/LOGIC-SPEC.md §2). */
@@ -649,6 +674,85 @@ export const saleLines = pgTable(
     lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
   },
   (t) => [uniqueIndex('sale_lines_sale_line').on(t.saleId, t.lineNo)],
+);
+
+// ── Purchase Return / Sales Return (added 2026-11-09; MDA only seeded the PRT/SRT series) ──
+
+/** A purchase return (kind 'PRT', printed as a Debit Note) or a sales return ('SRT', a Credit
+ *  Note), always against one bill of the party. Its number is its voucher's number. */
+export const returns = pgTable(
+  'returns',
+  {
+    id: id(),
+    bookId: uuid('book_id')
+      .notNull()
+      .references(() => books.id),
+    kind: text('kind').notNull(),
+    returnNo: text('return_no').notNull(),
+    returnDate: date('return_date').notNull(),
+    /** The purchase or sale bill the goods came on. */
+    againstBillNo: text('against_bill_no').notNull(),
+    againstBillDate: date('against_bill_date'),
+    /** The supplier, the customer, or (a cash sale) the Cash ledger credited. */
+    partyCode: text('party_code'),
+    partyName: text('party_name'),
+    state: text('state'),
+    isInterState: boolean('is_inter_state').notNull().default(false),
+    narration: text('narration'),
+    totalQty: numeric('total_qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    subTotal: numeric('sub_total', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstAmt: numeric('sgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstAmt: numeric('cgst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstAmt: numeric('igst_amt', { precision: 14, scale: 2 }).notNull().default('0'),
+    /** A sales return's share of the bill discount, given back. */
+    billDisc: numeric('bill_disc', { precision: 14, scale: 2 }).notNull().default('0'),
+    roundOff: numeric('round_off', { precision: 14, scale: 2 }).notNull().default('0'),
+    netAmount: numeric('net_amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    voucherId: uuid('voucher_id').references(() => vouchers.id),
+    /** 'Active' or 'Cancelled'. */
+    status: text('status').notNull().default('Active'),
+    createdBy: text('created_by'),
+    createdAt: createdAt(),
+    modifiedBy: text('modified_by'),
+    modifiedAt: timestamp('modified_at', { withTimezone: true }),
+    cancelledBy: text('cancelled_by'),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('returns_book_kind_no').on(t.bookId, t.kind, t.returnNo),
+    index('returns_book_bill').on(t.bookId, t.kind, t.againstBillNo),
+  ],
+);
+
+export const returnLines = pgTable(
+  'return_lines',
+  {
+    id: id(),
+    returnId: uuid('return_id')
+      .notNull()
+      .references(() => returns.id, { onDelete: 'cascade' }),
+    lineNo: bigint('line_no', { mode: 'number' }).notNull(),
+    /** The bill's line this one returns. */
+    srcLineNo: bigint('src_line_no', { mode: 'number' }).notNull(),
+    itemCode: text('item_code').notNull(),
+    itemName: text('item_name'),
+    hsnNo: text('hsn_no'),
+    unit: text('unit'),
+    location: text('location'),
+    qty: numeric('qty', { precision: 14, scale: 3 }).notNull().default('0'),
+    rate: numeric('rate', { precision: 14, scale: 2 }).notNull().default('0'),
+    disP: numeric('dis_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    disA: numeric('dis_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    amount: numeric('amount', { precision: 14, scale: 2 }).notNull().default('0'),
+    sgstP: numeric('sgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    sgstA: numeric('sgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    cgstP: numeric('cgst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    cgstA: numeric('cgst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    igstP: numeric('igst_p', { precision: 8, scale: 2 }).notNull().default('0'),
+    igstA: numeric('igst_a', { precision: 14, scale: 2 }).notNull().default('0'),
+    lineTotal: numeric('line_total', { precision: 14, scale: 2 }).notNull().default('0'),
+  },
+  (t) => [uniqueIndex('return_lines_return_line').on(t.returnId, t.lineNo)],
 );
 
 // ── Stock Journal (not built in MDA; docs/design/TRANSACTIONS.md) ───────────────────

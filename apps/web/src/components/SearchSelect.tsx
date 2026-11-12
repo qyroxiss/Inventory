@@ -59,6 +59,12 @@ export function SearchSelect({
   // A record loaded for edit arrives as a changed `value` prop.
   // Re-run only when the resolved value changes (not when `options` reloads mid-edit).
   useEffect(() => setText(labelOf(value)), [value]);
+  // A value set before its list has loaded (a new ledger opened with its group preset) shows
+  // its name once the list arrives; text being typed is never touched.
+  const resolved = labelOf(value);
+  useEffect(() => {
+    if (!text && resolved) setText(resolved);
+  }, [resolved]);
 
   const needle = text.trim().toLowerCase();
   const found = needle ? options.filter((o) => o.label.toLowerCase().includes(needle)) : options;

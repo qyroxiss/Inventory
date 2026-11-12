@@ -11,6 +11,7 @@ import {
   gstr3b,
   hsnSummary,
   isInterState,
+  negateLines,
   partyStateCode,
   placeOfSupply,
   round2,
@@ -19,6 +20,7 @@ import {
   type AuditFinding,
   type GstBill,
   type GstLine,
+  type GstNote,
 } from '@qi/core';
 import { and, asc, eq, gte, inArray, lte, or, schema, sql, type Db } from '@qi/db';
 
@@ -29,6 +31,8 @@ const {
   ledgers,
   purchaseLines,
   purchases,
+  returnLines,
+  returns,
   saleLines,
   sales,
   stockItems,
@@ -163,14 +167,94 @@ async function purchaseBills(db: Db, bookId: string, p: Period) {
   });
 }
 
-export async function gstr1Report(db: Db, ctx: GstContext, p: Period) {
-  return gstr1(await saleBills(db, ctx.bookId, p), ctx.companyStateCode);
+/** The period's Active returns of a kind as notes: a Sales Return is a credit note issued, a
+ *  Purchase Return a debit note (it cuts the input tax taken on the bill). The party's GSTIN and
+ *  state come from the bill the goods were returned against. */
+async function returnNotes(
+  db: Db,
+  bookId: string,
+  kind: 'PRT' | 'SRT',
+  p: Period,
+): Promise<(GstNote & { gstinOk: boolean })[]> {
+  const heads = await db
+    .select()
+    .from(returns)
+    .where(
+      and(
+        eq(returns.bookId, bookId),
+        eq(returns.kind, kind),
+        eq(returns.status, 'Active'),
+        gte(returns.returnDate, p.from),
+        lte(returns.returnDate, p.to),
+      ),
+    )
+    .orderBy(asc(returns.returnDate), asc(returns.returnNo));
+  if (!heads.length) return [];
+  const rows = await db
+    .select()
+    .from(returnLines)
+    .where(
+      inArray(
+        returnLines.returnId,
+        heads.map((h) => h.id),
+      ),
+    )
+    .orderBy(asc(returnLines.lineNo));
+  // The party's GSTIN: the sale bill's GST No., or the supplier's ledger.
+  const saleGst = new Map<string, { gstin: string; stateCode: string | null; state: string | null }>();
+  if (kind === 'SRT') {
+    const nos = [...new Set(heads.map((h) => h.againstBillNo))];
+    const ss = await db
+      .select({ billNo: sales.billNo, gstNo: sales.gstNo, stateCode: sales.stateCode, state: sales.state })
+      .from(sales)
+      .where(and(eq(sales.bookId, bookId), inArray(sales.billNo, nos)));
+    for (const s of ss) saleGst.set(s.billNo, { gstin: s.gstNo ?? '', stateCode: s.stateCode, state: s.state });
+  }
+  const supp = new Map<string, { gstin: string; stateCode: string | null; state: string | null }>();
+  if (kind === 'PRT') {
+    const codes = [...new Set(heads.map((h) => h.partyCode ?? ''))].filter(Boolean);
+    const ls = codes.length
+      ? await db
+          .select({ code: ledgers.accCode, gstin: ledgers.gstin, stateCode: ledgers.stateCode, state: ledgers.state })
+          .from(ledgers)
+          .where(and(eq(ledgers.bookId, bookId), inArray(ledgers.accCode, codes)))
+      : [];
+    for (const l of ls) supp.set(l.code, { gstin: l.gstin ?? '', stateCode: l.stateCode, state: l.state });
+  }
+  return heads.map((h) => {
+    const who = kind === 'SRT' ? saleGst.get(h.againstBillNo) : supp.get(h.partyCode ?? '');
+    const gstin = (who?.gstin ?? '').trim().toUpperCase();
+    return {
+      billNo: h.returnNo,
+      date: h.returnDate,
+      partyName: h.partyName ?? '',
+      gstin,
+      gstinOk: !!gstin && validators.gstin(gstin) === null,
+      stateCode: partyStateCode(who?.stateCode, gstin, h.state || who?.state),
+      interState: h.isInterState,
+      value: Number(h.netAmount),
+      againstBillNo: h.againstBillNo,
+      againstDate: h.againstBillDate ?? '',
+      lines: rows.filter((r) => r.returnId === h.id).map(line),
+    };
+  }); // prettier-ignore
 }
 
+export async function gstr1Report(db: Db, ctx: GstContext, p: Period) {
+  return gstr1(
+    await saleBills(db, ctx.bookId, p),
+    ctx.companyStateCode,
+    await returnNotes(db, ctx.bookId, 'SRT', p),
+  );
+}
+
+/** HSN Summary, net of returns: Sales Returns off the outward side, Purchase Returns off the
+ *  inward side. */
 export async function hsnReport(db: Db, ctx: GstContext, p: Period & { side: 'out' | 'in' }) {
   const bills =
     p.side === 'out' ? await saleBills(db, ctx.bookId, p) : await purchaseBills(db, ctx.bookId, p);
-  return hsnSummary(bills);
+  const notes = await returnNotes(db, ctx.bookId, p.side === 'out' ? 'SRT' : 'PRT', p);
+  return hsnSummary([...bills, ...notes.map((n) => ({ ...n, lines: negateLines(n.lines) }))]);
 }
 
 export type ItcRow = {
@@ -189,9 +273,10 @@ export type ItcRow = {
 };
 
 /** Input tax credit register: one row per purchase bill; credit is eligible only when the
- *  supplier has a valid GSTIN. */
+ *  supplier has a valid GSTIN. A Purchase Return is a row of its own with its figures negative
+ *  (the credit it gives back), its "Supplier Bill" naming the bill it was against. */
 export async function itcReport(db: Db, ctx: GstContext, p: Period): Promise<ItcRow[]> {
-  return (await purchaseBills(db, ctx.bookId, p)).map((b) => {
+  const bills = (await purchaseBills(db, ctx.bookId, p)).map((b) => {
     const t = sumTax(b.lines);
     return {
       billNo: b.billNo,
@@ -205,11 +290,28 @@ export async function itcReport(db: Db, ctx: GstContext, p: Period): Promise<Itc
       itc: round2(t.igst + t.cgst + t.sgst),
     };
   });
+  const notes = (await returnNotes(db, ctx.bookId, 'PRT', p)).map((n) => {
+    const t = sumTax(negateLines(n.lines));
+    return {
+      billNo: n.billNo,
+      suppInvNo: `Return agst ${n.againstBillNo}`,
+      date: n.date,
+      supplier: n.partyName,
+      gstin: n.gstin,
+      pos: placeOfSupply(n.stateCode || ctx.companyStateCode),
+      eligible: n.gstinOk,
+      ...t,
+      itc: round2(t.igst + t.cgst + t.sgst),
+    };
+  });
+  return [...bills, ...notes].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function gstr3bReport(db: Db, ctx: GstContext, p: Period) {
+  // Outward supplies net of Sales Returns (credit notes); ITC net of Purchase Returns.
   const out = await saleBills(db, ctx.bookId, p);
-  const outLines = out.flatMap((b) => b.lines);
+  const credit = await returnNotes(db, ctx.bookId, 'SRT', p);
+  const outLines = [...out.flatMap((b) => b.lines), ...credit.flatMap((n) => negateLines(n.lines))];
   const outward = sumTax(outLines.filter((l) => l.rate > 0));
   const nilExempt = round2(outLines.filter((l) => l.rate <= 0).reduce((a, l) => a + l.taxable, 0));
   const itc = sumTax((await itcReport(db, ctx, p)).filter((r) => r.eligible));
@@ -387,8 +489,17 @@ export async function gstAudit(db: Db, ctx: GstContext, p: Period): Promise<Audi
         .where(eq(ledgers.bookId, ctx.bookId))
     ).map((l) => [l.c, l.n]),
   );
-  const soldTax = sumTax(sold.flatMap((b) => b.lines));
-  const boughtTax = sumTax(bought.flatMap((b) => b.lines));
+  // Net of returns, which post to the same tax ledgers.
+  const srt = await returnNotes(db, ctx.bookId, 'SRT', p);
+  const prt = await returnNotes(db, ctx.bookId, 'PRT', p);
+  const soldTax = sumTax([
+    ...sold.flatMap((b) => b.lines),
+    ...srt.flatMap((n) => negateLines(n.lines)),
+  ]);
+  const boughtTax = sumTax([
+    ...bought.flatMap((b) => b.lines),
+    ...prt.flatMap((n) => negateLines(n.lines)),
+  ]);
   const checks: [string, number, 'out' | 'in'][] = [
     [S.outputCgst, soldTax.cgst, 'out'],
     [S.outputSgst, soldTax.sgst, 'out'],

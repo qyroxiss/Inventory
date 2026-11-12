@@ -13,7 +13,9 @@
 
 import {
   STOCK_SUB_GROUP_TYPE,
+  qtyValue,
   rateValue,
+  round2,
   stockItemFieldErrors,
   stockItemMessages as msg,
 } from '@qi/core';
@@ -34,6 +36,10 @@ export type StockItem = {
   hsn: string;
   purRate: number;
   saleRate: number;
+  /** Opening Stock and Opening Rate (stored as the opening value, Stock × Rate), and MRP. */
+  opQty: number;
+  opRate: number;
+  mrp: number;
 };
 export type StockItemInput = {
   code: string;
@@ -46,6 +52,9 @@ export type StockItemInput = {
   hsn?: string;
   purRate?: string;
   saleRate?: string;
+  opQty?: string;
+  opRate?: string;
+  mrp?: string;
 };
 
 const t = (v: string | undefined) => (v ?? '').trim();
@@ -77,6 +86,10 @@ export async function listStockItems(db: Db, bookId: string): Promise<StockItem[
     hsn: i.hsnNo ?? '',
     purRate: Number(i.purRate),
     saleRate: Number(i.saleRate),
+    opQty: Number(i.opQty),
+    // The opening value over the quantity gives back the rate as typed (2 decimals).
+    opRate: Number(i.opQty) > 0 ? round2(Number(i.opValue) / Number(i.opQty)) : 0,
+    mrp: Number(i.mrp),
   }));
 }
 
@@ -100,6 +113,15 @@ const fields = (input: StockItemInput) => ({
   hsnNo: t(input.hsn),
   ...(input.purRate === undefined ? {} : { purRate: rateValue(input.purRate)!.toFixed(2) }),
   ...(input.saleRate === undefined ? {} : { saleRate: rateValue(input.saleRate)!.toFixed(2) }),
+  ...(input.mrp === undefined ? {} : { mrp: rateValue(input.mrp)!.toFixed(2) }),
+  // Opening Stock × Opening Rate is kept as the item's opening value (MDA's OpValue), which the
+  // Stock Summary and Profit & Loss read.
+  ...(input.opQty === undefined && input.opRate === undefined
+    ? {}
+    : {
+        opQty: String(qtyValue(input.opQty)!),
+        opValue: round2(qtyValue(input.opQty)! * rateValue(input.opRate)!).toFixed(2),
+      }),
 });
 
 export async function createStockItem(

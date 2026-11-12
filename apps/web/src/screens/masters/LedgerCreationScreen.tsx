@@ -18,6 +18,8 @@ import {
   ledgerMessages,
   MISC_TYPE_CITY,
   mobileProblem,
+  openingBalanceInvalid,
+  parseOpeningBalance,
   REG_TYPES,
   SALES_EXECUTIVES,
   stateOfCity,
@@ -33,6 +35,7 @@ import { Heading } from '../../components/ledger.tsx';
 import { PhoneInput } from '../../components/PhoneInput.tsx';
 import { SearchSelect, type SearchOption } from '../../components/SearchSelect.tsx';
 import { fa } from '../../format.ts';
+import { useCanEdit } from '../../access.tsx';
 
 type Ledger = OkBody<Awaited<ReturnType<typeof api.api.ledgers.$get>>>[number];
 type Form = {
@@ -76,7 +79,17 @@ const EMPTY_FORM: Form = {
 const BAR_BTN =
   'flex h-12 cursor-pointer items-center border-[1.5px] border-foreground px-5 text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
 
-export function LedgerCreationScreen() {
+/** Opened from a "+ New" button beside a ledger box (2026-11-10): Back returns to that page,
+ *  and a saved ledger is handed back to it (after its "saved" message is closed). */
+export type EmbeddedLedger = {
+  under?: string;
+  onBack: () => void;
+  onCreated: (accCode: string) => void;
+};
+
+export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger } = {}) {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit('Ledger Creation');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const ledgers = useQuery({
@@ -92,9 +105,11 @@ export function LedgerCreationScreen() {
     queryFn: () => unwrap(api.api['misc-list'].$get({ query: { type: MISC_TYPE_CITY } })),
   });
 
-  const [form, setForm] = useState<Form>(EMPTY_FORM);
+  const [form, setForm] = useState<Form>(() => ({ ...EMPTY_FORM, under: embedded?.under ?? '' }));
+  /** The ledger just saved, handed back to the calling page when its message is closed. */
+  const created = useRef<string | null>(null);
   const [errors, setErrors] = useState<
-    Partial<Record<'name' | 'city' | 'state' | 'under' | 'pincode' | 'mobile', string>>
+    Partial<Record<'name' | 'city' | 'state' | 'under' | 'pincode' | 'mobile' | 'openingBalance', string>>
   >({});
   const [editing, setEditing] = useState<Ledger | null>(null);
   const [busy, setBusy] = useState(false);
@@ -139,9 +154,12 @@ export function LedgerCreationScreen() {
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['ledgers'] });
 
-  /** Cancel always leaves the screen in MDA — it never just clears the form here. */
+  /** Cancel always leaves the screen in MDA — it never just clears the form here. Opened from
+   *  a "+ New" button, it goes back to that page instead. */
   const cancel = () =>
-    void navigate({ to: '/app/section/$section', params: { section: 'masters' } });
+    embedded
+      ? embedded.onBack()
+      : void navigate({ to: '/app/section/$section', params: { section: 'masters' } });
 
   /** After Save/Update/Remove, MDA resets everything, including Country/Reg. Type/Dr-Cr defaults. */
   const clearForm = () => {
@@ -161,6 +179,7 @@ export function LedgerCreationScreen() {
     else if (!/^[1-9][0-9]{5}$/.test(form.pincode.trim())) e.pincode = ledgerMessages.pincodeFormat;
     const mobile = mobileProblem(form.mobile);
     if (mobile) e.mobile = mobile;
+    if (parseOpeningBalance(form.openingBalance) === null) e.openingBalance = openingBalanceInvalid;
     setErrors(e);
     if (e.name) nameRef.current?.focus();
     else if (e.city) focusId('ledger-city');
@@ -168,6 +187,7 @@ export function LedgerCreationScreen() {
     else if (e.pincode) pincodeRef.current?.focus();
     else if (e.mobile) mobileRef.current?.focus();
     else if (e.under) focusId('ledger-under');
+    else if (e.openingBalance) openingBalRef.current?.focus();
     return Object.keys(e).length === 0;
   };
 
@@ -205,6 +225,7 @@ export function LedgerCreationScreen() {
     try {
       const l = await unwrap(api.api.ledgers.$post({ json: payload() }));
       await refresh();
+      if (embedded) created.current = l.accCode;
       setMessage({
         kind: 'ok',
         title: ['Ledger', 'Saved'],
@@ -572,7 +593,7 @@ export function LedgerCreationScreen() {
               />
             </Row>
 
-            <Row label="Opening Balance">
+            <Row label="Opening Balance" error={errors.openingBalance}>
               <div className="flex items-center gap-3">
                 <input
                   id="ledger-opening-balance"
@@ -581,14 +602,17 @@ export function LedgerCreationScreen() {
                   placeholder="0.00"
                   inputMode="decimal"
                   autoComplete="off"
-                  onChange={(e) => setForm((f) => ({ ...f, openingBalance: e.target.value }))}
+                  onChange={(e) => {
+                    setForm((f) => ({ ...f, openingBalance: e.target.value }));
+                    setErrors((x) => ({ ...x, openingBalance: undefined }));
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       saveRef.current?.focus();
                     }
                   }}
-                  className={`${fieldClass(false)} min-w-0 flex-1`}
+                  className={`${fieldClass(!!errors.openingBalance)} min-w-0 flex-1`}
                 />
                 <select
                   aria-label="Dr / Cr"
@@ -626,6 +650,7 @@ export function LedgerCreationScreen() {
             <button
               type="button"
               onClick={() => setDeleteConfirm(true)}
+              disabled={!canEdit}
               className={`${BAR_BTN} border-destructive text-destructive`}
             >
               Remove Ledger
@@ -635,7 +660,7 @@ export function LedgerCreationScreen() {
             type="button"
             ref={saveRef}
             onClick={() => (editing ? setUpdateConfirm(true) : void save())}
-            disabled={busy}
+            disabled={busy || !canEdit}
             className="flex h-12 min-w-[180px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
           >
             <span>{editing ? 'Update Ledger' : 'Save Ledger'}</span>
@@ -675,7 +700,12 @@ export function LedgerCreationScreen() {
         kind={message?.kind}
         title={message?.title ?? ['Ledger', '']}
         text={message?.text ?? ''}
-        onClose={() => setMessage(null)}
+        onClose={() => {
+          setMessage(null);
+          const code = created.current;
+          created.current = null;
+          if (embedded && code) embedded.onCreated(code);
+        }}
       />
     </>
   );

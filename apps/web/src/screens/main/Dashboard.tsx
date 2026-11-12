@@ -7,6 +7,7 @@
 import { compact, inr, trends, type Trend } from '@qi/core';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
+import { useAccess } from '../../access.tsx';
 import { api, unwrap } from '../../api.ts';
 import { Icon } from './MainShell.tsx';
 import { ICONS, QUICK_ACTIONS, slug } from './nav.ts';
@@ -20,6 +21,7 @@ const greeting = (h: number) =>
 const PANEL = 'flex min-h-0 flex-col border border-border bg-card';
 
 export function Dashboard() {
+  const access = useAccess();
   const me = useQuery({
     queryKey: ['book-me'],
     queryFn: () => unwrap(api.api.book.me.$get()),
@@ -180,7 +182,7 @@ export function Dashboard() {
           <span className="lg:hidden"> </span>
           ACTIONS
         </h2>
-        {QUICK_ACTIONS.map((a) => {
+        {QUICK_ACTIONS.filter((a) => access.view(a.screen)).map((a) => {
           const main = a.label === 'New Sale';
           return (
             <Link

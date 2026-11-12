@@ -255,6 +255,10 @@ export const purchaseMessages = {
   qtyZero: 'Quantity must be more than zero',
   supplierFirst: 'Select the supplier first - it decides CGST/SGST vs IGST',
   supplierRequired: 'Supplier is required',
+  // Compulsory on the page at the user's request (2026-11-09), with at least one item.
+  supplyWithRequired: 'Supply With is required',
+  suppInvNoRequired: 'No. is required',
+  locationRequired: 'Location is required',
   noSuppliers:
     'No supplier ledgers found. Create them under Masters > Ledger Creation with the group "Sundry Creditors".',
   noSuppliersHint: 'No ledgers under Sundry Creditors',

@@ -8,6 +8,7 @@ import {
   type B2csRow,
   type HsnRow,
   type InvoiceRateRow,
+  type NoteRateRow,
 } from '@qi/core';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -150,7 +151,7 @@ const taxCols = <T extends { taxable: number; igst: number; cgst: number; sgst: 
 
 // ── GSTR-1 ─────────────────────────────────────────────────────────────────────
 
-type Section = 'b2b' | 'b2cl' | 'b2cs' | 'hsn';
+type Section = 'b2b' | 'b2cl' | 'b2cs' | 'cdnr' | 'hsn';
 
 export function Gstr1Screen() {
   const [p, setP] = useMonth();
@@ -177,6 +178,17 @@ export function Gstr1Screen() {
     { head: 'Rate', w: '56px', num: true, wide: true, cell: (x) => `${x.rate}%` },
     ...taxCols(rows),
   ];
+  // 9B: credit notes (Sales Returns) to registered buyers, with the invoice each reduces.
+  const noteCols = (rows: NoteRateRow[]): Col<NoteRateRow>[] => [
+    { head: 'GSTIN', w: '150px', cell: (x) => x.gstin },
+    { head: 'Party', w: 'minmax(120px,1fr)', wide: true, cell: (x) => x.partyName },
+    { head: 'Note', w: '90px', cell: (x) => x.billNo },
+    { head: 'Date', w: '92px', wide: true, cell: (x) => dmy(x.date) },
+    { head: 'Invoice', w: '96px', wide: true, cell: (x) => x.againstBillNo },
+    { head: 'Value', w: '104px', num: true, wide: true, cell: (x) => amt(x.value) },
+    { head: 'Rate', w: '56px', num: true, wide: true, cell: (x) => `${x.rate}%` },
+    ...taxCols(rows),
+  ];
   const b2csCols = (rows: B2csRow[]): Col<B2csRow>[] => [
     { head: 'Place of Supply', w: 'minmax(150px,1fr)', cell: (x) => x.pos },
     { head: 'Type', w: '64px', wide: true, cell: (x) => x.type },
@@ -197,7 +209,8 @@ export function Gstr1Screen() {
               ['B2B invoices', String(r.counts.b2b)],
               ['B2C Large', String(r.counts.b2cl)],
               ['B2C Small', String(r.counts.b2c)],
-              ['Taxable', amt(r.totals.taxable)],
+              ['Credit notes', amt(r.notes.taxable)],
+              ['Taxable (net)', amt(r.totals.taxable)],
               ['IGST', amt(r.totals.igst)],
               ['CGST', amt(r.totals.cgst)],
               ['SGST', amt(r.totals.sgst)],
@@ -211,6 +224,7 @@ export function Gstr1Screen() {
               { key: 'b2b', label: `B2B (${r.b2b.length})` },
               { key: 'b2cl', label: `B2C Large (${r.b2cl.length})` },
               { key: 'b2cs', label: `B2C Small (${r.b2cs.length})` },
+              { key: 'cdnr', label: `Credit Notes (${r.cdnr.length})` },
               { key: 'hsn', label: `HSN (${r.hsn.length})` },
             ]}
           />
@@ -239,6 +253,15 @@ export function Gstr1Screen() {
               rowKey={(x) => `${x.pos}|${x.rate}`}
               empty="No B2C Small supplies in this period"
               minWidth={700}
+            />
+          )}
+          {section === 'cdnr' && (
+            <ReportTable
+              cols={noteCols(r.cdnr)}
+              rows={r.cdnr}
+              rowKey={(x) => `${x.billNo}|${x.rate}`}
+              empty="No credit notes (Sales Returns) to registered buyers in this period"
+              minWidth={1180}
             />
           )}
           {section === 'hsn' && <HsnTable rows={r.hsn} />}

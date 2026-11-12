@@ -4,6 +4,7 @@
 // a View list dialog and a printed list. Each screen supplies its own words and columns.
 
 import { brand } from '@qi/core';
+import { useCanEdit } from '../access.tsx';
 import { useNavigate } from '@tanstack/react-router';
 import { useState, type ReactNode, type Ref } from 'react';
 import { BackButton } from './BackButton.tsx';
@@ -24,11 +25,14 @@ export function MasterPage({
   crumb,
   title,
   pill = 'Inventory Master',
+  onBack,
   children,
 }: {
   crumb: string;
   title: [string, string];
   pill?: string;
+  /** Back somewhere other than Masters (opened from a "+ New" button). */
+  onBack?: () => void;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
@@ -46,7 +50,9 @@ export function MasterPage({
         <div className="flex flex-wrap items-center gap-4 max-md:gap-x-3 max-md:gap-y-2">
           <BackButton
             onClick={() =>
-              void navigate({ to: '/app/section/$section', params: { section: 'masters' } })
+              onBack
+                ? onBack()
+                : void navigate({ to: '/app/section/$section', params: { section: 'masters' } })
             }
           />
           <span className="font-mono text-xs uppercase tracking-[0.12em] text-muted-foreground">
@@ -152,6 +158,8 @@ export function ActionBar({
   onUpdate: () => void;
   onRemove: () => void;
 }) {
+  // Role Permissions: on a View only page nothing can be saved, changed or removed.
+  const canEdit = useCanEdit();
   const arrow = (
     <span aria-hidden="true" className="text-xl">
       →
@@ -177,7 +185,7 @@ export function ActionBar({
             type="button"
             ref={actionRef}
             onClick={onUpdate}
-            disabled={busy}
+            disabled={busy || !canEdit}
             className={MAIN_BTN}
           >
             <span>Update</span>
@@ -186,13 +194,20 @@ export function ActionBar({
           <button
             type="button"
             onClick={onRemove}
+            disabled={!canEdit}
             className={`${BAR_BTN} border-destructive text-destructive`}
           >
             Remove
           </button>
         </>
       ) : (
-        <button type="button" ref={actionRef} onClick={onSave} disabled={busy} className={MAIN_BTN}>
+        <button
+          type="button"
+          ref={actionRef}
+          onClick={onSave}
+          disabled={busy || !canEdit}
+          className={MAIN_BTN}
+        >
           <span>{saveLabel}</span>
           {arrow}
         </button>

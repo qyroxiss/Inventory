@@ -3,13 +3,16 @@
 // FY, Quick find, the user and Logout, the page (dashboard, a section, or a screen), and the
 // status bar. Quick find opens on Ctrl K.
 
-import { brand } from '@qi/core';
+import { brand, permissionMessages } from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
+import { ACCESS_KEY, PageAccessProvider, pageOfPath, useAccess } from '../../access.tsx';
 import { api, unwrap } from '../../api.ts';
 import { ConfirmUpdate, Dialog } from '../../components/Dialog.tsx';
 import { setDecimals } from '../../format.ts';
+import { setPreferences } from '../../prefs.ts';
+import { NewLedgerHost } from '../../components/NewLedger.tsx';
 import { getAccount } from '../../lib/account.ts';
 import { setTheme, useTheme } from '../../lib/theme.ts';
 import { ALL_ITEMS, NAV, SECTION_ICONS, findItem, findSection, slug, type NavItem } from './nav.ts';
@@ -30,11 +33,31 @@ export function MainShell() {
     queryFn: () => unwrap(api.api.settings.decimals.$get()),
   });
   if (decimals.data) setDecimals(decimals.data);
+  // Item entry order and print page layout, likewise in place first.
+  const prefs = useQuery({
+    queryKey: ['preferences'],
+    queryFn: () => unwrap(api.api.settings.preferences.$get()),
+  });
+  if (prefs.data) setPreferences(prefs.data);
   const [findOpen, setFindOpen] = useState(false);
   // Phones and tablets: the sidebar is a drawer behind ☰, closed again once a page opens.
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => setMenuOpen(false), [pathname]);
+  // Role Permissions: the page on screen, and whether this user may open or change it.
+  const access = useAccess();
+  const page = pageOfPath(pathname);
+  const sectionSlug = /^\/app\/section\/([^/]+)/.exec(pathname)?.[1];
+  const sectionShown = (() => {
+    const sec = sectionSlug ? findSection(sectionSlug) : null;
+    return !sec || sec.groups.some((g) => g.items.some((l) => access.view(l)));
+  })();
+  const allowed = (page ? access.view(page) : true) && sectionShown;
+  const viewOnly = !!page && allowed && !access.edit(page);
+  // A change made by the Admin shows on the next page change.
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ACCESS_KEY });
+  }, [pathname, queryClient]);
 
   // Ctrl K (⌘K on a Mac) opens Quick find from anywhere on the main screen.
   useEffect(() => {
@@ -56,6 +79,7 @@ export function MainShell() {
     await api.api.book.logout.$post().catch(() => undefined);
     queryClient.removeQueries({ queryKey: ['book-me'] });
     queryClient.removeQueries({ queryKey: ['dashboard'] });
+    queryClient.removeQueries({ queryKey: ACCESS_KEY });
   };
   /** MDA's Logout: close the books and go back to Company & Year Setup. Asks first (added). */
   const logout = async () => {
@@ -126,6 +150,14 @@ export function MainShell() {
                 </button>
               )}
             </div>
+            {viewOnly && (
+              <span
+                title={permissionMessages.viewOnly}
+                className="flex-none whitespace-nowrap border border-amber-600/50 bg-amber-500/15 px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200"
+              >
+                View only
+              </span>
+            )}
             <span className="flex-1" />
             <button
               type="button"
@@ -183,7 +215,12 @@ export function MainShell() {
           {/* Pages never shrink below their content ([&>*]:shrink-0): a page taller than the
               window (long forms on a phone) scrolls here instead of spilling past its paper. */}
           <main className="flex min-h-0 flex-1 flex-col overflow-y-auto px-8 py-5 print:block print:overflow-visible print:p-0 max-lg:px-4 max-lg:py-4 max-sm:px-2 max-sm:py-2 [&>*]:shrink-0">
-            {(decimals.data || decimals.isError) && <Outlet />}
+            {(decimals.data || decimals.isError) && (prefs.data || prefs.isError) && (
+              // "+ New" beside a ledger box opens Ledger Creation over the page, keeping it.
+              <PageAccessProvider page={page}>
+                <NewLedgerHost>{allowed ? <Outlet /> : <NoAccess />}</NewLedgerHost>
+              </PageAccessProvider>
+            )}
           </main>
         </div>
       </div>
@@ -280,6 +317,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
     .filter(Boolean);
   const screenSlug = segments[0] === 'section' ? undefined : segments[0];
   const sectionSlug = segments[0] === 'section' ? segments[1] : undefined;
+  const access = useAccess();
   const here = sectionSlug
     ? findSection(sectionSlug)?.label
     : screenSlug
@@ -331,6 +369,11 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       </span>
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
         {NAV.map((s, i) => {
+          // Role Permissions: only the pages this user may open, and sections that have any.
+          const groups = s.groups
+            .map((g) => ({ ...g, items: g.items.filter((l) => access.view(l)) }))
+            .filter((g) => g.items.length);
+          if (i === 0 ? !access.view('Dashboard') : !groups.length) return null;
           const on = s.label === here;
           const row = `grid min-h-11 w-full grid-cols-[26px_22px_minmax(0,1fr)] items-center gap-3 pl-3 pr-4 text-[15px] ${
             on ? 'bg-accent font-semibold' : ''
@@ -382,9 +425,9 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
                   {inner}
                 </Link>
               )}
-              {on && s.groups.length > 0 && (
+              {on && groups.length > 0 && (
                 <div className="flex flex-col pb-2.5 pt-0.5">
-                  {s.groups.map((g) => (
+                  {groups.map((g) => (
                     <div key={g.label || s.label} className="flex flex-col">
                       {g.label && (
                         <span className="pb-1 pl-[98px] pr-4 pt-2.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
@@ -487,13 +530,15 @@ function QuickFind({
     }
   }, [open]);
 
+  const access = useAccess();
   const needle = q.trim().toLowerCase();
   const hits = ALL_ITEMS.filter(
     (i) =>
-      !needle ||
+      access.view(i.label) &&
+      (!needle ||
       i.label.toLowerCase().includes(needle) ||
       i.section.toLowerCase().includes(needle) ||
-      i.group.toLowerCase().includes(needle),
+      i.group.toLowerCase().includes(needle)),
   );
 
   return (
@@ -556,5 +601,18 @@ function QuickFind({
         ↑↓ Navigate&nbsp;&nbsp;•&nbsp;&nbsp;Enter Open&nbsp;&nbsp;•&nbsp;&nbsp;Esc Close
       </div>
     </Dialog>
+  );
+}
+
+/** In place of a page this user may not open (Role Permissions). */
+function NoAccess() {
+  return (
+    <section className="ledger-paper flex min-h-full flex-col items-center justify-center gap-3 border border-border px-6 py-16 text-center">
+      <span className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
+        Role Permissions
+      </span>
+      <p className="m-0 max-w-[420px] font-serif text-2xl">{permissionMessages.noAccess}</p>
+      <p className="m-0 text-sm text-muted-foreground">Ask your Admin if you need it.</p>
+    </section>
   );
 }

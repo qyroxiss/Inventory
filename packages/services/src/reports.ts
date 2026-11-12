@@ -4,17 +4,30 @@
 import {
   VCHR_KINDS,
   balanceSheet,
+  ledgerStatement,
   openingStockValue,
+  registerItem,
+  type RegisterItem,
+  type RegisterMove,
+  type RegisterShow,
+  valueItem,
+  type StockMove,
+  type ValuationMethod,
+  outstandingBills,
   profitAndLoss,
   round2,
   stockRate,
+  trialBalance,
+  type BillRef,
   type LedgerBalance,
   type ReportGroup,
+  type StatementLine,
 } from '@qi/core';
-import { and, asc, desc, eq, gt, gte, lte, schema, sql, type Db } from '@qi/db';
+import { and, asc, desc, eq, gt, gte, inArray, lte, schema, sql, type Db } from '@qi/db';
 
 const {
   accountGroups,
+  billRefs,
   ledgers,
   purchaseLines,
   purchases,
@@ -65,22 +78,27 @@ export type StockSummaryRow = {
   name: string;
   unit: string;
   opening: number;
+  /** The opening stock's value by the chosen method. */
+  openingValue: number;
   inward: number;
   outward: number;
   closing: number;
+  /** Closing value over closing quantity. */
   rate: number;
   value: number;
 };
 
 /** Per active item: quantity at the start of the period (opening stock plus every movement
- *  before it), inward and outward within it, closing quantity, and its value at MDA's rate. With
- *  a godown, only that godown's movements count, and the item's opening stock (which carries no
- *  godown) is left out. */
+ *  before it), inward and outward within it, closing quantity, and the opening and closing
+ *  values by the chosen method (Opening Rate, Average, FIFO or MRP; user's request,
+ *  2026-11-10). With a godown, only that godown's movements count, and the item's opening
+ *  stock (which carries no godown) is left out. */
 export async function stockSummary(
   db: Db,
   bookId: string,
-  p: Period & { godown?: string | null },
+  p: Period & { godown?: string | null; method?: ValuationMethod },
 ): Promise<StockSummaryRow[]> {
+  const method = p.method ?? 'average';
   const items = await db
     .select()
     .from(stockItems)
@@ -88,37 +106,136 @@ export async function stockSummary(
     .orderBy(asc(stockItems.partName));
   const where = [eq(stockTrn.bookId, bookId), lte(stockTrn.trnDate, p.to)];
   if (p.godown) where.push(eq(stockTrn.godownCode, p.godown));
-  const moved = await db
+  const rows = await db
     .select({
       code: stockTrn.partCode,
-      before: sql<string>`coalesce(sum(case when ${stockTrn.trnDate} < ${p.from} then ${stockTrn.inQty} - ${stockTrn.outQty} else 0 end), 0)`,
-      inward: sql<string>`coalesce(sum(case when ${stockTrn.trnDate} >= ${p.from} then ${stockTrn.inQty} else 0 end), 0)`,
-      outward: sql<string>`coalesce(sum(case when ${stockTrn.trnDate} >= ${p.from} then ${stockTrn.outQty} else 0 end), 0)`,
+      date: sql<string>`${stockTrn.trnDate}::text`,
+      vchrType: stockTrn.vchrType,
+      inQty: stockTrn.inQty,
+      outQty: stockTrn.outQty,
+      rate: stockTrn.rate,
     })
     .from(stockTrn)
-    .where(and(...where))
-    .groupBy(stockTrn.partCode);
-  const byCode = new Map(moved.map((m) => [m.code, m]));
+    .where(and(...where));
+  const byCode = new Map<string, StockMove[]>();
+  for (const r of rows) {
+    const list = byCode.get(r.code) ?? [];
+    list.push({
+      date: r.date,
+      vchrType: r.vchrType ?? '',
+      inQty: Number(r.inQty),
+      outQty: Number(r.outQty),
+      rate: Number(r.rate),
+    });
+    byCode.set(r.code, list);
+  }
   const last = await lastPurchaseRates(db, bookId, p.to);
   return items.map((i) => {
-    const m = byCode.get(i.partCode);
-    const opening = round2((p.godown ? 0 : Number(i.opQty)) + Number(m?.before ?? 0));
-    const inward = round2(Number(m?.inward ?? 0));
-    const outward = round2(Number(m?.outward ?? 0));
-    const closing = round2(opening + inward - outward);
-    const rate = stockRate(Number(i.purRate), Number(i.saleRate), last.get(i.partCode));
+    const moves = byCode.get(i.partCode) ?? [];
+    const opQty = p.godown ? 0 : Number(i.opQty);
+    const v = valueItem(
+      method,
+      {
+        opQty,
+        opRate: Number(i.opQty) > 0 ? Number(i.opValue) / Number(i.opQty) : 0,
+        mrp: Number(i.mrp),
+        fallback: stockRate(Number(i.purRate), Number(i.saleRate), last.get(i.partCode)),
+      },
+      moves,
+      p.from,
+    );
+    const within = moves.filter((m) => m.date >= p.from);
+    const inward = round2(within.reduce((a, m) => a + m.inQty, 0));
+    const outward = round2(within.reduce((a, m) => a + m.outQty, 0));
     return {
       code: i.partCode,
       name: i.partName,
       unit: i.unit ?? '',
-      opening,
+      opening: round2(v.opening.qty),
+      openingValue: v.opening.value,
       inward,
       outward,
-      closing,
-      rate,
-      value: round2(closing * rate),
+      closing: round2(v.closing.qty),
+      rate: v.closing.qty > 0 ? round2(v.closing.value / v.closing.qty) : 0,
+      value: v.closing.value,
     };
   });
+}
+
+// ── Stock Register ─────────────────────────────────────────────────────────────
+
+/** Each chosen item's movements in the period, run like a ledger (core/stock-register.ts).
+ *  No codes means every active item; then items with no stock and no rows are left out. The
+ *  party is the voucher's ledger, else the sale's customer name, else the narration. */
+export async function stockRegister(
+  db: Db,
+  bookId: string,
+  p: Period & { show: RegisterShow; codes?: string[] },
+): Promise<RegisterItem[]> {
+  const itemWhere = [eq(stockItems.bookId, bookId)];
+  if (p.codes?.length) itemWhere.push(inArray(stockItems.partCode, p.codes));
+  else itemWhere.push(eq(stockItems.isActive, true));
+  const items = await db
+    .select()
+    .from(stockItems)
+    .where(and(...itemWhere))
+    .orderBy(asc(stockItems.partName));
+  if (!items.length) return [];
+  const rows = await db
+    .select({
+      code: stockTrn.partCode,
+      date: sql<string>`${stockTrn.trnDate}::text`,
+      vchrType: stockTrn.vchrType,
+      billNo: stockTrn.vchrNo,
+      party: ledgers.accName,
+      custName: sales.custName,
+      narration: vouchers.narration,
+      inQty: stockTrn.inQty,
+      outQty: stockTrn.outQty,
+      rate: stockTrn.rate,
+      value: stockTrn.value,
+    })
+    .from(stockTrn)
+    .leftJoin(vouchers, eq(vouchers.id, stockTrn.voucherId))
+    .leftJoin(ledgers, and(eq(ledgers.bookId, bookId), eq(ledgers.accCode, vouchers.partyCode)))
+    .leftJoin(sales, eq(sales.voucherId, stockTrn.voucherId))
+    .where(
+      and(
+        eq(stockTrn.bookId, bookId),
+        lte(stockTrn.trnDate, p.to),
+        inArray(
+          stockTrn.partCode,
+          items.map((i) => i.partCode),
+        ),
+      ),
+    )
+    .orderBy(asc(stockTrn.trnDate), asc(vouchers.createdAt), asc(stockTrn.vchrNo));
+  const byCode = new Map<string, RegisterMove[]>();
+  for (const r of rows) {
+    const list = byCode.get(r.code) ?? [];
+    list.push({
+      date: r.date,
+      vchrType: r.vchrType ?? '',
+      billNo: r.billNo ?? '',
+      particulars: r.party || r.custName || r.narration || '',
+      inQty: Number(r.inQty),
+      outQty: Number(r.outQty),
+      rate: Number(r.rate),
+      amount: Number(r.value),
+    });
+    byCode.set(r.code, list);
+  }
+  const out = items.map((i) =>
+    registerItem(
+      { code: i.partCode, name: i.partName, unit: i.unit ?? '', opQty: Number(i.opQty) },
+      byCode.get(i.partCode) ?? [],
+      p.from,
+      p.show,
+    ),
+  );
+  return p.codes?.length === 1
+    ? out
+    : out.filter((r) => r.lines.length || r.opening || r.closing);
 }
 
 /** Opening stock (the items' opening values) and closing stock as on a date, at the stock rate. */
@@ -320,4 +437,174 @@ export async function balanceSheetReport(db: Db, bookId: string, to: string) {
   ]);
   const pl = profitAndLoss(balances, groups, stock.opening, stock.closing);
   return balanceSheet(balances, groups, pl.pl.net, stock.closing);
+}
+
+// ── Ledger Statement, Trial Balance, Purchase Register, Outstanding ─────────────
+// Added 2026-10-25 (WORKFLOW Phase 6; MDA has none of them). Active vouchers only.
+
+/** One ledger's entries in the period with a running balance, starting from its balance on
+ *  the day before (opening balance ± every earlier entry). The particulars are the account on
+ *  the other side of each voucher. */
+export async function ledgerStatementReport(db: Db, bookId: string, accCode: string, p: Period) {
+  const [ledger] = await db
+    .select()
+    .from(ledgers)
+    .where(and(eq(ledgers.bookId, bookId), eq(ledgers.accCode, accCode)));
+  if (!ledger) return null;
+  const active = and(eq(vouchers.bookId, bookId), eq(vouchers.status, 'Active'));
+  const [before] = await db
+    .select({
+      bal: sql<string>`coalesce(sum(${voucherLines.drAmount} - ${voucherLines.crAmount}), 0)`,
+    })
+    .from(voucherLines)
+    .innerJoin(vouchers, eq(vouchers.id, voucherLines.voucherId))
+    .where(and(active, eq(voucherLines.accCode, accCode), sql`${vouchers.vchrDate} < ${p.from}`));
+  const op = Number(ledger.opBal);
+  const opening = round2((ledger.drCr === 'Cr' ? -op : op) + Number(before?.bal ?? 0));
+  const rows = await db
+    .select({
+      date: sql<string>`${vouchers.vchrDate}::text`,
+      vchrNo: vouchers.vchrNo,
+      type: vouchers.vchrType,
+      narration: vouchers.narration,
+      debit: voucherLines.drAmount,
+      credit: voucherLines.crAmount,
+      // The first account on the other side of the same voucher.
+      other: sql<string | null>`(select l.acc_name from ${voucherLines} o
+        join ${ledgers} l on l.book_id = ${vouchers.bookId} and l.acc_code = o.acc_code
+        where o.voucher_id = ${vouchers.id} and o.acc_code <> ${accCode}
+          and ((${voucherLines.drAmount} > 0 and o.cr_amount > 0)
+            or (${voucherLines.crAmount} > 0 and o.dr_amount > 0))
+        order by o.line_no limit 1)`,
+    })
+    .from(voucherLines)
+    .innerJoin(vouchers, eq(vouchers.id, voucherLines.voucherId))
+    .where(
+      and(
+        active,
+        eq(voucherLines.accCode, accCode),
+        gte(vouchers.vchrDate, p.from),
+        lte(vouchers.vchrDate, p.to),
+      ),
+    )
+    .orderBy(asc(vouchers.vchrDate), asc(vouchers.createdAt), asc(voucherLines.lineNo));
+  const lines: StatementLine[] = rows.map((r) => ({
+    date: r.date,
+    vchrNo: r.vchrNo,
+    type: VCHR_KINDS[r.type]?.[0] ?? r.type,
+    particulars: r.other ?? '',
+    narration: r.narration ?? '',
+    debit: Number(r.debit),
+    credit: Number(r.credit),
+  }));
+  return {
+    ledger: { accCode: ledger.accCode, accName: ledger.accName },
+    ...ledgerStatement(opening, lines),
+  };
+}
+
+/** Every ledger's balance as on `to`, Debit or Credit, grouped. */
+export async function trialBalanceReport(db: Db, bookId: string, to: string) {
+  const [balances, groups] = await Promise.all([
+    ledgerBalancesAsOn(db, bookId, to),
+    groupsOf(db, bookId),
+  ]);
+  return trialBalance(balances, groups);
+}
+
+export type PurchaseRegisterRow = {
+  billNo: string;
+  billDate: string;
+  suppName: string;
+  gstin: string;
+  suppInvNo: string;
+  taxable: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  freight: number;
+  roundOff: number;
+  net: number;
+  status: string;
+};
+
+export async function purchaseRegister(
+  db: Db,
+  bookId: string,
+  p: Period & { cancelled?: boolean },
+): Promise<PurchaseRegisterRow[]> {
+  const where = [
+    eq(purchases.bookId, bookId),
+    gte(purchases.billDate, p.from),
+    lte(purchases.billDate, p.to),
+  ];
+  if (!p.cancelled) where.push(eq(purchases.status, 'Active'));
+  const rows = await db
+    .select({ p: purchases, name: ledgers.accName, gstin: ledgers.gstin })
+    .from(purchases)
+    .leftJoin(
+      ledgers,
+      and(eq(ledgers.bookId, purchases.bookId), eq(ledgers.accCode, purchases.suppCode)),
+    )
+    .where(and(...where))
+    .orderBy(asc(purchases.billDate), asc(purchases.billNo));
+  return rows.map(({ p: b, name, gstin }) => ({
+    billNo: b.billNo,
+    billDate: b.billDate,
+    suppName: name ?? b.suppCode,
+    gstin: (gstin ?? '').trim(),
+    suppInvNo: b.suppInvNo ?? '',
+    taxable: Number(b.subTotal),
+    cgst: Number(b.cgstAmt),
+    sgst: Number(b.sgstAmt),
+    igst: Number(b.igstAmt),
+    freight: Number(b.freight),
+    roundOff: Number(b.roundOff),
+    net: Number(b.netAmount),
+    status: b.status,
+  }));
+}
+
+/** Bills not yet fully paid as on `today`: sales still to be received, purchases still to be
+ *  paid, by the dashboard's pending-bill rule. A bill raised by a purchase is payable. */
+export async function outstandingReport(db: Db, bookId: string, today: string) {
+  const rows = await db
+    .select({
+      accCode: billRefs.accCode,
+      accName: ledgers.accName,
+      billNo: billRefs.billNo,
+      refType: billRefs.refType,
+      billDate: billRefs.billDate,
+      amount: billRefs.amount,
+      creditDays: sql<number>`coalesce(${ledgers.creditDays}, 0)`,
+      vchrType: vouchers.vchrType,
+      vchrDate: sql<string>`${vouchers.vchrDate}::text`,
+    })
+    .from(billRefs)
+    .innerJoin(vouchers, eq(vouchers.id, billRefs.voucherId))
+    .leftJoin(
+      ledgers,
+      and(eq(ledgers.bookId, vouchers.bookId), eq(ledgers.accCode, billRefs.accCode)),
+    )
+    // Only what had happened by the As on date: later bills and payments don't count yet
+    // (2026-11-11 audit).
+    .where(
+      and(
+        eq(vouchers.bookId, bookId),
+        eq(vouchers.status, 'Active'),
+        lte(vouchers.vchrDate, today),
+      ),
+    );
+  const refs: BillRef[] = rows.map((r) => ({
+    accCode: r.accCode,
+    accName: r.accName ?? r.accCode,
+    billNo: r.billNo,
+    refType: r.refType ?? 'New',
+    // Bill dates are ISO when this app wrote them; an MDA import may hold another form.
+    billDate: /^\d{4}-\d{2}-\d{2}$/.test(r.billDate ?? '') ? r.billDate! : r.vchrDate,
+    amount: Number(r.amount),
+    creditDays: Number(r.creditDays),
+    side: r.vchrType === 'PUR' ? 'payable' : 'receivable',
+  }));
+  return outstandingBills(refs, today);
 }

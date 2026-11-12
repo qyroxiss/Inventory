@@ -14,6 +14,7 @@ import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { MessageDialog } from '../../components/Dialog.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { setDecimals } from '../../format.ts';
+import { setPreferences, type Preferences } from '../../prefs.ts';
 import { ImportFromMda } from '../books/ImportFromMda.tsx';
 import { BaseCurrency, FormSection, fromRecord } from '../company/CompanyScreen.tsx';
 import {
@@ -34,6 +35,7 @@ import {
   type Col,
 } from '../reports/shared.tsx';
 import { boxClass, dmy } from '../transactions/shared.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 const BTN =
   'flex h-11 cursor-pointer items-center justify-center border-[1.5px] border-foreground px-4 text-[15px] font-semibold disabled:opacity-50';
@@ -74,7 +76,9 @@ function Tabs<K extends string>({
 // ── Company Settings ───────────────────────────────────────────────────────────
 
 export function CompanySettingsScreen() {
-  const [tab, setTab] = useState<'company' | 'numbering' | 'decimals'>('company');
+  const [tab, setTab] = useState<'company' | 'numbering' | 'decimals' | 'entry' | 'print'>(
+    'company',
+  );
   return (
     <ReportPage
       section="tools"
@@ -89,6 +93,8 @@ export function CompanySettingsScreen() {
             ['company', 'Company Details'],
             ['numbering', 'Voucher Numbering'],
             ['decimals', 'Decimal Places'],
+            ['entry', 'Item Entry'],
+            ['print', 'Print Layout'],
           ]}
         />
       }
@@ -97,8 +103,10 @@ export function CompanySettingsScreen() {
         <CompanyDetails />
       ) : tab === 'numbering' ? (
         <Numbering />
-      ) : (
+      ) : tab === 'decimals' ? (
         <DecimalPlaces />
+      ) : (
+        <PreferenceForm part={tab} />
       )}
     </ReportPage>
   );
@@ -313,7 +321,7 @@ const TABLE_NAMES: Record<string, string> = {
   stockItems: 'Stock items', voucherSeries: 'Number series', vouchers: 'Vouchers', voucherLines: 'Voucher lines',
   billRefs: 'Bill references', voucherItems: 'Item lines', stockJournalLines: 'Stock journal lines',
   stockTrn: 'Stock movements', purchases: 'Purchase bills', purchaseLines: 'Purchase lines', sales: 'Sale bills',
-  saleLines: 'Sale lines', auditLog: 'Log entries',
+  saleLines: 'Sale lines', returns: 'Returns', returnLines: 'Return lines', auditLog: 'Log entries',
 }; // prettier-ignore
 
 export function BackupScreen() {
@@ -397,6 +405,9 @@ export function BackupScreen() {
 // ── Import Data ────────────────────────────────────────────────────────────────
 
 export function ImportDataScreen() {
+  // Role Permissions: a restore runs before any book is open, so the server can't check it;
+  // on View only the button stays off.
+  const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -463,7 +474,7 @@ export function ImportDataScreen() {
           <div>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !canEdit}
               onClick={() => input.current?.click()}
               className={BTN}
             >
@@ -676,6 +687,104 @@ function DecimalPlaces() {
         Applies to every screen, report and printed bill of this company. Only what is shown and
         printed changes; GST, totals and the books are always worked out to the paisa. Only an Admin
         can change these.
+      </p>
+    </div>
+  );
+}
+
+/** Item Entry (which of Item Name / Item Code comes first on Purchase and Sales) or Print Layout
+ *  (paper size and orientation for every print). One company setting each; Admin only. */
+function PreferenceForm({ part }: { part: 'entry' | 'print' }) {
+  const queryClient = useQueryClient();
+  const q = useQuery({
+    queryKey: ['preferences'],
+    queryFn: () => unwrap(api.api.settings.preferences.$get()),
+  });
+  const [form, setForm] = useState<Preferences | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (q.data && !form) setForm(q.data);
+  }, [q.data]);
+  if (!form || !q.data) return null;
+
+  const changed =
+    part === 'entry'
+      ? form.itemEntry !== q.data.itemEntry
+      : form.paperSize !== q.data.paperSize || form.paperOrientation !== q.data.paperOrientation;
+  const update = async () => {
+    setBusy(true);
+    try {
+      // Only this tab's choice is sent changed; the other keeps what is saved.
+      const json: Preferences =
+        part === 'entry'
+          ? { ...q.data!, itemEntry: form.itemEntry }
+          : { ...q.data!, paperSize: form.paperSize, paperOrientation: form.paperOrientation };
+      const saved = await unwrap(api.api.settings.preferences.$put({ json }));
+      setPreferences(saved);
+      setForm(saved);
+      await queryClient.invalidateQueries({ queryKey: ['preferences'] });
+      toast(part === 'entry' ? 'Item entry updated' : 'Print layout updated');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : String(err), 'error');
+    }
+    setBusy(false);
+  };
+  const select = <K extends keyof Preferences>(
+    id: K,
+    label: string,
+    choices: [Preferences[K], string][],
+  ) => (
+    <label htmlFor={`pref-${id}`} className="flex flex-col gap-1">
+      <span className="text-sm font-semibold">{label}</span>
+      <select
+        id={`pref-${id}`}
+        value={form[id]}
+        onChange={(e) => setForm({ ...form, [id]: e.target.value })}
+        className={boxClass()}
+      >
+        {choices.map(([v, text]) => (
+          <option key={v} value={v}>
+            {text}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+  return (
+    <div className="flex max-w-[560px] flex-col gap-4">
+      {part === 'entry' ? (
+        select('itemEntry', 'Item entry by default', [
+          ['name', 'Name  (Item Name first, then Item Code)'],
+          ['code', 'Code  (Item Code first, then Item Name)'],
+        ])
+      ) : (
+        <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+          {select('paperSize', 'Paper size', [
+            ['A4', 'A4  (210 × 297 mm)'],
+            ['A5', 'A5  (148 × 210 mm)'],
+            ['Letter', 'Letter  (8.5 × 11 in)'],
+            ['Legal', 'Legal  (8.5 × 14 in)'],
+          ])}
+          {select('paperOrientation', 'Orientation', [
+            ['portrait', 'Portrait'],
+            ['landscape', 'Landscape'],
+          ])}
+        </div>
+      )}
+      <div>
+        <button
+          type="button"
+          disabled={!changed || busy}
+          onClick={() => void update()}
+          className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {busy ? 'Updating...' : 'Update'}
+        </button>
+      </div>
+      <p className="m-0 text-xs text-muted-foreground">
+        {part === 'entry'
+          ? 'Purchase Invoice and Sales Invoice open with this box first and show the grid in the same order (SNo. | Name | Code, or SNo. | Code | Name). The Code / Name switch on the bill still changes it for that bill. Only an Admin can change this.'
+          : 'Every print in the software (bills, vouchers, reports, GST reports and masters) uses this paper size and orientation. Only an Admin can change this.'}
       </p>
     </div>
   );

@@ -33,6 +33,7 @@ export const stockItemMessages = {
   noneFound: 'No stock items saved yet.',
   /** Purchase Rate and Sale Rate are added here; MDA's table has them but its form doesn't. */
   invalidRate: 'Enter a valid rate',
+  invalidQty: 'Enter a valid quantity',
 };
 
 /** A rate box: blank is 0; otherwise a number of 0 or more with up to 2 decimals. */
@@ -42,16 +43,30 @@ export const rateValue = (v: string | undefined): number | null => {
   return /^\d+(\.\d{0,2})?$|^\.\d{1,2}$/.test(s) ? Number(s) : null;
 };
 
+/** A quantity box (Opening Stock): blank is 0; otherwise 0 or more with up to 3 decimals. */
+export const qtyValue = (v: string | undefined): number | null => {
+  const s = (v ?? '').trim();
+  if (!s) return 0;
+  return /^\d+(\.\d{0,3})?$|^\.\d{1,3}$/.test(s) ? Number(s) : null;
+};
+
 export function stockItemFieldErrors(input: {
   code?: string;
   name?: string;
   purRate?: string;
   saleRate?: string;
+  opQty?: string;
+  opRate?: string;
+  mrp?: string;
 }) {
   const errors: Record<string, string> = {};
   if (!(input.code ?? '').trim()) errors.code = stockItemMessages.required;
   if (!(input.name ?? '').trim()) errors.name = stockItemMessages.required;
   if (rateValue(input.purRate) === null) errors.purRate = stockItemMessages.invalidRate;
   if (rateValue(input.saleRate) === null) errors.saleRate = stockItemMessages.invalidRate;
+  // Opening Stock, Opening Rate and MRP (added at the user's request, 2026-11-10).
+  if (qtyValue(input.opQty) === null) errors.opQty = stockItemMessages.invalidQty;
+  if (rateValue(input.opRate) === null) errors.opRate = stockItemMessages.invalidRate;
+  if (rateValue(input.mrp) === null) errors.mrp = stockItemMessages.invalidRate;
   return errors;
 }
