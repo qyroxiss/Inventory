@@ -8,12 +8,17 @@ import {
   createStockItem,
   createYear,
   dayBook,
+  ledgerStatementReport,
+  outstandingReport,
   profitLossReport,
+  purchaseRegister,
   salesRegister,
   savePurchase,
   saveSale,
   saveVoucher,
+  stockRegister,
   stockSummary,
+  trialBalanceReport,
   type PostingContext,
 } from '../src/index.ts';
 
@@ -80,6 +85,20 @@ describe('Reports', () => {
     expect(later).toMatchObject({ opening: 20, inward: 0, outward: 5, closing: 15 });
   });
 
+  test('Stock Register: the item run like a ledger, with Purchase/Sales views', async () => {
+    const [r] = await stockRegister(db, ctx.bookId, { ...year, show: 'all', codes: ['IT01'] });
+    expect(r).toMatchObject({ code: 'IT01', opening: 0, inward: 20, outward: 5, closing: 15 });
+    expect(r!.lines.map((l) => [l.date, l.vchrType, l.billNo, l.particulars, l.inQty, l.outQty, l.amount, l.balance])).toEqual([
+      ['2026-05-01', 'PUR', 'PB-0001', 'Bharat Suppliers', 20, 0, 1600, 20],
+      ['2026-05-10', 'SAL', 'SB-0001', 'Acme Traders', 0, 5, 600, 15],
+    ]); // prettier-ignore
+    const [sales] = await stockRegister(db, ctx.bookId, { from: '2026-05-05', to: year.to, show: 'sales' });
+    expect(sales).toMatchObject({ opening: 20, inward: 0, outward: 5, closing: 15 });
+    expect(sales!.lines.map((l) => l.billNo)).toEqual(['SB-0001']);
+    const [pur] = await stockRegister(db, ctx.bookId, { from: '2026-05-05', to: year.to, show: 'purchase' });
+    expect(pur).toMatchObject({ opening: 20, closing: 15, lines: [] });
+  });
+
   test('Day Book: vouchers in the period, with their Dr/Cr totals', async () => {
     const rows = await dayBook(db, ctx.bookId, year);
     expect(rows.map((r) => [r.date, r.vchrNo, r.typeName, r.particulars, r.debit])).toEqual([
@@ -135,7 +154,7 @@ describe('Reports', () => {
     expect(bs.total).toBe(11408);
   });
 
-  test('an item with no rates is valued at its last purchase price, as on the date', async () => {
+  test('Stock Summary values stock by the chosen method (2026-11-10)', async () => {
     await db.execute(sql`update stock_items set pur_rate = 0, sale_rate = 0`);
     // A later, dearer purchase: 10 kg @ 90 on 1 June.
     await savePurchase(db, ctx, {
@@ -144,11 +163,95 @@ describe('Reports', () => {
     }); // prettier-ignore
     const [may] = await stockSummary(db, ctx.bookId, { from: year.from, to: '2026-05-31' });
     expect(may).toMatchObject({ closing: 15, rate: 80, value: 1200 });
+    // 15 kg left @ 80 and 10 kg @ 90: 2,100 on average and on FIFO alike.
     const [june] = await stockSummary(db, ctx.bookId, year);
-    expect(june).toMatchObject({ closing: 25, rate: 90, value: 2250 });
+    expect(june).toMatchObject({ opening: 0, openingValue: 0, closing: 25, rate: 84, value: 2100 });
+    expect((await stockSummary(db, ctx.bookId, { ...year, method: 'fifo' }))[0]).toMatchObject({ value: 2100 });
+    // Opening stock of 5 kg @ 70 is the first lot; MRP values every kg at MRP.
+    await db.execute(sql`update stock_items set op_qty = 5, op_value = 350, mrp = 150`);
+    expect((await stockSummary(db, ctx.bookId, { ...year, method: 'fifo' }))[0]).toMatchObject({
+      // The 5 kg sold take the opening lot first: 20 kg @ 80 and 10 kg @ 90 remain.
+      opening: 5, openingValue: 350, closing: 30, value: 20 * 80 + 10 * 90,
+    }); // prettier-ignore
+    expect((await stockSummary(db, ctx.bookId, { ...year, method: 'opening' }))[0]).toMatchObject({ value: 30 * 70 });
+    expect((await stockSummary(db, ctx.bookId, { ...year, method: 'mrp' }))[0]).toMatchObject({ value: 30 * 150 });
+    // Profit & Loss takes the opening value as its Opening Stock.
+    expect((await profitLossReport(db, ctx.bookId, year.to)).trading.openingStock).toBe(350);
+    await db.execute(sql`update stock_items set op_qty = 0, op_value = 0`);
+    // Profit & Loss's closing stock is still at the last purchase price.
     expect((await profitLossReport(db, ctx.bookId, year.to)).trading.closingStock).toBe(2250);
-    // An item's own rate still comes first (MDA's rule).
-    await db.execute(sql`update stock_items set sale_rate = 120`);
-    expect((await stockSummary(db, ctx.bookId, year))[0]).toMatchObject({ rate: 120 });
   });
+});
+
+describe('Ledger reports (added 2026-10-25)', () => {
+  test('Trial Balance agrees: debits equal credits, no opening difference', async () => {
+    const t = await trialBalanceReport(db, ctx.bookId, year.to);
+    expect(t.difference).toBe(0);
+    expect(t.debit).toBe(t.credit);
+    expect(t.rows.find((r) => r.accName === 'Owner Capital')).toMatchObject({
+      debit: 0,
+      credit: 10000,
+    });
+    expect(t.rows.find((r) => r.accName === 'Bharat Suppliers')).toMatchObject({ credit: 1888 });
+    expect(t.rows.find((r) => r.accName === 'Rent')).toMatchObject({ debit: 500 });
+  });
+
+  test('Ledger Statement: opening, entries with the other side, running balance', async () => {
+    const s = await ledgerStatementReport(db, ctx.bookId, 'AC0003', year);
+    // Cash: 10,000 opening, + the 708 cash sale, - the 500 rent.
+    expect(s).toMatchObject({ opening: 10000, debit: 708, credit: 500, closing: 10208 });
+    expect(
+      s!.rows.map((r) => [r.date, r.type, r.particulars, r.debit, r.credit, r.balance]),
+    ).toEqual([
+      ['2026-05-10', 'Sales Invoice', 'Sales A/c', 708, 0, 10708],
+      ['2026-05-15', 'Journal Voucher', 'Rent', 0, 500, 10208],
+    ]);
+    // A period after the rent starts from the balance it left.
+    const later = await ledgerStatementReport(db, ctx.bookId, 'AC0003', {
+      from: '2026-06-01',
+      to: year.to,
+    });
+    expect(later).toMatchObject({ opening: 10208, closing: 10208 });
+    expect(later!.rows).toEqual([]);
+    expect(await ledgerStatementReport(db, ctx.bookId, 'NOPE', year)).toBeNull();
+  });
+
+  test('Purchase Register: bills with supplier, tax split and freight', async () => {
+    const [r] = await purchaseRegister(db, ctx.bookId, year);
+    expect(r).toMatchObject({
+      billNo: 'PB-0001',
+      suppName: 'Bharat Suppliers',
+      taxable: 1600,
+      cgst: 144,
+      sgst: 144,
+      igst: 0,
+      freight: 0,
+      net: 1888,
+    });
+  });
+
+  test('Outstanding: the unpaid purchase is payable, aged from its due date', async () => {
+    const open = await outstandingReport(db, ctx.bookId, '2026-06-30');
+    const bill = open.find((b) => b.billNo === 'PB-0001');
+    expect(bill).toMatchObject({
+      side: 'payable',
+      accName: 'Bharat Suppliers',
+      pending: 1888,
+      dueDate: '2026-05-01',
+      overdueDays: 60,
+    });
+  });
+
+  test('Outstanding counts only what had happened by its As on date (2026-11-11)', async () => {
+    // Before the bill, it isn't outstanding at all.
+    expect((await outstandingReport(db, ctx.bookId, '2026-04-30')).map((b) => b.billNo)).not.toContain('PB-0001');
+    // Paid in full on 10-07: still fully due as on 30-06, settled as on 31-07.
+    await saveVoucher(db, ctx, {
+      vchrType: 'PAY', date: '2026-07-10', partyCode: 'AC0001',
+      lines: [{ accCode: 'AC0001', dr: 1888, cr: 0 }, { accCode: 'AC0003', dr: 0, cr: 1888 }],
+      bills: [{ accCode: 'AC0001', billNo: 'PAY-001', refType: 'On Account', amount: 1888 }],
+    });
+    expect((await outstandingReport(db, ctx.bookId, '2026-06-30')).find((b) => b.billNo === 'PB-0001')).toMatchObject({ pending: 1888 });
+    expect((await outstandingReport(db, ctx.bookId, '2026-07-31')).find((b) => b.billNo === 'PB-0001')).toBeUndefined();
+  }); // prettier-ignore
 });

@@ -116,3 +116,59 @@ planned.
 - **The owner's choice (2026-10-07):** do both of these.
   - Add Purchase Rate and Sale Rate to the Stock Item form (see INVENTORY-MASTERS.md).
   - Value any item whose rates are still 0 at its last purchase price.
+
+## Added 2026-10-25: Ledger Statement, Trial Balance, Purchase Register, Outstanding
+
+These are from WORKFLOW Phase 6; MDA has none of them. All four count **Active vouchers only**.
+Screens: `apps/web/src/screens/reports/LedgerReports.tsx`. Queries: `packages/services/src/reports.ts`.
+Maths: `packages/core/src/reports.ts`.
+
+| Report | Filters | What it shows |
+|---|---|---|
+| **Ledger Statement** | Ledger (type to search), From, To | Opening balance (the ledger's opening ± every entry before From), then each entry: Date, Voucher No, Type, Particulars (the first account on the other side of the voucher), Narration, Debit, Credit, running Balance (Dr/Cr), and the closing balance |
+| **Trial Balance** | As on | Every ledger with a balance, in Debit or Credit, with its top-level group, sorted by group then name. If the opening balances don't agree, the gap shows as "Difference in Opening Balances", so both sides total |
+| **Purchase Register** | From, To, Show cancelled | Bills with supplier, GSTIN, supplier bill no., taxable, CGST/SGST/IGST, freight, round off, net |
+| **Outstanding** | As on, Receivable / Payable | Bills not fully paid, by the dashboard's pending-bill rule (LOGIC-SPEC): a party's settlements clear its bills oldest first. Due = bill date + the ledger's credit days. Ageing columns: Not due, 1-30, 31-60, 61-90 and Over 90 days past due. Bills from a purchase are payable; all others are receivable |
+
+**Tested:**
+- `packages/core/test/ledger-reports.test.ts`
+- The hand-computed book in `packages/services/test/reports.test.ts`:
+  - The trial balance agrees.
+  - Cash shows 10,000 + 708 − 500 = 10,208.
+  - The purchase is payable and 60 days overdue on 30-06-2026.
+
+## Added 2026-11-11: Stock Register
+
+MDA has no Stock Register; the owner asked for one under Reports › Inventory Reports, after
+Stock Summary. Screen: `apps/web/src/screens/reports/StockRegister.tsx`. Query:
+`stockRegister` in `packages/services/src/reports.ts`. Maths: `packages/core/src/stock-register.ts`.
+API: `/api/reports/stock-register?from&to&show=all|purchase|sales[&items=CODE1,CODE2]`.
+Address: `/app/stock-register`.
+
+- **Filters:**
+  - From and To.
+  - Item: **Single** (type to search one item) or **Multiple**. Multiple opens a list with an
+    **All items** tick box and a tick box per item.
+  - Show: **All**, **Purchase** or **Sales**.
+- **Per item, like a ledger:** a heading (name · code · unit), Opening Balance, one row per
+  movement (Date · Type · Bill No · Particulars · Inward · Outward · Balance · Rate · Amount),
+  then Closing Balance with the Inward and Outward totals.
+- **How it's worked out:**
+  - Opening = the item's opening stock + every movement before From.
+  - Balance = the stock after each row; Closing = the stock on To.
+  - Particulars = the voucher's ledger, else the sale's customer name, else the narration.
+  - Every stock movement counts: Purchase/Sales Invoices, Purchase/Sales Returns and Stock
+    Journals. Cancelled documents have none.
+- **Show (owner's choice, 2026-11-11):** it only hides rows. Purchase shows Purchase Invoices
+  and Purchase Returns; Sales shows Sales Invoices and Sales Returns. Opening, Balance and
+  Closing stay the item's real stock, so the Balance column can step across hidden rows. The
+  closing line's Inward/Outward totals add up the rows shown.
+- **All items:** every active item that has stock or a movement; items with neither are left
+  out. A single item always shows, even when empty.
+- **Phones:** the table keeps all its columns and scrolls sideways inside itself.
+
+**Tested:** `packages/core/test/stock-register.test.ts`; the hand-computed book in
+`packages/services/test/reports.test.ts` (Basmati Rice: +20 from Bharat Suppliers on PB-0001,
+−5 to Acme Traders on SB-0001, closing 15; the Sales view from 05-05-2026 opens at 20). In the
+browser: single, multiple, All items and the three Show views; no page scroll at 1280×720,
+1366×768, 1920×1080, 1024, 820, 768, 390 and 360 widths.

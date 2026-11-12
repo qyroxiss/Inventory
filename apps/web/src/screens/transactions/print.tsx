@@ -1,21 +1,24 @@
 // Sales and Purchase Invoice printing. MDA never built it (its Sale Print button only says it
 // "arrives with the report module"); added at the user's request (2026-10-25). The flow is the
-// Receipt/Payment one: ask for the bill number, refuse a cancelled bill, show the A4 sheet with a
-// Print button. The sheet is a GST invoice: company, party, the items with their tax, the totals.
+// Receipt/Payment one: ask for the bill number, refuse a cancelled bill, show the sheet, then
+// MDA's "Export / Print" choice (2026-11-11): Printer, PDF, Excel or Word. The sheet follows the
+// user's sample bill (2026-11-09) on the paper chosen in Company Settings › Print Layout, scaled
+// to fit it (A5 included).
 
 import {
   GST_STATES,
   amountInWords,
-  brand,
   purcTotals,
   saleTotals,
   stateCodeOfName,
   type PurcLine,
 } from '@qi/core';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { faIN, fqIN } from '../../format.ts';
+import { PAGE_MARGIN_MM, paperMm } from '../../prefs.ts';
 import { dmy } from './shared.tsx';
 
 type SaleInvoice = NonNullable<
@@ -24,16 +27,103 @@ type SaleInvoice = NonNullable<
 type PurchaseInvoice = NonNullable<
   OkBody<Awaited<ReturnType<typeof api.api.purchases.print.$get>>>['invoice']
 >;
-type Printed = { kind: 'sale'; inv: SaleInvoice } | { kind: 'purchase'; inv: PurchaseInvoice };
-type Kind = Printed['kind'];
+type ReturnNote = NonNullable<
+  OkBody<Awaited<ReturnType<typeof api.api.returns.print.$get>>>['note']
+>;
+/** A return prints on the invoice sheet with its own title, boxes and remarks; the company is
+ *  the issuer, the party the recipient. */
+type NoteParts = { title: string; boxes: [string, string][][]; remarks: string };
+type Printed =
+  | { kind: 'sale'; inv: SaleInvoice; note?: NoteParts }
+  | { kind: 'purchase'; inv: PurchaseInvoice; note?: NoteParts };
+/** Sale, Purchase, or a return: PRT prints as a Debit Note, SRT as a Credit Note. */
+type Kind = 'sale' | 'purchase' | 'PRT' | 'SRT';
+
+const WORD: Record<Kind, string> = {
+  sale: 'Sale',
+  purchase: 'Purchase',
+  PRT: 'Debit Note',
+  SRT: 'Credit Note',
+};
+
+/** A return laid onto the sheet: a Purchase Return as a purchase-shaped document, a Sales Return
+ *  as a sale-shaped one, its bill discount share carried as an amount. */
+function fromReturn(kind: 'PRT' | 'SRT', n: ReturnNote): Printed {
+  const d = n.doc;
+  const title = WORD[kind];
+  const note: NoteParts = {
+    title,
+    boxes: [
+      [
+        [`${title} No.`, d.returnNo],
+        ['Dated', dmy(d.returnDate)],
+      ],
+      [
+        ['Original Invoice No.', d.againstBillNo],
+        ['Dated', d.againstBillDate ? dmy(d.againstBillDate) : ''],
+      ],
+    ],
+    remarks: d.narration,
+  };
+  const common = {
+    billNo: d.returnNo,
+    billDate: d.returnDate,
+    state: d.state,
+    isInterState: d.isInterState,
+    status: d.status,
+    lines: d.lines,
+  };
+  if (kind === 'PRT')
+    return {
+      kind: 'purchase',
+      note,
+      inv: {
+        company: n.company,
+        party: n.party,
+        bill: { ...common, suppCode: d.partyCode, suppName: d.partyName, narration: d.narration, freight: 0 },
+      } as unknown as PurchaseInvoice,
+    };
+  const cu = n.customer;
+  return {
+    kind: 'sale',
+    note,
+    inv: {
+      company: n.company,
+      party: n.party,
+      bill: {
+        ...common,
+        saleType: '',
+        custCode: d.partyCode,
+        custName: d.partyName,
+        address: cu?.address ?? '',
+        area: cu?.area ?? '',
+        city: cu?.city ?? '',
+        mobile: cu?.mobile ?? '',
+        gstNo: cu?.gstNo ?? '',
+        billDiscPct: 0,
+        billDiscAmt: d.billDisc,
+      },
+    } as unknown as SaleInvoice,
+  };
+}
 
 const BTN =
   'flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-[18px] text-sm font-semibold';
 const MAIN =
   'flex h-11 cursor-pointer items-center bg-primary px-[18px] text-sm font-semibold text-primary-foreground';
 
-/** Asks for the bill number (filled with the bill on screen, or the one just saved), then
- *  previews and prints it. */
+/** MDA's Export / Print choices (godown_master_page.dart `_ExportDialog`). */
+const OUTPUTS = [
+  ['printer', 'Printer', 'Send to system printer'],
+  ['pdf', 'Export PDF', 'Save as PDF file'],
+  ['whatsapp', 'WhatsApp', 'Share via WhatsApp'],
+  ['excel', 'Excel', 'Save as Excel file (.xlsx)'],
+  ['word', 'Word', 'Save as Word file (.doc)'],
+] as const;
+type Output = (typeof OUTPUTS)[number][0];
+
+/** Asks for the bill number (filled with the bill on screen, or the one just saved), previews
+ *  it, then prints or saves it. */
 export function PrintInvoice({
   kind,
   open,
@@ -45,11 +135,14 @@ export function PrintInvoice({
   defaultNo: string;
   onDone: () => void;
 }) {
-  const word = kind === 'sale' ? 'Sale' : 'Purchase';
+  const word = WORD[kind];
+  const isNote = kind === 'PRT' || kind === 'SRT';
   const [no, setNo] = useState(defaultNo);
   const [asking, setAsking] = useState(false);
   const [info, setInfo] = useState<{ title: [string, string]; text: string } | null>(null);
   const [preview, setPreview] = useState<Printed | null>(null);
+  const [choosing, setChoosing] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [printing, setPrinting] = useState<Printed | null>(null);
 
   useEffect(() => {
@@ -59,15 +152,18 @@ export function PrintInvoice({
     }
   }, [open, defaultNo]);
 
-  // Print once the sheet is on the page and the preview has closed; then tidy up.
+  // Print once the sheet is on the page and the preview has closed; then tidy up. While it
+  // prints, only the sheet shows (styles.css `printing-sheet`).
   useEffect(() => {
     if (!printing) return;
+    document.body.classList.add('printing-sheet');
     const after = () => setPrinting(null);
     window.addEventListener('afterprint', after, { once: true });
     const t = setTimeout(() => window.print(), 50);
     return () => {
       clearTimeout(t);
       window.removeEventListener('afterprint', after);
+      document.body.classList.remove('printing-sheet');
     };
   }, [printing]);
 
@@ -75,6 +171,7 @@ export function PrintInvoice({
     setAsking(false);
     setInfo(null);
     setPreview(null);
+    setChoosing(false);
     onDone();
   };
 
@@ -83,7 +180,11 @@ export function PrintInvoice({
     setAsking(false);
     if (!n) return finish();
     const found: Printed | null =
-      kind === 'sale'
+      kind === 'PRT' || kind === 'SRT'
+        ? await unwrap(api.api.returns.print.$get({ query: { kind, no: n } })).then((r) =>
+            r.note ? fromReturn(kind, r.note) : null,
+          )
+        : kind === 'sale'
         ? await unwrap(api.api.sales.print.$get({ query: { no: n } })).then((r) =>
             r.invoice ? { kind: 'sale' as const, inv: r.invoice } : null,
           )
@@ -93,18 +194,52 @@ export function PrintInvoice({
     if (!found) {
       setInfo({
         title: ['Not', 'Found'],
-        text: `No ${word.toLowerCase()} bill found with number "${n}".`,
+        text: `No ${word.toLowerCase()}${isNote ? '' : ' bill'} found with number "${n}".`,
       });
     } else if (found.inv.bill.status === 'Cancelled') {
       setInfo({
-        title: ['Cancelled', 'Bill'],
-        text: `${word} bill "${n}" has been cancelled and cannot be printed.`,
+        title: ['Cancelled', isNote ? 'Return' : 'Bill'],
+        text: `${word}${isNote ? '' : ' bill'} "${n}" has been cancelled and cannot be printed.`,
       });
     } else {
       setPreview(found);
     }
   }
 
+  async function output(o: Output) {
+    const v = preview;
+    if (!v) return;
+    if (o === 'printer') {
+      finish();
+      setPrinting(v);
+      return;
+    }
+    // WhatsApp only opens WhatsApp (Web on a computer, the app on a phone); no file is saved.
+    if (o === 'whatsapp') {
+      openWhatsApp();
+      finish();
+      return;
+    }
+    setBusy(true);
+    try {
+      const m = sheetModel(v);
+      const x = await import('./invoice-export.tsx');
+      if (o === 'pdf') await x.savePdf(m);
+      else if (o === 'excel') await x.saveExcel(m);
+      else x.saveWord(m);
+      finish();
+    } catch (err) {
+      setChoosing(false);
+      setInfo({
+        title: ['Export', 'Failed'],
+        text: `The file could not be made: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+    setBusy(false);
+  }
+
+  const size = pxSize();
+  const fit = sheetFit();
   return (
     <>
       <Dialog open={asking} onClose={finish} title={[word, 'Print']} className="w-[440px]">
@@ -116,14 +251,14 @@ export function PrintInvoice({
           }}
         >
           <label htmlFor="invoice-print-no" className="text-sm text-muted-foreground">
-            Enter the {word.toLowerCase()} bill number to print.
+            Enter the {word.toLowerCase()}{isNote ? "" : " bill"} number to print.
           </label>
           <input
             id="invoice-print-no"
             autoFocus
             value={no}
             onChange={(e) => setNo(e.target.value.toUpperCase())}
-            placeholder={kind === 'sale' ? 'e.g. SB-0001' : 'e.g. PB-0001'}
+            placeholder={`e.g. ${{ sale: 'SB-0001', purchase: 'PB-0001', PRT: 'PRT-001', SRT: 'SRT-001' }[kind]}`}
             className="h-11 field-box px-3 font-mono text-base outline-none focus-visible:outline-none"
           />
           <div className="flex justify-end gap-2.5 pt-1">
@@ -146,6 +281,7 @@ export function PrintInvoice({
       />
 
       <Dialog
+        // Stays open under the Export / Print choice: closing it would end the whole flow.
         open={!!preview}
         onClose={finish}
         title={[preview ? titleOf(preview) : '', '']}
@@ -153,8 +289,8 @@ export function PrintInvoice({
       >
         <div className="max-h-[70vh] overflow-auto bg-neutral-200 p-4">
           {preview && (
-            <div className="mx-auto w-[794px] max-w-none bg-white p-[30px] shadow">
-              <Sheet p={preview} />
+            <div className="mx-auto w-fit bg-white p-[30px] shadow">
+              <Sheet m={sheetModel(preview)} {...size} />
             </div>
           )}
         </div>
@@ -162,59 +298,148 @@ export function PrintInvoice({
           <button type="button" onClick={finish} className={BTN}>
             Close
           </button>
-          <button
-            type="button"
-            className={MAIN}
-            onClick={() => {
-              const v = preview;
-              finish();
-              setPrinting(v);
-            }}
-          >
+          <button type="button" className={MAIN} onClick={() => setChoosing(true)}>
             Print
           </button>
         </div>
       </Dialog>
 
-      {printing && (
-        <div className="hidden bg-white p-[20pt] text-black print:block">
-          <Sheet p={printing} />
+      <Dialog
+        open={!!preview && choosing}
+        onClose={() => setChoosing(false)}
+        title={['Export /', 'Print']}
+        className="w-[440px]"
+      >
+        <div className="flex flex-col gap-2 px-[26px] pb-[22px] pt-3">
+          {OUTPUTS.map(([key, name, hint]) => (
+            <button
+              key={key}
+              type="button"
+              disabled={busy}
+              onClick={() => void output(key)}
+              className="flex cursor-pointer flex-col items-start border-[1.5px] border-border px-4 py-2.5 text-left hover:border-foreground hover:bg-accent disabled:cursor-wait disabled:opacity-60"
+            >
+              <span className="text-[15px] font-semibold">{name}</span>
+              <span className="text-xs text-muted-foreground">{hint}</span>
+            </button>
+          ))}
+          <div className="flex items-center justify-end gap-2.5 pt-1">
+            {busy && <span className="flex-1 text-sm text-muted-foreground">Making the file…</span>}
+            <button type="button" onClick={() => setChoosing(false)} className={BTN}>
+              Back
+            </button>
+          </div>
         </div>
-      )}
+      </Dialog>
+
+      {printing &&
+        createPortal(
+          <div className="print-sheet hidden print:block">
+            <div style={{ zoom: fit.zoom }}>
+              <Sheet m={sheetModel(printing)} width={`${fit.widthMm}mm`} minHeight={`${fit.minHeightMm}mm`} />
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
 
-/** A sale prints under its sale type's name ("Tax Invoice", "Counter Sale"…). */
-const titleOf = (p: Printed) =>
-  p.kind === 'sale' ? p.inv.bill.saleType.trim() || 'Tax Invoice' : 'Purchase Invoice';
+/** A phone or tablet (iPads report themselves as a Mac, so they're told apart by touch). */
+const onMobile = () =>
+  /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
 
-const join = (parts: (string | null | undefined)[], sep: string) =>
-  parts
-    .filter((x) => x && x.trim())
-    .map((x) => x!.trim())
-    .join(sep);
-
-/** "Uttar Pradesh (09)" from a name and/or a code. */
-const stateLine = (name?: string | null, code?: string | null) => {
-  const c = (code ?? '').trim() || stateCodeOfName(name);
-  const n = (name ?? '').trim() || GST_STATES[c] || '';
-  if (!n || n === 'Not Applicable') return '';
-  return c ? `${n} (${c})` : n;
-};
-
-/** A percentage: always two decimals (the company's decimal places are for qty and money). */
-const pct = (v: number) => v.toFixed(2);
-
-/** dd-MM-yyyy h:mm am/pm, as the voucher print stamps it. */
-function stamp() {
-  const n = new Date();
-  const p = (v: number) => String(v).padStart(2, '0');
-  const h = n.getHours() % 12 || 12;
-  return `${p(n.getDate())}-${p(n.getMonth() + 1)}-${n.getFullYear()}  ${h}:${p(n.getMinutes())} ${n.getHours() < 12 ? 'am' : 'pm'}`;
+/** Opens WhatsApp: the WhatsApp app on a phone or tablet, WhatsApp Web in a new tab on a
+ *  computer. Runs straight from the click, since browsers only open apps and tabs from one. */
+function openWhatsApp() {
+  if (onMobile()) window.location.href = 'whatsapp://';
+  else window.open('https://web.whatsapp.com/', '_blank', 'noopener');
 }
 
-function Sheet({ p }: { p: Printed }) {
+/** A sale prints under its sale type's name ("Tax Invoice", "Counter Sale"…). */
+const titleOf = (p: Printed) =>
+  p.note
+    ? p.note.title
+    : p.kind === 'sale' ? p.inv.bill.saleType.trim() || 'Tax Invoice' : 'Purchase Invoice';
+
+const clean = (parts: (string | null | undefined)[]) =>
+  parts.filter((x) => x && x.trim()).map((x) => x!.trim());
+
+type StateName = { name: string; code: string };
+
+/** A state's name and GST code, from a name and/or a code. */
+const stateOf = (name?: string | null, code?: string | null): StateName | null => {
+  const c = (code ?? '').trim() || stateCodeOfName(name);
+  const n = (name ?? '').trim() || GST_STATES[c] || '';
+  return n && n !== 'Not Applicable' ? { name: n, code: c } : null;
+};
+
+/** "INR Two Thousand Five Hundred Ninety Six Only", as the sample bill words it. */
+const inWords = (v: number) => amountInWords(v).replace(/^Rupees /, 'INR ');
+
+/** A percentage without trailing zeros: 9, 2.5, 18. */
+const pct = (v: number) => String(Math.round(v * 100) / 100);
+
+const stateText = (s: StateName | null) => (s ? `${s.name}${s.code ? `, Code : ${s.code}` : ''}` : '');
+
+// ── The sheet's contents ─────────────────────────────────────────────────────────
+// Worked out once, as text, so the printed sheet, the PDF, the Excel and the Word files all
+// show the same thing.
+
+type Block = { caption: string; name: string; lines: string[]; info: [string, string][] };
+type ItemLine = {
+  no: number;
+  name: string;
+  desc: string[];
+  hsn: string;
+  qty: string;
+  rateIncl: string;
+  rate: string;
+  per: string;
+  disc: string;
+  amount: string;
+};
+type HsnLine = {
+  code: string;
+  taxable: string;
+  rate: string;
+  cgst: string;
+  sgst: string;
+  igst: string;
+  tax: string;
+};
+
+export type SheetModel = {
+  title: string;
+  docNo: string;
+  original: boolean;
+  seller: Block;
+  buyer: Block;
+  boxes: [string, string][][];
+  delivery: string[];
+  hasDisc: boolean;
+  items: ItemLine[];
+  /** Tax, discount, freight and round-off lines under the items. */
+  side: { label: string; rate: string; amount: string }[];
+  totalQty: string;
+  net: string;
+  words: string;
+  inter: boolean;
+  hsn: HsnLine[];
+  hsnTotal: Omit<HsnLine, 'code' | 'rate'>;
+  taxWords: string;
+  remarks: string;
+  pan: string;
+  bank: [string, string][];
+  compName: string;
+};
+
+/** The bill as the user's sample lays it out (a "Tax Invoice", 2026-11-09): seller and party,
+ *  bill details, the goods with the tax under them, the amount in words, the HSN/SAC tax
+ *  summary, PAN and bank. A purchase prints the same way: the supplier on top, the company as
+ *  the buyer. */
+function sheetModel(p: Printed): SheetModel {
   const { company: c, party, bill } = p.inv;
   const sale = p.kind === 'sale';
   const lines = bill.lines as PurcLine[];
@@ -225,293 +450,539 @@ function Sheet({ p }: { p: Printed }) {
   const st = sale ? saleTotals(lines, p.inv.bill.billDiscPct, p.inv.bill.billDiscAmt) : null;
   const pt = sale ? null : purcTotals(lines, p.inv.bill.freight);
   const t = (st ?? pt)!;
-  const lineDisc = st ? st.itemDisc : pt!.discount;
-  const net = t.net;
+  const taxTotal = t.cgst + t.sgst + t.igst;
 
-  // ── The party block ──
-  const partyName = sale ? p.inv.bill.custName : (party?.accName ?? '');
-  const partyAddr = sale
-    ? join([p.inv.bill.address, p.inv.bill.area, p.inv.bill.city], ', ')
-    : join([party?.add1, party?.add2, party?.city, party?.pinCode], ', ');
+  // ── The company ──
+  const compState = stateOf(c?.state, c?.stateCode);
+  const company = {
+    name: compName,
+    lines: clean([c?.add1, c?.add2, clean([c?.city, c?.pinCode]).join(' - ')]),
+    info: [
+      ['GSTIN/UIN', (c?.gstin ?? '').trim()],
+      ['State Name', stateText(compState)],
+      ['Contact', clean([c?.phone, c?.mobile]).join(', ')],
+      ['E-Mail', (c?.email ?? '').trim()],
+    ] as [string, string][],
+  };
+
+  // ── The party ──
   const partyState = sale
-    ? stateLine(p.inv.bill.state)
-    : stateLine(p.inv.bill.state || party?.state, party?.stateCode);
-  const partyGstin = sale ? p.inv.bill.gstNo : (party?.gstin ?? '');
-  const partyMobile = sale ? p.inv.bill.mobile : join([party?.mobile, party?.phone], ', ');
-  const supplyState = sale ? p.inv.bill.state : p.inv.bill.state || party?.state;
+    ? stateOf(p.inv.bill.state)
+    : stateOf(p.inv.bill.state || party?.state, party?.stateCode);
+  const other = {
+    name: sale ? p.inv.bill.custName : (party?.accName ?? ''),
+    lines: sale
+      ? clean([p.inv.bill.address, p.inv.bill.area, p.inv.bill.city])
+      : clean([party?.add1, party?.add2, clean([party?.city, party?.pinCode]).join(' - ')]),
+    info: [
+      ['GSTIN/UIN', (sale ? p.inv.bill.gstNo : (party?.gstin ?? '')).trim()],
+      ['State Name', stateText(partyState)],
+      ['Contact', sale ? p.inv.bill.mobile : clean([party?.mobile, party?.phone]).join(', ')],
+    ] as [string, string][],
+  };
+  // The seller on top, the buyer under it, as on the sample. A return is the company's own
+  // document: the company on top, the party it goes to underneath.
+  const ours = sale || !!p.note;
+  const placeOfSupply = (sale ? partyState : (partyState ?? compState))?.name ?? '';
+  const s = ours ? company : other;
+  const b = ours ? other : company;
+  const seller: Block = {
+    caption: ours ? '' : 'Supplier (Bill from)',
+    ...s,
+    info: s.info.filter(([, v]) => v),
+  };
+  const buyer: Block = {
+    caption: p.note && !sale ? 'Supplier (Bill to)' : 'Buyer (Bill to)',
+    ...b,
+    info: [...b.info, ['Place of Supply', placeOfSupply] as [string, string]].filter(([, v]) => v),
+  };
 
-  // ── The bill's own details, right of the party ──
-  const details: [string, string][] = sale
+  // ── Bill detail boxes, right of the addresses: two per row ──
+  const boxes: [string, string][][] = p.note
+    ? p.note.boxes
+    : sale
     ? [
-        ['Invoice No.', bill.billNo],
-        ['Date', dmy(bill.billDate)],
-        ['Payment', p.inv.bill.payMode === 'Credit' ? 'Credit' : 'Cash'],
-        ['Place of Supply', stateLine(supplyState)],
+        [
+          ['Invoice No.', bill.billNo],
+          ['Dated', dmy(bill.billDate)],
+        ],
+        [
+          ['', ''],
+          ['Mode/Terms of Payment', p.inv.bill.payMode === 'Credit' ? 'Credit' : 'Cash'],
+        ],
+        [
+          ["Buyer's Order No.", ''],
+          ['Dated', ''],
+        ],
       ]
     : [
-        ['Purchase No.', bill.billNo],
-        ['Date', dmy(bill.billDate)],
-        ['Supplier Bill No.', p.inv.bill.suppInvNo],
-        ['Supplier Bill Date', p.inv.bill.suppInvDate],
-        ['Supply With', p.inv.bill.supplyWith],
-        ['Transporter', p.inv.bill.transporter],
-        ['Order No.', p.inv.bill.orderNo],
-        ['Order Date', p.inv.bill.orderDate ? dmy(p.inv.bill.orderDate) : ''],
-        ['Goods Rec No', p.inv.bill.goodsRecNo],
-        ['Place of Supply', stateLine(supplyState)],
+        [
+          ['Purchase No.', bill.billNo],
+          ['Dated', dmy(bill.billDate)],
+        ],
+        [
+          ["Supplier's Invoice No.", p.inv.bill.suppInvNo],
+          ['Dated', p.inv.bill.suppInvDate ? dmy(p.inv.bill.suppInvDate) : ''],
+        ],
+        [
+          ['Order No.', p.inv.bill.orderNo],
+          ['Dated', p.inv.bill.orderDate ? dmy(p.inv.bill.orderDate) : ''],
+        ],
+        [
+          ['Goods Rec No.', p.inv.bill.goodsRecNo],
+          ['Rec. Date', p.inv.bill.recDate ? dmy(p.inv.bill.recDate) : ''],
+        ],
       ];
+  const delivery =
+    sale || p.note
+      ? []
+      : clean([
+          p.inv.bill.supplyWith && `Supply With : ${p.inv.bill.supplyWith}`,
+          p.inv.bill.transporter && `Transporter : ${p.inv.bill.transporter}`,
+        ]);
 
-  // ── Tax by rate, under the items ──
-  const byRate = new Map<number, { taxable: number; cgst: number; sgst: number; igst: number }>();
+  // ── The goods; Disc. % only when some line has a discount ──
+  const hasDisc = lines.some((l) => l.disP > 0 || l.disA > 0);
+  const units = new Set(lines.map((l) => (l.unit ?? '').trim()));
+  const oneUnit = units.size === 1 ? [...units][0]! : '';
+  const items = lines.map((l, i): ItemLine => {
+    const gst = l.sgstP + l.cgstP + l.igstP;
+    const gross = l.qty * l.rate;
+    const disc = l.disP > 0 ? l.disP : l.disA > 0 && gross > 0 ? (l.disA / gross) * 100 : 0;
+    return {
+      no: i + 1,
+      name: l.itemName,
+      desc: (l.desc ?? []).filter((d) => d.trim()),
+      hsn: l.hsnNo ?? '',
+      qty: `${fqIN(l.qty)} ${l.unit ?? ''}`.trim(),
+      rateIncl: faIN(l.rate * (1 + gst / 100)),
+      rate: faIN(l.rate),
+      per: l.unit ?? '',
+      disc: disc > 0 ? `${pct(disc)} %` : '',
+      amount: faIN(l.amount),
+    };
+  });
+
+  // Tax lines under the items: the rate shows when every line has the same one.
+  const rates = new Set(lines.map((l) => (inter ? l.igstP : l.cgstP)));
+  const oneRate = rates.size === 1 ? [...rates][0]! : null;
+  const side = (label: string, amount: number, rate: number | null = null) => ({
+    label,
+    rate: rate !== null ? pct(rate) : '',
+    amount: faIN(amount),
+  });
+  const sideLines = [
+    ...(inter
+      ? [side('IGST', t.igst, oneRate)]
+      : [side('CGST', t.cgst, oneRate), side('SGST', t.sgst, oneRate)]),
+    ...(st && st.billDisc > 0 ? [side('Less : Discount', -st.billDisc)] : []),
+    ...(pt && pt.freight > 0 ? [side('Freight', pt.freight)] : []),
+    ...(t.roundOff !== 0 ? [side('Round Off', t.roundOff)] : []),
+  ];
+
+  // ── HSN/SAC summary, by HSN code and rate ──
+  type Hsn = { code: string; taxable: number; rate: number; cgst: number; sgst: number; igst: number };
+  const hsn = new Map<string, Hsn>();
   for (const l of lines) {
-    const rate = Math.round((l.sgstP + l.cgstP + l.igstP) * 100) / 100;
-    const r = byRate.get(rate) ?? { taxable: 0, cgst: 0, sgst: 0, igst: 0 };
+    const rate = inter ? l.igstP : l.cgstP;
+    const code = (l.hsnNo ?? '').trim();
+    const key = `${code}|${rate}`;
+    const r = hsn.get(key) ?? { code, taxable: 0, rate, cgst: 0, sgst: 0, igst: 0 };
     r.taxable += l.amount;
     r.cgst += l.cgstA;
     r.sgst += l.sgstA;
     r.igst += l.igstA;
-    byRate.set(rate, r);
+    hsn.set(key, r);
   }
 
-  const th = 'border border-neutral-800 px-1.5 py-1 text-left text-[8.5pt] font-semibold';
-  const td = 'border border-neutral-800 px-1.5 py-1 align-top text-[9pt]';
-  const num = 'text-right tabular-nums';
-  const totalRow = (label: string, value: string, strong = false) => (
-    <div
-      className={`flex justify-between gap-4 py-[2px] ${strong ? 'text-[11pt] font-bold' : 'text-[9.5pt]'}`}
-    >
-      <span>{label}</span>
-      <span className="tabular-nums">{value}</span>
+  return {
+    title: titleOf(p),
+    docNo: bill.billNo,
+    original: sale,
+    seller,
+    buyer,
+    boxes,
+    delivery,
+    hasDisc,
+    items,
+    side: sideLines,
+    totalQty: `${fqIN(t.qty)} ${oneUnit}`.trim(),
+    net: faIN(t.net),
+    words: inWords(t.net),
+    inter,
+    hsn: [...hsn.values()].map((r) => ({
+      code: r.code,
+      taxable: faIN(r.taxable),
+      rate: `${pct(r.rate)}%`,
+      cgst: faIN(r.cgst),
+      sgst: faIN(r.sgst),
+      igst: faIN(r.igst),
+      tax: faIN(inter ? r.igst : r.cgst + r.sgst),
+    })),
+    hsnTotal: {
+      taxable: faIN(t.subTotal),
+      cgst: faIN(t.cgst),
+      sgst: faIN(t.sgst),
+      igst: faIN(t.igst),
+      tax: faIN(taxTotal),
+    },
+    taxWords: inWords(taxTotal),
+    remarks: p.note ? p.note.remarks.trim() : sale ? '' : p.inv.bill.narration.trim(),
+    pan: (c?.pan ?? '').trim(),
+    bank: sale
+      ? (
+          [
+            ['Bank Name', (c?.bankName ?? '').trim()],
+            ['A/c No.', (c?.bankAcNo ?? '').trim()],
+            ['Branch & IFS Code', clean([c?.bankBranch, c?.bankIfsc]).join(' & ')],
+          ] as [string, string][]
+        ).filter(([, v]) => v)
+      : [],
+    compName,
+  };
+}
+
+export const DECLARATION =
+  'We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct.';
+
+// ── Fitting the sheet to the paper ─────────────────────────────────────────────────
+
+/** The sheet is laid out 190 mm wide (an A4 page inside its margins). On smaller paper (A5) it
+ *  is scaled down whole, so the columns keep their room instead of crushing the description;
+ *  on wider paper it simply widens. Height: it fills one page, and runs on when it's longer. */
+export function sheetFit() {
+  const [w, h] = paperMm();
+  const cw = w - 2 * PAGE_MARGIN_MM;
+  const ch = h - 2 * PAGE_MARGIN_MM;
+  const zoom = Math.min(1, cw / 190);
+  return {
+    zoom,
+    widthMm: cw / zoom,
+    // A little short of the page, so rounding never pushes a blank second page.
+    minHeightMm: ch / zoom - 2,
+    paper: [w, h] as [number, number],
+    content: [cw, ch] as [number, number],
+  };
+}
+
+const MM = 96 / 25.4;
+
+/** The sheet in px, for the preview and the PDF (the paper's shape at 96 dpi). */
+export function pxSize() {
+  const f = sheetFit();
+  return {
+    width: `${Math.round(f.widthMm * MM)}px`,
+    minHeight: `${Math.round(f.minHeightMm * MM)}px`,
+  };
+}
+
+/** A name-and-address block: caption, bold name, address lines, then labelled lines. */
+function Party({ b }: { b: Block }) {
+  return (
+    <div className="px-1 py-0.5">
+      {b.caption && <div className="text-[8pt]">{b.caption}</div>}
+      <div className="font-bold">{b.name}</div>
+      {b.lines.map((x) => (
+        <div key={x}>{x}</div>
+      ))}
+      {b.info.map(([k, v]) => (
+        <div key={k} className="flex">
+          <span className="w-[92px] flex-none">{k}</span>
+          <span className="min-w-0 break-words">: {v}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** The printed bill, [width] wide and at least [minHeight] tall (px on screen, mm on paper). */
+export function Sheet({
+  m,
+  width,
+  minHeight,
+}: {
+  m: SheetModel;
+  width: string;
+  minHeight: string;
+}) {
+  const tracks = [
+    '28px', // Sl No.
+    'minmax(0,1fr)', // Description of Goods
+    '62px', // HSN/SAC
+    '86px', // Quantity
+    '70px', // Rate (Incl. of Tax)
+    '66px', // Rate
+    '34px', // per
+    ...(m.hasDisc ? ['46px'] : []), // Disc. %
+    '86px', // Amount
+  ].join(' ');
+  const cols = m.hasDisc ? 9 : 8;
+  const row = (cells: ReactNode[], cls = '', key?: string | number) => (
+    <div key={key} className={`grid ${cls}`} style={{ gridTemplateColumns: tracks }}>
+      {cells.map((x, i) => (
+        <div
+          key={i}
+          className={`min-w-0 px-1 ${i < cells.length - 1 ? 'border-r border-black' : ''} ${i >= 3 ? 'text-right tabular-nums' : ''}`}
+        >
+          {x}
+        </div>
+      ))}
+    </div>
+  );
+  const blanks = (n: number): ReactNode[] => Array.from({ length: n }, () => '');
+  const sideRow = (s: SheetModel['side'][number]) =>
+    row(
+      [
+        '',
+        <div className="text-right font-bold italic">{s.label}</div>,
+        '',
+        '',
+        '',
+        s.rate ? <i>{s.rate}</i> : '',
+        s.rate ? <i className="block text-left">%</i> : '',
+        ...(m.hasDisc ? [''] : []),
+        <b>{s.amount}</b>,
+      ],
+      '',
+      s.label,
+    );
+
+  const hsnTracks = m.inter
+    ? 'minmax(0,1fr) 92px 52px 92px 96px'
+    : 'minmax(0,1fr) 92px 44px 82px 44px 82px 96px';
+  const hsnRow = (cells: ReactNode[], cls = '', key?: string) => (
+    <div key={key} className={`grid ${cls}`} style={{ gridTemplateColumns: hsnTracks }}>
+      {cells.map((x, i) => (
+        <div
+          key={i}
+          className={`min-w-0 px-1 ${i < cells.length - 1 ? 'border-r border-black' : ''} ${i >= 1 ? 'text-right tabular-nums' : ''}`}
+        >
+          {x}
+        </div>
+      ))}
+    </div>
+  );
+  const head = (x: ReactNode) => <div className="text-center leading-tight">{x}</div>;
+  const label = (k: string, v: ReactNode) => (
+    <div key={k} className="flex">
+      <span className="w-[130px] flex-none">{k}</span>
+      <span>
+        : <b>{v}</b>
+      </span>
     </div>
   );
 
   return (
-    <div className="font-sans text-neutral-900">
-      <div className="border border-neutral-900">
-        {/* Company */}
-        <div className="border-b border-neutral-900 px-3 py-2.5 text-center">
-          <div className="text-[16pt] font-bold uppercase">{compName}</div>
-          {join([c?.add1, c?.add2, c?.city, c?.pinCode], ', ') && (
-            <div className="text-[9pt]">{join([c?.add1, c?.add2, c?.city, c?.pinCode], ', ')}</div>
-          )}
-          {stateLine(c?.state, c?.stateCode) && (
-            <div className="text-[9pt]">State: {stateLine(c?.state, c?.stateCode)}</div>
-          )}
-          {join([c?.phone, c?.mobile, c?.email], '  |  ') && (
-            <div className="text-[9pt]">{join([c?.phone, c?.mobile, c?.email], '  |  ')}</div>
-          )}
-          {join(
-            [c?.gstin ? `GSTIN: ${c.gstin}` : null, c?.pan ? `PAN: ${c.pan}` : null],
-            '     ',
-          ) && (
-            <div className="text-[9pt] font-semibold">
-              {join(
-                [c?.gstin ? `GSTIN: ${c.gstin}` : null, c?.pan ? `PAN: ${c.pan}` : null],
-                '     ',
-              )}
-            </div>
-          )}
-        </div>
-        <div className="border-b border-neutral-900 py-1 text-center text-[12pt] font-bold uppercase tracking-wide">
-          {titleOf(p)}
-        </div>
+    <div
+      className="flex flex-col bg-white text-[9pt] leading-[1.3] text-black"
+      // Arial, as the sample bill is printed.
+      style={{ width, minHeight, fontFamily: 'Arial, Helvetica, sans-serif' }}
+    >
+      {/* Title */}
+      <div className="relative pb-0.5 text-center">
+        <span className="text-[11pt] font-bold">{m.title}</span>
+        {m.original && (
+          <span className="absolute right-0 top-0.5 text-[8pt] italic">
+            (ORIGINAL FOR RECIPIENT)
+          </span>
+        )}
+      </div>
 
-        {/* Party | bill details */}
-        <div className="grid grid-cols-2 border-b border-neutral-900">
-          <div className="border-r border-neutral-900 px-3 py-2 text-[9.5pt]">
-            <div className="text-[8.5pt] font-semibold uppercase text-neutral-600">
-              {sale ? 'Billed To' : 'Supplier'}
+      <div className="flex flex-1 flex-col border border-black">
+        {/* Seller and buyer | bill detail boxes */}
+        <div className="grid grid-cols-2 border-b border-black">
+          <div className="min-w-0 border-r border-black">
+            <div className="border-b border-black">
+              <Party b={m.seller} />
             </div>
-            <div className="text-[11pt] font-bold">{partyName}</div>
-            {partyAddr && <div>{partyAddr}</div>}
-            {partyState && <div>State: {partyState}</div>}
-            {partyMobile && <div>Mobile: {partyMobile}</div>}
-            {partyGstin && <div className="font-semibold">GSTIN: {partyGstin}</div>}
+            <Party b={m.buyer} />
           </div>
-          <div className="px-3 py-2">
-            {details
-              .filter(([, v]) => v && v.trim())
-              .map(([k, v]) => (
-                <div key={k} className="flex gap-2 py-[1px] text-[9.5pt]">
-                  <span className="w-[120px] flex-none text-neutral-600">{k}</span>
-                  <span className="font-semibold">{v}</span>
-                </div>
-              ))}
-          </div>
-        </div>
-
-        {/* Items */}
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-neutral-100">
-              <th className={th}>S.No</th>
-              <th className={th}>Item</th>
-              <th className={th}>HSN</th>
-              <th className={`${th} ${num}`}>Qty</th>
-              <th className={th}>Unit</th>
-              <th className={`${th} ${num}`}>Rate</th>
-              <th className={`${th} ${num}`}>Disc</th>
-              <th className={`${th} ${num}`}>Taxable</th>
-              <th className={`${th} ${num}`}>GST %</th>
-              {inter ? (
-                <th className={`${th} ${num}`}>IGST</th>
-              ) : (
-                <>
-                  <th className={`${th} ${num}`}>CGST</th>
-                  <th className={`${th} ${num}`}>SGST</th>
-                </>
-              )}
-              <th className={`${th} ${num}`}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l, i) => (
-              <tr key={i}>
-                <td className={td}>{i + 1}</td>
-                <td className={td}>
-                  {l.itemName}
-                  {(l.desc ?? [])
-                    .filter((d) => d.trim())
-                    .map((d, k) => (
-                      <div key={k} className="text-[8pt] text-neutral-600">
-                        {d}
-                      </div>
-                    ))}
-                </td>
-                <td className={td}>{l.hsnNo ?? ''}</td>
-                <td className={`${td} ${num}`}>{fqIN(l.qty)}</td>
-                <td className={td}>{l.unit ?? ''}</td>
-                <td className={`${td} ${num}`}>{faIN(l.rate)}</td>
-                <td className={`${td} ${num}`}>{l.disA > 0 ? faIN(l.disA) : ''}</td>
-                <td className={`${td} ${num}`}>{faIN(l.amount)}</td>
-                <td className={`${td} ${num}`}>{pct(l.sgstP + l.cgstP + l.igstP)}</td>
-                {inter ? (
-                  <td className={`${td} ${num}`}>{faIN(l.igstA)}</td>
-                ) : (
-                  <>
-                    <td className={`${td} ${num}`}>{faIN(l.cgstA)}</td>
-                    <td className={`${td} ${num}`}>{faIN(l.sgstA)}</td>
-                  </>
-                )}
-                <td className={`${td} ${num} font-semibold`}>{faIN(l.lineTotal)}</td>
-              </tr>
-            ))}
-            <tr className="bg-neutral-100 font-semibold">
-              <td className={td} colSpan={3}>
-                Total
-              </td>
-              <td className={`${td} ${num}`}>{fqIN(t.qty)}</td>
-              <td className={td} colSpan={2} />
-              <td className={`${td} ${num}`}>{lineDisc > 0 ? faIN(lineDisc) : ''}</td>
-              <td className={`${td} ${num}`}>{faIN(t.subTotal)}</td>
-              <td className={td} />
-              {inter ? (
-                <td className={`${td} ${num}`}>{faIN(t.igst)}</td>
-              ) : (
-                <>
-                  <td className={`${td} ${num}`}>{faIN(t.cgst)}</td>
-                  <td className={`${td} ${num}`}>{faIN(t.sgst)}</td>
-                </>
-              )}
-              <td className={`${td} ${num}`}>{faIN(lines.reduce((a, l) => a + l.lineTotal, 0))}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Tax by rate | totals */}
-        <div className="grid grid-cols-[1fr_260px] border-t border-neutral-900">
-          <div className="border-r border-neutral-900 px-3 py-2">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <th className={th}>GST %</th>
-                  <th className={`${th} ${num}`}>Taxable</th>
-                  {inter ? (
-                    <th className={`${th} ${num}`}>IGST</th>
-                  ) : (
-                    <>
-                      <th className={`${th} ${num}`}>CGST</th>
-                      <th className={`${th} ${num}`}>SGST</th>
-                    </>
-                  )}
-                  <th className={`${th} ${num}`}>Total Tax</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...byRate.entries()]
-                  .sort((a, b) => a[0] - b[0])
-                  .map(([rate, r]) => (
-                    <tr key={rate}>
-                      <td className={td}>{pct(rate)}</td>
-                      <td className={`${td} ${num}`}>{faIN(r.taxable)}</td>
-                      {inter ? (
-                        <td className={`${td} ${num}`}>{faIN(r.igst)}</td>
-                      ) : (
-                        <>
-                          <td className={`${td} ${num}`}>{faIN(r.cgst)}</td>
-                          <td className={`${td} ${num}`}>{faIN(r.sgst)}</td>
-                        </>
-                      )}
-                      <td className={`${td} ${num}`}>{faIN(r.cgst + r.sgst + r.igst)}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-            <div className="pt-2 text-[9pt]">
-              <span className="text-neutral-600">Amount in words: </span>
-              <span className="font-semibold">{amountInWords(net)}</span>
-            </div>
-            {!sale && p.inv.bill.narration.trim() && (
-              <div className="pt-1 text-[9pt]">
-                <span className="text-neutral-600">Narration: </span>
-                {p.inv.bill.narration}
+          <div className="flex min-w-0 flex-col">
+            {m.boxes.map((pair, i) => (
+              <div key={i} className="grid grid-cols-2 border-b border-black">
+                {pair.map(([k, v], j) => (
+                  <div
+                    key={j}
+                    className={`min-h-[34px] min-w-0 px-1 py-0.5 ${j === 0 ? 'border-r border-black' : ''}`}
+                  >
+                    <div className="text-[8pt]">{k}</div>
+                    <div className="break-words font-bold">{v}</div>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
-          <div className="px-3 py-2">
-            {totalRow('Taxable Value', faIN(t.subTotal))}
-            {inter ? (
-              totalRow('IGST', faIN(t.igst))
-            ) : (
-              <>
-                {totalRow('CGST', faIN(t.cgst))}
-                {totalRow('SGST', faIN(t.sgst))}
-              </>
-            )}
-            {st && st.billDisc > 0 && totalRow('Discount', `- ${faIN(st.billDisc)}`)}
-            {pt && pt.freight > 0 && totalRow('Freight', faIN(pt.freight))}
-            {t.roundOff !== 0 && totalRow('Round Off', faIN(t.roundOff))}
-            <div className="mt-1 border-t border-neutral-900 pt-1">
-              {totalRow(sale ? 'Grand Total' : 'Net Amount', faIN(net), true)}
+            ))}
+            <div className="flex-1 px-1 py-0.5">
+              <div className="text-[8pt]">Terms of Delivery</div>
+              {m.delivery.map((d) => (
+                <div key={d}>{d}</div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Bank | signature */}
-        <div className="grid grid-cols-2 border-t border-neutral-900">
-          <div className="border-r border-neutral-900 px-3 py-2 text-[9pt]">
-            {sale && join([c?.bankName, c?.bankAcNo], '') && (
-              <>
-                <div className="text-[8.5pt] font-semibold uppercase text-neutral-600">
-                  Bank Details
-                </div>
-                {c?.bankName && <div>Bank: {c.bankName}</div>}
-                {c?.bankBranch && <div>Branch: {c.bankBranch}</div>}
-                {c?.bankAcNo && <div>A/c No.: {c.bankAcNo}</div>}
-                {c?.bankIfsc && <div>IFSC: {c.bankIfsc}</div>}
-              </>
-            )}
+        {/* Goods: header, items, tax lines, then the empty columns run down to the total */}
+        <div className="flex flex-1 flex-col">
+          {row(
+            [
+              <div className="text-left text-[8pt] leading-tight">
+                Sl
+                <br />
+                No.
+              </div>,
+              head('Description of Goods'),
+              head('HSN/SAC'),
+              head('Quantity'),
+              head(
+                <>
+                  Rate
+                  <br />
+                  <span className="text-[7.5pt]">(Incl. of Tax)</span>
+                </>,
+              ),
+              head('Rate'),
+              head('per'),
+              ...(m.hasDisc ? [head('Disc. %')] : []),
+              head('Amount'),
+            ],
+            'border-b border-black',
+          )}
+          {m.items.map((l, i) => {
+            const top = i === 0 ? 'pt-1' : '';
+            return row(
+              [
+                <div className={top}>{l.no}</div>,
+                <div className={top}>
+                  <div className="font-bold">{l.name}</div>
+                  {l.desc.map((d, k) => (
+                    <div key={k} className="pl-2 text-[8pt] italic">
+                      {d}
+                    </div>
+                  ))}
+                </div>,
+                <div className={`text-left ${top}`}>{l.hsn}</div>,
+                <b className={`block whitespace-nowrap ${top}`}>{l.qty}</b>,
+                <div className={top}>{l.rateIncl}</div>,
+                <div className={top}>{l.rate}</div>,
+                <div className={`text-left ${top}`}>{l.per}</div>,
+                ...(m.hasDisc ? [<div className={top}>{l.disc}</div>] : []),
+                <b className={`block ${top}`}>{l.amount}</b>,
+              ],
+              '',
+              i,
+            );
+          })}
+          {row(blanks(cols), 'h-3')}
+          {m.side.map(sideRow)}
+          {row(blanks(cols), 'flex-1')}
+          {row(
+            [
+              '',
+              <div className="text-right">Total</div>,
+              '',
+              <b className="whitespace-nowrap">{m.totalQty}</b>,
+              '',
+              '',
+              '',
+              ...(m.hasDisc ? [''] : []),
+              <b className="whitespace-nowrap text-[10.5pt]">₹ {m.net}</b>,
+            ],
+            'border-y border-black',
+          )}
+        </div>
+
+        {/* Amount in words */}
+        <div className="flex justify-between px-1 pt-0.5 text-[8pt]">
+          <span>Amount Chargeable (in words)</span>
+          <i>E. &amp; O.E</i>
+        </div>
+        <div className="border-b border-black px-1 pb-1 text-[10pt] font-bold">{m.words}</div>
+
+        {/* HSN/SAC summary */}
+        <div className="border-b border-black text-[8pt]">
+          {hsnRow(
+            m.inter
+              ? [
+                  head('HSN/SAC'),
+                  head('Taxable Value'),
+                  head('IGST Rate'),
+                  head('IGST Amount'),
+                  head('Total Tax Amount'),
+                ]
+              : [
+                  head('HSN/SAC'),
+                  head('Taxable Value'),
+                  head('CGST Rate'),
+                  head('CGST Amount'),
+                  head('SGST/ UTGST Rate'),
+                  head('SGST/ UTGST Amount'),
+                  head('Total Tax Amount'),
+                ],
+            'border-b border-black',
+          )}
+          {m.hsn.map((r) =>
+            hsnRow(
+              m.inter
+                ? [r.code, r.taxable, r.rate, r.igst, r.tax]
+                : [r.code, r.taxable, r.rate, r.cgst, r.rate, r.sgst, r.tax],
+              '',
+              `${r.code}|${r.rate}`,
+            ),
+          )}
+          {hsnRow(
+            m.inter
+              ? [
+                  <b className="block text-right">Total</b>,
+                  <b>{m.hsnTotal.taxable}</b>,
+                  '',
+                  <b>{m.hsnTotal.igst}</b>,
+                  <b>{m.hsnTotal.tax}</b>,
+                ]
+              : [
+                  <b className="block text-right">Total</b>,
+                  <b>{m.hsnTotal.taxable}</b>,
+                  '',
+                  <b>{m.hsnTotal.cgst}</b>,
+                  '',
+                  <b>{m.hsnTotal.sgst}</b>,
+                  <b>{m.hsnTotal.tax}</b>,
+                ],
+            'border-t border-black',
+          )}
+        </div>
+
+        {/* Tax in words, remarks, PAN, bank */}
+        <div className="px-1 py-1">
+          <div>
+            Tax Amount (in words) : <b className="text-[10pt]">{m.taxWords}</b>
           </div>
-          <div className="flex flex-col items-end justify-between gap-8 px-3 py-2">
-            <span className="text-[10pt] font-bold">For {compName.toUpperCase()}</span>
-            <span className="text-[9pt]">(Authorised Signatory)</span>
+          {m.remarks && (
+            <div className="pt-1">
+              <div className="italic">Remarks:</div>
+              <div>{m.remarks}</div>
+            </div>
+          )}
+          {m.pan && <div className="pt-1">{label("Company's PAN", m.pan)}</div>}
+          {m.bank.length > 0 && (
+            <div className="pt-1">
+              <div className="italic">Company&apos;s Bank Details</div>
+              {m.bank.map(([k, v]) => label(k, v))}
+            </div>
+          )}
+        </div>
+
+        {/* Declaration | signature */}
+        <div className="grid grid-cols-2">
+          <div className="px-1 pb-1">
+            <div className="underline">Declaration</div>
+            <div>{DECLARATION}</div>
+          </div>
+          <div className="flex min-h-[58px] flex-col justify-between border-l border-t border-black px-1 py-0.5 text-right">
+            <b>for {m.compName}</b>
+            <span>Authorised Signatory</span>
           </div>
         </div>
       </div>
-      <div className="flex justify-between pt-1.5 text-[8pt] text-neutral-600">
-        <span>{stamp()}</span>
-        <span>Printed by {brand.appName}</span>
-      </div>
+      <div className="pt-1 text-center text-[8pt]">This is a Computer Generated Invoice</div>
     </div>
   );
 }

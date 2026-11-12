@@ -37,6 +37,7 @@ import { CashBankTab } from './screens/vouchers/CashBankTab.tsx';
 import { JournalTab } from './screens/vouchers/JournalTab.tsx';
 import { NoteTab } from './screens/vouchers/NoteTab.tsx';
 import { PurchaseInvoiceScreen } from './screens/transactions/PurchaseInvoiceScreen.tsx';
+import { ReturnScreen } from './screens/transactions/ReturnScreen.tsx';
 import { SalesInvoiceScreen } from './screens/transactions/SalesInvoiceScreen.tsx';
 import { StockJournalScreen } from './screens/transactions/StockJournalScreen.tsx';
 import {
@@ -45,6 +46,13 @@ import {
   StockSummaryScreen,
 } from './screens/reports/ListReports.tsx';
 import { BalanceSheetScreen, ProfitLossScreen } from './screens/reports/Statements.tsx';
+import { StockRegisterScreen } from './screens/reports/StockRegister.tsx';
+import {
+  LedgerStatementScreen,
+  OutstandingScreen,
+  PurchaseRegisterScreen,
+  TrialBalanceScreen,
+} from './screens/reports/LedgerReports.tsx';
 import {
   BackupScreen,
   CompanySettingsScreen,
@@ -52,6 +60,7 @@ import {
   LogsScreen,
 } from './screens/tools/ToolsScreens.tsx';
 import { UserManagementScreen } from './screens/tools/UserManagementScreen.tsx';
+import { RolePermissionsScreen } from './screens/tools/RolePermissionsScreen.tsx';
 import {
   GstAuditScreen,
   Gstr1Screen,
@@ -222,6 +231,18 @@ const salesInvoiceRoute = createRoute({
   component: SalesInvoiceScreen,
 });
 
+// Purchase Return / Sales Return (added 2026-11-09): one screen, two kinds.
+const purchaseReturnRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'purchase-return',
+  component: () => <ReturnScreen key="PRT" kind="PRT" />,
+});
+const salesReturnRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'sales-return',
+  component: () => <ReturnScreen key="SRT" kind="SRT" />,
+});
+
 const stockJournalRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'stock-journal',
@@ -233,10 +254,15 @@ const reportRoute = (path: string, component: () => React.JSX.Element) =>
   createRoute({ getParentRoute: () => appRoute, path, component });
 const reportRoutes = [
   reportRoute('stock-summary', StockSummaryScreen),
+  reportRoute('stock-register', StockRegisterScreen),
   reportRoute('profit-loss', ProfitLossScreen),
   reportRoute('balance-sheet', BalanceSheetScreen),
   reportRoute('day-book', DayBookScreen),
   reportRoute('sales-register', SalesRegisterScreen),
+  reportRoute('trial-balance', TrialBalanceScreen),
+  reportRoute('ledger-statement', LedgerStatementScreen),
+  reportRoute('purchase-register', PurchaseRegisterScreen),
+  reportRoute('outstanding', OutstandingScreen),
   reportRoute('gstr-1', Gstr1Screen),
   reportRoute('gstr-3b', Gstr3bScreen),
   reportRoute('gst-audit', GstAuditScreen),
@@ -244,6 +270,7 @@ const reportRoutes = [
   reportRoute('input-tax-credit', ItcScreen),
   reportRoute('backup-data', BackupScreen),
   reportRoute('user-management', UserManagementScreen),
+  reportRoute('role-permissions', RolePermissionsScreen),
   reportRoute('company-settings', CompanySettingsScreen),
   reportRoute('import-data', ImportDataScreen),
   reportRoute('logs', LogsScreen),
@@ -280,6 +307,8 @@ export const router = createRouter({
       creditNoteRoute,
       purchaseInvoiceRoute,
       salesInvoiceRoute,
+      purchaseReturnRoute,
+      salesReturnRoute,
       stockJournalRoute,
       ...reportRoutes,
       screenRoute,

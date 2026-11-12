@@ -14,6 +14,7 @@ import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { ConfirmDelete, ConfirmUpdate, Dialog, MessageDialog } from '../../components/Dialog.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type Group = OkBody<Awaited<ReturnType<typeof api.api.groups.$get>>>[number];
 type SubGroup = OkBody<Awaited<ReturnType<(typeof api.api)['sub-groups']['$get']>>>[number];
@@ -24,6 +25,8 @@ const BAR_BTN =
   'flex h-12 cursor-pointer items-center border-[1.5px] border-foreground px-5 text-[15px] font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
 
 export function SubGroupMasterScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const groups = useQuery({
@@ -277,6 +280,7 @@ export function SubGroupMasterScreen() {
               <button
                 type="button"
                 onClick={() => setDeleteConfirm(true)}
+                disabled={!canEdit}
                 className={`${BAR_BTN} border-destructive text-destructive`}
               >
                 Remove
@@ -286,7 +290,7 @@ export function SubGroupMasterScreen() {
               type="button"
               ref={saveRef}
               onClick={() => (editing ? setUpdateConfirm(true) : void save())}
-              disabled={busy}
+              disabled={busy || !canEdit}
               className="flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
             >
               <span>{editing ? 'Update' : 'Save Sub Group'}</span>

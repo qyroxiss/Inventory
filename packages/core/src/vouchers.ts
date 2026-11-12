@@ -101,8 +101,10 @@ export function postingProblem(input: {
     if (l.dr < 0 || l.cr < 0) return postingMessages.negative;
     if (l.dr > 0 && l.cr > 0) return postingMessages.bothSides(l.accCode);
   }
-  const dr = sum(input.lines.map((l) => l.dr));
-  const cr = sum(input.lines.map((l) => l.cr));
+  // Each line is stored rounded to paise, so the sides must agree as stored (2026-11-11).
+  // The same rounding the voucher service uses to store a line (services/vouchers.ts `money`).
+  const dr = sum(input.lines.map((l) => round2(l.dr)));
+  const cr = sum(input.lines.map((l) => round2(l.cr)));
   if (dr <= 0) return postingMessages.zero;
   if (Math.abs(dr - cr) >= 0.005) return postingMessages.unbalanced(Math.abs(dr - cr));
   return null;
@@ -212,11 +214,14 @@ export function creditNoteDraft(party: string, reason: string, items: { accCode:
 /** The tabs add amounts with a plain fold, no rounding (`_total`, `_totalDr`). */
 export const sumRaw = (values: number[]) => values.reduce((a, b) => a + b, 0);
 
-/** Dart's `double.tryParse(text) ?? 0` for an amount box (digits and '.' only). */
+/** An amount box's value (digits and '.' only, else 0), rounded to paise: lines are stored to
+ *  2 decimals, so totals and the balance check must use the same figures (2026-11-11). */
 export const parseAmount = (text: string): number => {
   const t = text.trim();
   if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return 0;
-  return Number(t);
+  // Shift the decimal point in the text itself ("1.005e2" is exactly 100.5), so binary floating
+  // point can't turn a typed 1.005 into 1.00.
+  return Math.round(Number(`${t}e2`)) / 100;
 };
 /** The amount box's own check: 'Required' / 'Enter valid amount' (Receipt, Payment) or 'Invalid' (lines). */
 export function amountProblem(text: string, invalid: string): string | null {

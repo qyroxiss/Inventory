@@ -17,7 +17,10 @@
     "@qi/ui": "workspace:*",
     "@tanstack/react-query": "^5.104.1",
     "@tanstack/react-router": "^1.170.41",
+    "exceljs": "4.4.0",
     "hono": "^4.13.12",
+    "html2canvas-pro": "2.5.2",
+    "jspdf": "4.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sql.js": "^1.14.2"

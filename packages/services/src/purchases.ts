@@ -34,6 +34,7 @@ import {
   type PurcTotals,
 } from '@qi/core';
 import { and, asc, desc, eq, inArray, or, schema, sql, type Db } from '@qi/db';
+import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
 import { UserError } from './errors.ts';
 import { commitVoucherNo, nextVoucherNo, type PostingContext } from './vouchers.ts';
 
@@ -503,6 +504,7 @@ export async function updatePurchase(
   const old = await findPurchase(db, ctx.bookId, input.billNo.trim());
   if (!old) throw new UserError(pm.notFound);
   if (old.status === CANCELLED) throw new UserError(pm.cancelledEdit);
+  await assertReturnsFit(db, ctx.bookId, 'PRT', old.billNo, lines);
   const t = purcTotals(lines, freightOf(input));
 
   await db.transaction(async (raw) => {
@@ -536,6 +538,7 @@ export async function cancelPurchase(db: Db, ctx: PostingContext, billNo: string
   const p = await findPurchase(db, ctx.bookId, billNo);
   if (!p) throw new UserError(pm.notFound);
   if (p.status === CANCELLED) return;
+  await assertNoReturns(db, ctx.bookId, 'PRT', p.billNo);
   const now = new Date();
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;

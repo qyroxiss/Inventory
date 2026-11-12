@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
 import { saleTypeMessages, stockItemMessages, stockSubGroupMessages } from '@qi/core';
-import { openDatabase, sql, type Db } from '@qi/db';
+import { openDatabase, schema, sql, type Db } from '@qi/db';
 import {
   UserError,
   createCompany,
@@ -160,8 +160,8 @@ describe('Stock Item', () => {
       regType: 'Exempt',
     });
     expect(await listStockItems(db, bookId)).toEqual([
-      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '', purRate: 0, saleRate: 0 },
-      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005', purRate: 0, saleRate: 0 },
+      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0 },
+      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0 },
     ]); // prettier-ignore
   });
 
@@ -180,6 +180,20 @@ describe('Stock Item', () => {
     // A blank box clears the rate.
     await updateStockItem(db, bookId, 'A1', { code: 'A1', name: 'CHIPPS', purRate: '', saleRate: '99' });
     expect(await listStockItems(db, bookId)).toMatchObject([{ purRate: 0, saleRate: 99 }]);
+  }); // prettier-ignore
+
+  test('Opening Stock × Opening Rate is kept as the opening value; MRP saved; bad entries refused', async () => {
+    await createStockItem(db, bookId, { code: 'A1', name: 'CHIPPS', opQty: '12.5', opRate: '40.25', mrp: '55' });
+    expect(await listStockItems(db, bookId)).toMatchObject([{ opQty: 12.5, opRate: 40.25, mrp: 55 }]);
+    const [row] = await db.select().from(schema.stockItems);
+    expect([Number(row!.opQty), Number(row!.opValue)]).toEqual([12.5, 503.13]);
+    const err = await createStockItem(db, bookId, { code: 'A2', name: 'X', opQty: '1.2345', opRate: 'x', mrp: '-1' })
+      .catch((e: unknown) => e as UserError);
+    expect((err as UserError).fieldErrors).toEqual({
+      opQty: stockItemMessages.invalidQty,
+      opRate: stockItemMessages.invalidRate,
+      mrp: stockItemMessages.invalidRate,
+    });
   }); // prettier-ignore
 
   test('update keeps the code, checks the name against the others only; remove', async () => {

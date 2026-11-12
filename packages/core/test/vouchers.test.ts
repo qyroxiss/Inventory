@@ -66,3 +66,31 @@ describe('the tabs’ own checks', () => {
     ).toBe('Voucher date is outside the open financial year (x).');
   });
 });
+
+// 2026-11-11 audit: lines are stored to paise, so a voucher must balance as stored.
+describe('paise rounding (Journal / Debit Note / Credit Note)', () => {
+  const base = { vchrType: 'JNL', date: '2026-05-01', fyFrom: '2026-04-01', fyTo: '2027-03-31', fyLabel: 'x' };
+  test('an amount box keeps 2 decimals', () => {
+    expect(parseAmount('1.004')).toBe(1);
+    expect(parseAmount('1.005')).toBe(1.01);
+    expect(parseAmount('2.008')).toBe(2.01);
+  });
+  test('Dr 1.004 + 1.004 against Cr 2.008 is refused: stored it would be 2.00 against 2.01', () => {
+    expect(
+      postingProblem({
+        ...base,
+        lines: [
+          { accCode: 'A', dr: 1.004, cr: 0 },
+          { accCode: 'B', dr: 1.004, cr: 0 },
+          { accCode: 'C', dr: 0, cr: 2.008 },
+        ],
+      }),
+    ).not.toBeNull();
+  });
+  test('a credit note built from typed amounts balances as stored', () => {
+    const items = ['1.004', '1.004'].map((t, i) => ({ accCode: `E${i}`, amount: parseAmount(t) }));
+    const d = creditNoteDraft('P', 'Return', items, 'CRN-001');
+    expect(postingProblem({ ...base, vchrType: 'CRN', lines: d.lines })).toBeNull();
+    expect(d.lines.at(-1)!.cr).toBe(2);
+  });
+}); // prettier-ignore

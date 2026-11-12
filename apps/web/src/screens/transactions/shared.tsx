@@ -3,10 +3,11 @@
 // type-to-search lookup with its "..." picker, and Enter moving through the fields in MDA's order.
 
 import { useNavigate } from '@tanstack/react-router';
-import { useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { BackButton } from '../../components/BackButton.tsx';
 import { whenToastClosed } from '../../components/Toast.tsx';
 import { Heading } from '../../components/ledger.tsx';
+import { preferences } from '../../prefs.ts';
 
 /** A field box on these screens: the bordered box, a little tighter than on the masters so a
  *  whole bill fits one laptop screen, as MDA's does. */
@@ -130,6 +131,7 @@ export function NumBox({
   value,
   onChange,
   format,
+  error,
 }: {
   id: string;
   nav?: number;
@@ -137,6 +139,8 @@ export function NumBox({
   onChange: (v: string) => void;
   /** Tidies the figure on leaving the box: `fq` for a quantity, `fa` for a rate or amount. */
   format?: (v: number) => string;
+  /** Red, as a box that needs fixing. */
+  error?: boolean;
 }) {
   return (
     <input
@@ -152,7 +156,8 @@ export function NumBox({
         if (tidy !== e.target.value) onChange(tidy);
       }}
       onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ''))}
-      className={`${boxClass()} text-right font-mono`}
+      aria-invalid={error || undefined}
+      className={`${boxClass(error)} text-right font-mono`}
     />
   );
 }
@@ -261,6 +266,18 @@ export function Lookup<T extends Ref>({
         ? []
         : matchesOf(items, q);
 
+  /** The list is wider than a narrow box; near the right edge of the screen it opens leftwards
+   *  (anchored to the box's right side) so it never runs off the screen. */
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [toLeft, setToLeft] = useState(false);
+  const open = matches.length > 0;
+  useLayoutEffect(() => {
+    if (!open || !boxRef.current) return;
+    const r = boxRef.current.getBoundingClientRect();
+    const listWidth = Math.min(Math.max(r.width, 380), window.innerWidth - 32);
+    setToLeft(r.left + listWidth > window.innerWidth - 16 && r.right - listWidth >= 16);
+  }, [open]);
+
   const pick = (o: T) => {
     setText(null);
     setBrowse(false);
@@ -291,7 +308,7 @@ export function Lookup<T extends Ref>({
 
   return (
     <div className="flex min-w-0 gap-1.5">
-      <div className="relative min-w-0 flex-1">
+      <div ref={boxRef} className="relative min-w-0 flex-1">
         <input
           id={id}
           data-nav={nav}
@@ -316,7 +333,7 @@ export function Lookup<T extends Ref>({
         {matches.length > 0 && (
           <div
             onMouseDown={(e) => e.preventDefault()}
-            className="absolute left-0 top-full z-20 max-h-60 w-[max(100%,380px)] max-w-[calc(100vw-32px)] overflow-y-auto border border-border bg-card shadow-lg"
+            className={`absolute ${toLeft ? 'right-0' : 'left-0'} top-full z-20 max-h-60 w-[max(100%,380px)] max-w-[calc(100vw-32px)] overflow-y-auto border border-border bg-card shadow-lg`}
           >
             {matches.map((o, i) => (
               <button
@@ -351,8 +368,10 @@ export function Lookup<T extends Ref>({
 
 /** dd-MM-yyyy, the one date format shown across the software. */
 export const dmy = (iso: string) => {
-  const [y, m, d] = iso.split('-');
-  return y && m && d ? `${d}-${m}-${y}` : iso;
+  // Only yyyy-MM-dd is turned round; anything else (a date typed as text before the box was a
+  // date box, e.g. "22-10-2026") is shown as it was entered.
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso.trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso;
 };
 
 export const BAR_BTN =
@@ -472,7 +491,11 @@ export function EntryBySwitch({
 }) {
   return (
     <div role="radiogroup" aria-label="Enter item by" className="flex gap-3">
-      {(['Code', 'Name'] as const).map((k) => {
+      {/* Listed in the order Company Settings › Item Entry puts first. */}
+      {(preferences().itemEntry === 'code'
+        ? (['Code', 'Name'] as const)
+        : (['Name', 'Code'] as const)
+      ).map((k) => {
         const on = (k === 'Code') === byCode;
         return (
           <button

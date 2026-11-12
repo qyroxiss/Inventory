@@ -135,15 +135,35 @@ export function hsnSummary(bills: GstBill[]): HsnRow[] {
   return [...m.values()].sort((a, b) => a.hsn.localeCompare(b.hsn) || a.rate - b.rate);
 }
 
+/** A Sales Return (credit note) as GST sees it: the note and the bill it reduces. */
+export type GstNote = GstBill & { againstBillNo: string; againstDate: string };
+export type NoteRateRow = InvoiceRateRow & { againstBillNo: string; againstDate: string };
+
+/** The same lines with every figure turned negative, so a return nets off its bill. */
+export const negateLines = (lines: GstLine[]): GstLine[] =>
+  lines.map((l) => ({
+    ...l,
+    qty: -l.qty,
+    taxable: -l.taxable,
+    igst: -l.igst,
+    cgst: -l.cgst,
+    sgst: -l.sgst,
+  }));
+
 export type Gstr1 = {
   b2b: InvoiceRateRow[];
   b2cl: InvoiceRateRow[];
   b2cs: B2csRow[];
+  /** 9B: credit notes to registered buyers (Sales Returns), rate-wise. */
+  cdnr: NoteRateRow[];
   hsn: HsnRow[];
   /** Lines at 0% (nil rated / exempt), reported separately. */
   nil: TaxSums;
+  /** Invoices less credit notes. */
   totals: TaxSums;
-  counts: { b2b: number; b2cl: number; b2c: number };
+  /** The credit notes on their own (registered and unregistered). */
+  notes: TaxSums;
+  counts: { b2b: number; b2cl: number; b2c: number; cdnr: number };
 };
 
 /**
@@ -153,13 +173,15 @@ export type Gstr1 = {
  *   B2CS — every other B2C bill: summed by place of supply and rate.
  * A bill with no known buyer state is a supply within the company's own state.
  * 0% lines go to Nil rated / exempt, not to these tables.
+ * Sales Returns (2026-11-09): a credit note to a registered buyer goes to CDNR (9B); one to an
+ * unregistered buyer is netted off B2CS. HSN and the totals are net of all credit notes.
  */
-export function gstr1(bills: GstBill[], companyState: string): Gstr1 {
+export function gstr1(bills: GstBill[], companyState: string, notes: GstNote[] = []): Gstr1 {
   const b2b: InvoiceRateRow[] = [];
   const b2cl: InvoiceRateRow[] = [];
   const b2csMap = new Map<string, B2csRow>();
   const nil = zero();
-  const counts = { b2b: 0, b2cl: 0, b2c: 0 };
+  const counts = { b2b: 0, b2cl: 0, b2c: 0, cdnr: 0 };
   for (const b of bills) {
     const taxed = b.lines.filter((l) => l.rate > 0);
     b.lines.filter((l) => l.rate <= 0).forEach((l) => addTo(nil, l));
@@ -197,14 +219,61 @@ export function gstr1(bills: GstBill[], companyState: string): Gstr1 {
       }
     }
   }
+  const cdnr: NoteRateRow[] = [];
+  const noteSums = zero();
+  for (const n of notes) {
+    const taxed = n.lines.filter((l) => l.rate > 0);
+    n.lines.filter((l) => l.rate <= 0).forEach((l) => addTo(nil, negateLines([l])[0]!));
+    if (!taxed.length) continue;
+    const state = n.stateCode || companyState;
+    const pos = placeOfSupply(state);
+    if (n.gstin.trim()) counts.cdnr++;
+    for (const [rate, t] of byRate(taxed)) {
+      addTo(noteSums, t);
+      if (n.gstin.trim()) {
+        cdnr.push({
+          billNo: n.billNo,
+          date: n.date,
+          partyName: n.partyName,
+          gstin: n.gstin,
+          pos,
+          value: n.value,
+          rate,
+          againstBillNo: n.againstBillNo,
+          againstDate: n.againstDate,
+          ...t,
+        });
+      } else {
+        // An unregistered buyer's return reduces the B2C (small) figure it was reported in.
+        const key = `${state}|${rate}`;
+        const r = b2csMap.get(key) ?? {
+          pos,
+          rate,
+          type: n.interState ? 'Inter' : 'Intra',
+          ...zero(),
+        };
+        addTo(r, { taxable: -t.taxable, igst: -t.igst, cgst: -t.cgst, sgst: -t.sgst });
+        b2csMap.set(key, r);
+      }
+    }
+  }
   const b2cs = [...b2csMap.values()].sort((a, b) => a.pos.localeCompare(b.pos) || a.rate - b.rate);
+  const gross = sumTax([...b2b, ...b2cl]);
+  const cdnrSum = sumTax(cdnr);
   return {
     b2b,
     b2cl,
     b2cs,
-    hsn: hsnSummary(bills),
+    cdnr,
+    hsn: hsnSummary([...bills, ...notes.map((n) => ({ ...n, lines: negateLines(n.lines) }))]),
     nil,
-    totals: sumTax([...b2b, ...b2cl, ...b2cs]),
+    // B2CS is already net of unregistered notes; registered ones are taken off here.
+    totals: sumTax([
+      gross,
+      ...b2cs,
+      { taxable: -cdnrSum.taxable, igst: -cdnrSum.igst, cgst: -cdnrSum.cgst, sgst: -cdnrSum.sgst },
+    ]),
+    notes: noteSums,
     counts,
   };
 }

@@ -73,6 +73,19 @@ export const ledgerMessages = {
   noneFound: 'No ledgers saved yet.',
 };
 
+/** The Opening Balance box as a number (2026-11-11 audit): commas, spaces and ₹ are allowed
+ *  ("1,00,000", "₹ 500.50"); blank is 0; anything else, or more than the books can hold, is
+ *  null. */
+export function parseOpeningBalance(text?: string | null): number | null {
+  const t = (text ?? '').replace(/[,\s₹]/g, '');
+  if (!t) return 0;
+  if (!/^(\d+\.?\d*|\.\d+)$/.test(t)) return null;
+  const v = Math.round(Number(`${t}e2`)) / 100;
+  return v < 1e12 ? v : null;
+}
+
+export const openingBalanceInvalid = 'Enter a valid amount, like 1,00,000.00';
+
 export function ledgerFieldErrors(input: {
   name?: string;
   city?: string;
@@ -80,6 +93,7 @@ export function ledgerFieldErrors(input: {
   under?: string;
   pincode?: string;
   mobile?: string;
+  openingBalance?: string;
 }) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = ledgerMessages.nameRequired;
@@ -92,5 +106,7 @@ export function ledgerFieldErrors(input: {
   // Added: the mobile number, with its country code, when entered (contact.ts).
   const mobile = mobileProblem(input.mobile);
   if (mobile) errors.mobile = mobile;
+  if (parseOpeningBalance(input.openingBalance) === null)
+    errors.openingBalance = openingBalanceInvalid;
   return errors;
 }

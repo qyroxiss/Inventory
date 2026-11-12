@@ -10,14 +10,25 @@ import * as contract from '@qi/contract';
 import {
   MISC_CITY_CODE_PREFIX,
   MISC_MASTER_KINDS,
+  canEdit,
+  canView,
   isAdminRole,
   loginMessages,
+  permissionMessages,
   partyStateCode,
   seriesMessages,
 } from '@qi/core';
-import type { Db } from '@qi/db';
+import { and, eq, schema, type Db } from '@qi/db';
 import {
   UserError,
+  accessFor,
+  createRole,
+  deleteRole,
+  listPermissions,
+  renameRole,
+  roleNames,
+  saveRolePages,
+  saveUserPages,
   addMiscIfNew,
   bookLogin,
   changeBookPassword,
@@ -45,14 +56,30 @@ import {
   companyDecimals,
   getCompany,
   setCompanyDecimals,
+  companyPreferences,
+  billForReturn,
+  cancelReturn,
+  listReturns,
+  nextReturnNo,
+  returnDoc,
+  returnForPrint,
+  returnableBills,
+  saveReturn,
+  updateReturn,
+  setCompanyPreferences,
   gstAudit,
   gstr1Report,
   gstr3bReport,
   hsnReport,
   itcReport,
   dayBook,
+  ledgerStatementReport,
+  outstandingReport,
+  purchaseRegister,
+  trialBalanceReport,
   profitLossReport,
   salesRegister,
+  stockRegister,
   stockSummary,
   cancelPurchase,
   cancelSale,
@@ -124,6 +151,7 @@ import {
 import { Hono, type Context } from 'hono';
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import { type ZodType, z } from 'zod';
+import { ruleFor } from './access.ts';
 
 export type AppOptions = {
   db: Db;
@@ -216,6 +244,37 @@ export function createApp(opts: AppOptions) {
       return next();
     })
 
+    // ── Role Permissions: is this page open to the signed-in user? (access.ts) ────
+    .use('/api/*', async (c, next) => {
+      const rule = await ruleFor({
+        method: c.req.method,
+        path: c.req.path,
+        query: (k) => c.req.query(k),
+        body: async () => {
+          const b: unknown = await c.req.json().catch(() => ({}));
+          return b && typeof b === 'object' ? (b as Record<string, unknown>) : {};
+        },
+        voucherType: async (id) => {
+          const book = await readBook(c);
+          if (!book || !/^[0-9a-f-]{36}$/i.test(id)) return null;
+          const [v] = await db
+            .select({ t: schema.vouchers.vchrType })
+            .from(schema.vouchers)
+            .where(and(eq(schema.vouchers.bookId, book.bookId), eq(schema.vouchers.id, id)));
+          return v?.t ?? null;
+        },
+      });
+      if (!rule) return next();
+      const book = await readBook(c);
+      if (!book) return next(); // the route itself answers "Not logged in to a book."
+      const access = await accessFor(db, book.bookId, book.userName);
+      const ok = (test: (p: string) => boolean) => rule.pages.some(test);
+      if (!ok((p) => canView(access, p))) return c.json({ message: permissionMessages.noAccess }, 403);
+      if (rule.need === 'full' && !ok((p) => canEdit(access, p)))
+        return c.json({ message: permissionMessages.viewOnly }, 403);
+      return next();
+    })
+
     .get('/api/account', (c) => c.json({ accountId: c.get('accountId') }))
 
     // ── Company & year registry (the screen before MDA's login) ─────────────────
@@ -277,6 +336,12 @@ export function createApp(opts: AppOptions) {
       const updated = { ...book, mustChangePassword: false };
       await writeBook(c, updated);
       return c.json(updated);
+    })
+    /** The signed-in user's level on every page, for the menu and the screens' buttons. */
+    .get('/api/book/access', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json({ pages: await accessFor(db, book.bookId, book.userName) });
     })
     .get('/api/dashboard', async (c) => {
       const book = await readBook(c);
@@ -600,6 +665,83 @@ export function createApp(opts: AppOptions) {
       return c.json({ ok: true });
     })
 
+    // ── Purchase Return / Sales Return (added 2026-11-09) ───────────────────────
+    // `kind` is PRT or SRT; numbers travel in the query or body, never the path.
+    .get('/api/returns', zValidator('query', z.object({ kind: contract.returnKind })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listReturns(db, book.bookId, c.req.valid('query').kind));
+    })
+    .get(
+      '/api/returns/setup',
+      zValidator('query', z.object({ kind: contract.returnKind })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { kind } = c.req.valid('query');
+        return c.json({
+          bills: await returnableBills(db, book.bookId, kind),
+          returnNo: await nextReturnNo(db, book.bookId, kind),
+        });
+      },
+    )
+    .get(
+      '/api/returns/bill',
+      zValidator(
+        'query',
+        z.object({ kind: contract.returnKind, no: z.string(), except: z.string().optional() }),
+      ),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json({ bill: await billForReturn(db, book.bookId, q.kind, q.no, q.except) });
+      },
+    )
+    .get(
+      '/api/returns/doc',
+      zValidator('query', z.object({ kind: contract.returnKind, no: z.string() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json({ doc: await returnDoc(db, book.bookId, q.kind, q.no) });
+      },
+    )
+    .get(
+      '/api/returns/print',
+      zValidator('query', z.object({ kind: contract.returnKind, no: z.string() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json({ note: await returnForPrint(db, book.bookId, q.kind, q.no) });
+      },
+    )
+    .post('/api/returns', json(contract.returnSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const { kind, ...input } = c.req.valid('json');
+      return c.json(await saveReturn(db, postingContext(book), kind, input), 201);
+    })
+    .put('/api/returns', json(contract.returnSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      const { kind, ...input } = c.req.valid('json');
+      return c.json(await updateReturn(db, postingContext(book), kind, input));
+    })
+    .post(
+      '/api/returns/cancel',
+      json(z.object({ kind: contract.returnKind, returnNo: z.string() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { kind, returnNo } = c.req.valid('json');
+        await cancelReturn(db, postingContext(book), kind, returnNo);
+        return c.json({ ok: true });
+      },
+    )
+
     // ── Sales Invoice (sale_service.dart) ────────────────────────────────────────
     .get('/api/sales', async (c) => {
       const book = await readBook(c);
@@ -700,11 +842,36 @@ export function createApp(opts: AppOptions) {
     // ── Reports (docs/design/REPORTS.md) ────────────────────────────────────────
     .get(
       '/api/reports/stock-summary',
-      zValidator('query', period.extend({ godown: z.string().optional() })),
+      zValidator(
+        'query',
+        period.extend({
+          godown: z.string().optional(),
+          // How stock is valued (2026-11-10): Opening Rate, Average, FIFO or MRP.
+          method: z.enum(['opening', 'average', 'fifo', 'mrp']).optional(),
+        }),
+      ),
       async (c) => {
         const book = await readBook(c);
         if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
         return c.json(await stockSummary(db, book.bookId, c.req.valid('query')));
+      },
+    )
+    .get(
+      '/api/reports/stock-register',
+      zValidator(
+        'query',
+        period.extend({
+          show: z.enum(['all', 'purchase', 'sales']).default('all'),
+          // Comma-separated item codes; none means every item.
+          items: z.string().optional(),
+        }),
+      ),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { items, ...q } = c.req.valid('query');
+        const codes = items ? items.split(',').filter(Boolean) : undefined;
+        return c.json(await stockRegister(db, book.bookId, { ...q, codes }));
       },
     )
     .get(
@@ -743,6 +910,42 @@ export function createApp(opts: AppOptions) {
         return c.json(await balanceSheetReport(db, book.bookId, c.req.valid('query').to));
       },
     )
+    .get(
+      '/api/reports/ledger-statement',
+      zValidator('query', period.extend({ acc: z.string() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const { acc, ...p } = c.req.valid('query');
+        return c.json({ statement: await ledgerStatementReport(db, book.bookId, acc, p) });
+      },
+    )
+    .get(
+      '/api/reports/trial-balance',
+      zValidator('query', z.object({ to: isoDate })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        return c.json(await trialBalanceReport(db, book.bookId, c.req.valid('query').to));
+      },
+    )
+    .get(
+      '/api/reports/purchase-register',
+      zValidator('query', period.extend({ cancelled: z.string().optional() })),
+      async (c) => {
+        const book = await readBook(c);
+        if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+        const q = c.req.valid('query');
+        return c.json(
+          await purchaseRegister(db, book.bookId, { ...q, cancelled: q.cancelled === '1' }),
+        );
+      },
+    )
+    .get('/api/reports/outstanding', zValidator('query', z.object({ to: isoDate })), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await outstandingReport(db, book.bookId, c.req.valid('query').to));
+    })
 
     // ── GST Reports (docs/design/GST-REPORTS.md) ────────────────────────────────
     .get('/api/gst/gstr1', zValidator('query', period), async (c) => {
@@ -797,6 +1000,47 @@ export function createApp(opts: AppOptions) {
       await deleteBookUser(db, book, c.req.param('code'));
       return c.json({ ok: true });
     })
+    // ── Role Permissions (Admin only; the rules are in services permissions.ts) ──
+    .get('/api/permissions', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await listPermissions(db, book));
+    })
+    .get('/api/roles', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await roleNames(db, book.bookId));
+    })
+    .post('/api/permissions/roles', json(contract.roleCreate), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await createRole(db, book, c.req.valid('json'));
+      return c.json({ ok: true }, 201);
+    })
+    .put('/api/permissions/roles/:name', json(contract.rolePagesSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await saveRolePages(db, book, c.req.param('name'), c.req.valid('json').pages);
+      return c.json({ ok: true });
+    })
+    .put('/api/permissions/roles/:name/rename', json(contract.roleRename), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await renameRole(db, book, c.req.param('name'), c.req.valid('json').name);
+      return c.json({ ok: true });
+    })
+    .delete('/api/permissions/roles/:name', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await deleteRole(db, book, c.req.param('name'));
+      return c.json({ ok: true });
+    })
+    .put('/api/permissions/users/:code', json(contract.userPagesSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      await saveUserPages(db, book, c.req.param('code'), c.req.valid('json').pages);
+      return c.json({ ok: true });
+    })
     .get('/api/settings/company', async (c) => {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
@@ -825,6 +1069,17 @@ export function createApp(opts: AppOptions) {
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
       if (!isAdminRole(book.role)) throw new UserError(seriesMessages.adminOnly);
       return c.json(await setCompanyDecimals(db, book.companyId, c.req.valid('json')));
+    })
+    .get('/api/settings/preferences', async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      return c.json(await companyPreferences(db, book.companyId));
+    })
+    .put('/api/settings/preferences', json(contract.preferencesSave), async (c) => {
+      const book = await readBook(c);
+      if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
+      if (!isAdminRole(book.role)) throw new UserError(seriesMessages.adminOnly);
+      return c.json(await setCompanyPreferences(db, book.companyId, c.req.valid('json')));
     })
     .get('/api/settings/series', async (c) => {
       const book = await readBook(c);

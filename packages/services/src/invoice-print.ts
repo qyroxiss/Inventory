@@ -3,7 +3,9 @@
 // the bill, the company it belongs to and the party's ledger, everything one printed sheet needs.
 
 import { and, eq, schema, type Db } from '@qi/db';
+import type { ReturnKind } from '@qi/core';
 import { purchaseBill } from './purchases.ts';
+import { returnDoc } from './returns.ts';
 import { saleBill } from './sales.ts';
 
 const { books, companies, ledgers } = schema;
@@ -43,5 +45,28 @@ export async function purchaseForPrint(db: Db, bookId: string, billNo: string) {
     bill,
     company: await companyOf(db, bookId),
     party: await ledgerOf(db, bookId, bill.suppCode),
+  };
+}
+
+/** A return printed as a Debit Note (purchase return) or Credit Note (sales return): the return,
+ *  the company, the party's ledger and, for a sales return, the customer's address from the
+ *  original bill. */
+export async function returnForPrint(db: Db, bookId: string, kind: ReturnKind, returnNo: string) {
+  const doc = await returnDoc(db, bookId, kind, returnNo);
+  if (!doc) return null;
+  const sale = kind === 'SRT' ? await saleBill(db, bookId, doc.againstBillNo) : null;
+  return {
+    doc,
+    company: await companyOf(db, bookId),
+    party: await ledgerOf(db, bookId, doc.partyCode),
+    customer: sale
+      ? {
+          address: sale.address,
+          area: sale.area,
+          city: sale.city,
+          mobile: sale.mobile,
+          gstNo: sale.gstNo,
+        }
+      : null,
   };
 }

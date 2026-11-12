@@ -46,3 +46,18 @@ describe('INDIAN_STATES', () => {
     expect(INDIAN_STATES).toContain('Maharashtra');
   });
 });
+
+// 2026-11-11 audit: the Opening Balance box used to send any text to a number column.
+import { parseOpeningBalance } from '../src/index.ts';
+describe('parseOpeningBalance', () => {
+  test.each([
+    ['', 0],
+    ['5000', 5000],
+    ['1,00,000', 100000],
+    ['₹ 500.50', 500.5],
+    ['1.005', 1.01],
+    ['abc', null],
+    ['-50', null],
+    ['1,00,00,00,00,00,000', null],
+  ])('%s → %s', (text, want) => expect(parseOpeningBalance(text)).toBe(want));
+});

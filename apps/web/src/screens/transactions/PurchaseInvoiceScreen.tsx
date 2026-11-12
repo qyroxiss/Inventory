@@ -1,20 +1,23 @@
 // Purchase Invoice (purchase_invoice_page.dart). The bill's header, the "Purchased Item Detail"
 // entry row with its grid and totals, and the footer buttons. Every figure is worked out as you
 // type with MDA's own maths (@qi/core purcLine / purcTotals); the server works it out again on
-// save. The State beside the supplier decides CGST + SGST or IGST: it fills from the supplier's
-// ledger, can be changed for the bill, and changing it recomputes every line.
+// save. The State beside the supplier decides CGST + SGST or IGST: it shows the supplier's ledger
+// State and cannot be edited on the bill (user's request, 2026-11-09).
 //
 // Changed from MDA at the user's request (2026-10-11): one Location for the whole bill sits in
 // the header; Order No./Date/Type, Goods Rec No, Rec. Date, Narration and Transporter moved into
 // the optional "Other Details" popup.
 //
 // Kept as MDA has it: Enter walks the fields in order, starting on Supply With; picking an item
-// jumps to Quantity; Add returns to the item.
+// jumps to Quantity; Add returns to the item. After the supplier, Enter reaches Other Details
+// (Enter opens it, Enter walks its boxes, the last one closes it and goes to the item).
+// Supply With, No., Location, the supplier and at least one item are compulsory (2026-11-09).
+// Item Name or Item Code comes first, in the boxes and the grid, as Company Settings says.
 // A cancelled bill opens for reference only and its Save collides with its own number (Q-50).
 
 import {
   GST_STATES,
-  INDIAN_STATES,
+  SUPPLIER_GROUP,
   f2,
   isInterState,
   purcLine,
@@ -27,8 +30,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { fa, fq } from '../../format.ts';
+import { preferences } from '../../prefs.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
-import { SearchSelect } from '../../components/SearchSelect.tsx';
+import { NewItemButton, NewLedgerButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import { PurchaseList } from './PurchaseList.tsx';
@@ -49,6 +53,7 @@ import {
   enterToNext,
   focusNav,
 } from './shared.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type Setup = OkBody<Awaited<ReturnType<typeof api.api.purchases.setup.$get>>>;
 type Supplier = Setup['suppliers'][number];
@@ -64,7 +69,7 @@ const NAV = {
   suppInvDate: 4,
   location: 5,
   supplier: 10,
-  state: 11,
+  other: 11,
   item: 13,
   qty: 14,
   rate: 15,
@@ -72,8 +77,6 @@ const NAV = {
   discAmt: 17,
   add: 18,
 } as const;
-
-const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
 
 /** A supplier's State as the bill shows it: the ledger's State, else the state of its code. */
 const stateOf = (s: Supplier) => s.state.trim() || GST_STATES[s.stateCode] || '';
@@ -123,8 +126,23 @@ const blankEntry = (): Entry => ({
   line: null,
 });
 const num = (s: string) => Number(s) || 0;
+/** The Other Details popup's boxes, in Enter order. */
+const OTHER_IDS = [
+  'pi-orderNo',
+  'pi-orderDate',
+  'pi-orderType',
+  'pi-goodsRecNo',
+  'pi-recDate',
+  'pi-transporter',
+  'pi-narration',
+];
+
+/** The header boxes Save insists on (with at least one item). */
+type MustFill = 'supplyWith' | 'suppInvNo' | 'location' | 'supplier';
 
 export function PurchaseInvoiceScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ['book-me'], queryFn: () => unwrap(api.api.book.me.$get()) });
   const setup = useQuery({
@@ -159,9 +177,11 @@ export function PurchaseInvoiceScreen() {
   const [h, setH] = useState<Header | null>(null);
   const [lines, setLines] = useState<PurcLine[]>([]);
   const [entry, setEntry] = useState<Entry>(blankEntry);
-  const [byCode, setByCode] = useState(false);
+  // Item Code or Item Name first, as the Admin set it in Company Settings.
+  const codeFirst = () => preferences().itemEntry === 'code';
+  const [byCode, setByCode] = useState(codeFirst);
   const [editing, setEditing] = useState<string | null>(null);
-  const [supplierError, setSupplierError] = useState(false);
+  const [errors, setErrors] = useState<Partial<Record<MustFill, boolean>>>({});
   const [saving, setSaving] = useState(false);
   const [list, setList] = useState<ListRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
@@ -243,8 +263,8 @@ export function PurchaseInvoiceScreen() {
 
   const onSupplier = (s: Supplier) => {
     applyState(stateOf(s), s);
-    setSupplierError(false);
-    focusNav(NAV.state);
+    setErrors((e) => ({ ...e, supplier: false }));
+    focusNav(NAV.other);
   };
 
   const onItem = (it: Item) => {
@@ -330,19 +350,31 @@ export function PurchaseInvoiceScreen() {
     setH(blankHeader(billNo));
     setLines([]);
     setEditing(null);
-    setSupplierError(false);
-    setByCode(false);
+    setErrors({});
+    setByCode(codeFirst());
     clearEntry();
     focusNav(NAV.supplyWith);
   };
 
   const save = async () => {
-    // The form's only validator: the supplier box turns red.
-    if (!h.supplier) {
-      setSupplierError(true);
-      return;
+    // The compulsory boxes turn red; the first one missing gets the cursor and its message.
+    const missing: [MustFill, boolean, string, number][] = [
+      ['supplyWith', !h.supplyWith.trim(), pm.supplyWithRequired, NAV.supplyWith],
+      ['suppInvNo', !h.suppInvNo.trim(), pm.suppInvNoRequired, NAV.suppInvNo],
+      ['location', !h.location.trim(), pm.locationRequired, NAV.location],
+      ['supplier', !h.supplier, pm.supplierRequired, NAV.supplier],
+    ];
+    const bad = missing.filter(([, m]) => m);
+    setErrors(Object.fromEntries(bad.map(([k]) => [k, true])));
+    if (bad.length) {
+      toast(bad[0]![2], 'error');
+      return focusNav(bad[0]![3]);
     }
-    if (saving) return;
+    if (!lines.length) {
+      toast(pm.noItems, 'error');
+      return focusNav(NAV.item);
+    }
+    if (saving || !h.supplier) return;
     setSaving(true);
     const body = {
       billNo: h.billNo,
@@ -432,7 +464,7 @@ export function PurchaseInvoiceScreen() {
     setLines(bill.lines);
     // A cancelled bill opens for reference only: saving would re-post it.
     setEditing(cancelled ? null : bill.billNo);
-    setSupplierError(false);
+    setErrors({});
     clearEntry();
     if (cancelled) toast(pm.shownCancelled(bill.billNo), 'error');
   };
@@ -459,8 +491,11 @@ export function PurchaseInvoiceScreen() {
       value={h[id] as string}
       placeholder={hint}
       autoComplete="off"
-      onChange={(e) => set({ [id]: e.target.value })}
-      className={boxClass()}
+      onChange={(e) => {
+        set({ [id]: e.target.value });
+        if (errors[id as MustFill]) setErrors((x) => ({ ...x, [id]: false }));
+      }}
+      className={boxClass(errors[id as MustFill])}
     />
   );
 
@@ -543,64 +578,88 @@ export function PurchaseInvoiceScreen() {
                 }}
               />
             </Cell>
-            <Cell id="pi-supplyWith" label="Supply With">
-              {text('supplyWith', NAV.supplyWith, 'Transport / courier')}
+            <Cell id="pi-supplyWith" label="Supply With" required>
+              {text('supplyWith', NAV.supplyWith, 'Sale / Challan')}
             </Cell>
-            <Cell id="pi-suppInvNo" label="No.">
+            <Cell id="pi-suppInvNo" label="No." required>
               {text('suppInvNo', NAV.suppInvNo, 'Supplier bill no')}
             </Cell>
             <Cell id="pi-suppInvDate" label="Date">
-              {text('suppInvDate', NAV.suppInvDate, 'Supplier bill date')}
+              {/* A real date box, typed or picked (user's request, 2026-11-09). The supplier's
+                  bill can be older than the open year, so no limits here. */}
+              <DateBox
+                id="pi-suppInvDate"
+                data-nav={NAV.suppInvDate}
+                value={h.suppInvDate}
+                placeholder="dd-mm-yyyy"
+                format={dmy}
+                className={boxClass()}
+                onChange={(suppInvDate, how) => {
+                  set({ suppInvDate });
+                  if (how === 'calendar') focusNav(NAV.location);
+                }}
+              />
             </Cell>
-            <Cell id="pi-location" label="Location">
+            <Cell id="pi-location" label="Location" required>
               {data.godowns.length ? (
                 <Lookup<Godown>
                   id="pi-location"
                   nav={NAV.location}
                   value={data.godowns.find((g) => g.name === h.location) ?? null}
                   items={data.godowns}
-                  hint="Godown (optional)"
+                  hint="Godown"
+                  error={errors.location}
                   onChange={(g) => {
                     set({ location: g.name });
+                    setErrors((x) => ({ ...x, location: false }));
                     focusNav(NAV.supplier);
                   }}
                 />
               ) : (
-                text('location', NAV.location, 'Godown (optional)')
+                text('location', NAV.location, 'Godown')
               )}
             </Cell>
             <div className="col-span-6 grid grid-cols-[5fr_3fr_2fr_auto] items-end gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
               <Cell id="pi-supplier" label="Supplier Name" required className="max-md:col-span-2">
-                <Lookup<Supplier>
-                  id="pi-supplier"
-                  nav={NAV.supplier}
-                  value={h.supplier}
-                  items={data.suppliers.map((s) => ({ ...s, extra: s.gstin }))}
-                  hint={data.suppliers.length ? 'Type to search supplier' : pm.noSuppliersHint}
-                  error={supplierError}
-                  onChange={onSupplier}
-                />
+                <div className="flex gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <Lookup<Supplier>
+                      id="pi-supplier"
+                      nav={NAV.supplier}
+                      value={h.supplier}
+                      items={data.suppliers.map((s) => ({ ...s, extra: s.gstin }))}
+                      hint={data.suppliers.length ? 'Type to search supplier' : pm.noSuppliersHint}
+                      error={errors.supplier}
+                      onChange={onSupplier}
+                    />
+                  </div>
+                  {/* A new supplier (under Sundry Creditors), picked here once saved. */}
+                  <NewLedgerButton
+                    under={SUPPLIER_GROUP}
+                    onCreated={(code) =>
+                      void setup.refetch().then((r) => {
+                        const s = r.data?.suppliers.find((x) => x.code === code);
+                        if (s) onSupplier(s);
+                      })
+                    }
+                  />
+                </div>
               </Cell>
-              <Cell id="pi-state" label="State">
-                <SearchSelect
-                  id="pi-state"
-                  nav={NAV.state}
-                  compact
-                  value={h.state}
-                  options={STATE_OPTIONS}
-                  placeholder="Search state…"
-                  onCommit={(state) => {
-                    if (state !== h.state) applyState(state, h.supplier);
-                  }}
-                  onNext={() => focusNav(NAV.item)}
-                />
+              <Cell label="State">
+                {/* The supplier's ledger State; change it in Ledger Creation, not on the bill. */}
+                <ReadOnly text={h.state} />
               </Cell>
               <Cell label="GST">
                 <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
               </Cell>
               <button
                 type="button"
-                onClick={() => setOtherOpen(true)}
+                data-nav={NAV.other}
+                onClick={() => {
+                  setOtherOpen(true);
+                  // The cursor starts on the popup's first box.
+                  setTimeout(() => document.getElementById(OTHER_IDS[0]!)?.focus(), 50);
+                }}
                 className="flex h-[34px] cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border-[1.5px] border-foreground px-3 text-[15px] font-semibold max-md:col-span-2"
               >
                 Other Details…
@@ -620,32 +679,34 @@ export function PurchaseInvoiceScreen() {
                 Purchased Item Detail
               </h2>
               <div role="radiogroup" aria-label="Enter item by" className="flex gap-3">
-                {(['Code', 'Name'] as const).map((k) => {
-                  const on = (k === 'Code') === byCode;
-                  return (
-                    <button
-                      key={k}
-                      type="button"
-                      role="radio"
-                      aria-checked={on}
-                      tabIndex={-1}
-                      onClick={() => {
-                        if (on) return;
-                        setByCode(k === 'Code');
-                        focusNav(NAV.item);
-                      }}
-                      className={`flex cursor-pointer items-center gap-1.5 text-sm ${on ? 'font-semibold text-primary-text' : 'text-muted-foreground'}`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`grid size-4 place-items-center rounded-full border-[1.5px] ${on ? 'border-primary-text' : 'border-muted-foreground'}`}
+                {(codeFirst() ? (['Code', 'Name'] as const) : (['Name', 'Code'] as const)).map(
+                  (k) => {
+                    const on = (k === 'Code') === byCode;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        role="radio"
+                        aria-checked={on}
+                        tabIndex={-1}
+                        onClick={() => {
+                          if (on) return;
+                          setByCode(k === 'Code');
+                          focusNav(NAV.item);
+                        }}
+                        className={`flex cursor-pointer items-center gap-1.5 text-sm ${on ? 'font-semibold text-primary-text' : 'text-muted-foreground'}`}
                       >
-                        {on && <span className="size-2 rounded-full bg-primary-text" />}
-                      </span>
-                      {k}
-                    </button>
-                  );
-                })}
+                        <span
+                          aria-hidden="true"
+                          className={`grid size-4 place-items-center rounded-full border-[1.5px] ${on ? 'border-primary-text' : 'border-muted-foreground'}`}
+                        >
+                          {on && <span className="size-2 rounded-full bg-primary-text" />}
+                        </span>
+                        {k}
+                      </button>
+                    );
+                  },
+                )}
               </div>
               <span className="flex-1" />
               {entry.line !== null && (
@@ -655,11 +716,21 @@ export function PurchaseInvoiceScreen() {
               )}
             </div>
 
-            {/* Always Item Code | Item Name, as the grid below; the radio only picks which one you
-                type in (changed from MDA's "typed box first" at the user's request, 2026-10-25). */}
-            <div className="grid grid-cols-[1fr_1fr_auto] items-end gap-2.5 max-sm:grid-cols-1">
-              {itemCodeBox(byCode)}
-              {itemNameBox(!byCode)}
+            {/* The box typed in comes first, and the grid below follows the same order: Name |
+                Code or Code | Name. The switch starts on Company Settings › Item Entry
+                (user's request, 2026-11-09). */}
+            <div className="grid grid-cols-[1fr_1fr_auto_auto] items-end gap-2.5 max-sm:grid-cols-[1fr_auto_auto]">
+              {byCode ? itemCodeBox(true) : itemNameBox(true)}
+              {byCode ? itemNameBox(false) : itemCodeBox(false)}
+              {/* A new stock item (Masters › Stock Item), picked here once saved. */}
+              <NewItemButton
+                onCreated={(code) =>
+                  void setup.refetch().then((r) => {
+                    const it = r.data?.items.find((x) => x.code === code);
+                    if (it) onItem(it);
+                  })
+                }
+              />
               <button
                 type="button"
                 tabIndex={-1}
@@ -739,7 +810,7 @@ export function PurchaseInvoiceScreen() {
             </div>
 
             <ItemGrid
-              cols={COLS}
+              cols={byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST}
               lines={lines}
               empty={pm.noLines}
               selected={entry.line}
@@ -791,7 +862,7 @@ export function PurchaseInvoiceScreen() {
           </button>
           <button
             type="button"
-            disabled={!editing}
+            disabled={!editing || !canEdit}
             onClick={() => setConfirm(true)}
             className={`${BAR_BTN} border-destructive text-destructive`}
           >
@@ -801,7 +872,7 @@ export function PurchaseInvoiceScreen() {
           <button
             type="button"
             onClick={() => void save()}
-            disabled={saving}
+            disabled={saving || !canEdit}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
             <span>{saving ? 'Saving...' : editing === null ? 'Save' : 'Update'}</span>
@@ -873,7 +944,21 @@ export function PurchaseInvoiceScreen() {
         className="w-[560px]"
       >
         <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-[14px]">
-          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 max-sm:grid-cols-1">
+          <div
+            className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 max-sm:grid-cols-1"
+            // Enter walks the seven boxes; on the last one it closes and goes to the item.
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.defaultPrevented || e.shiftKey) return;
+              const i = OTHER_IDS.indexOf((e.target as HTMLElement).id);
+              if (i < 0) return;
+              e.preventDefault();
+              if (i < OTHER_IDS.length - 1) document.getElementById(OTHER_IDS[i + 1]!)?.focus();
+              else {
+                setOtherOpen(false);
+                focusNav(NAV.item);
+              }
+            }}
+          >
             <Cell id="pi-orderNo" label="Order No.">
               {text('orderNo')}
             </Cell>
@@ -931,16 +1016,17 @@ export function PurchaseInvoiceScreen() {
   );
 }
 
-/** The grid's columns, as MDA's (`_cols`); Item Name takes the spare width. */
-const COLS: GridCol<PurcLine>[] = [
-  { label: 'SNo.', w: '44px', cell: (_, i) => String(i + 1) },
-  { label: 'Code', w: '78px', cell: (l) => l.itemCode },
-  {
-    label: 'Item Name',
-    w: 'minmax(170px,1fr)',
-    // Description lines follow the name.
-    cell: (l) => [l.itemName, ...(l.desc ?? []).filter((d) => d.trim())].join('  ·  '),
-  },
+/** The grid's columns, as MDA's (`_cols`); Item Name takes the spare width. Name and Code swap
+ *  places to match the entry boxes (SNo. | Name | Code or SNo. | Code | Name). */
+const SNO: GridCol<PurcLine> = { label: 'SNo.', w: '44px', cell: (_, i) => String(i + 1) };
+const CODE: GridCol<PurcLine> = { label: 'Code', w: '78px', cell: (l) => l.itemCode };
+const NAME: GridCol<PurcLine> = {
+  label: 'Item Name',
+  w: 'minmax(170px,1fr)',
+  // Description lines follow the name.
+  cell: (l) => [l.itemName, ...(l.desc ?? []).filter((d) => d.trim())].join('  ·  '),
+};
+const AMOUNTS: GridCol<PurcLine>[] = [
   { label: 'Qty.', w: '62px', num: true, cell: (l) => fq(l.qty) },
   { label: 'Rate', w: '76px', num: true, cell: (l) => fa(l.rate) },
   { label: 'DisP', w: '52px', num: true, cell: (l) => f2(l.disP) },
@@ -953,3 +1039,5 @@ const COLS: GridCol<PurcLine>[] = [
   { label: 'IGSTP', w: '54px', num: true, cell: (l) => f2(l.igstP) },
   { label: 'IGSTA', w: '70px', num: true, cell: (l) => fa(l.igstA) },
 ];
+const COLS_NAME_FIRST = [SNO, NAME, CODE, ...AMOUNTS];
+const COLS_CODE_FIRST = [SNO, CODE, NAME, ...AMOUNTS];

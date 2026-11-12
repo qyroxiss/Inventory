@@ -60,7 +60,7 @@ describe('GSTR-1', () => {
       { pos: '27-Maharashtra', rate: 18, type: 'Intra', taxable: 600, igst: 0, cgst: 54, sgst: 54 },
     ]);
     expect(r.nil.taxable).toBe(90);
-    expect(r.counts).toEqual({ b2b: 1, b2cl: 1, b2c: 2 });
+    expect(r.counts).toEqual({ b2b: 1, b2cl: 1, b2c: 2, cdnr: 0 });
     expect(r.totals.taxable).toBe(201600);
   });
   test('place of supply reads as code-name', () => {
@@ -106,5 +106,34 @@ describe('stateCodeFromText', () => {
   test('drives IGST vs CGST + SGST against the company state', () => {
     expect(isInterState('27', stateCodeFromText('Gujarat'))).toBe(true);
     expect(isInterState('27', stateCodeFromText('Maharashtra'))).toBe(false);
+  });
+});
+
+describe('GSTR-1 with Sales Returns (credit notes)', () => {
+  const l = (taxable: number, rate = 18) => ({
+    hsn: '1006', itemName: 'Rice', unit: 'Kgs', qty: 1, rate, taxable,
+    igst: 0, cgst: (taxable * rate) / 200, sgst: (taxable * rate) / 200,
+  }); // prettier-ignore
+  const bill = (no: string, gstin: string, taxable: number): GstBill => ({
+    billNo: no, date: '2026-05-10', partyName: 'P', gstin, stateCode: '27', interState: false,
+    value: taxable * 1.18, lines: [l(taxable)],
+  }); // prettier-ignore
+  const note = (no: string, gstin: string, taxable: number) => ({
+    ...bill(no, gstin, taxable), againstBillNo: 'SB-1', againstDate: '2026-05-10',
+  });
+
+  test('registered → CDNR; unregistered → off B2CS; HSN and totals net', () => {
+    const r = gstr1(
+      [bill('SB-1', '27AAAPA1234A1Z5', 1000), bill('SB-2', '', 500)],
+      '27',
+      [note('SRT-001', '27AAAPA1234A1Z5', 200), note('SRT-002', '', 100)],
+    );
+    expect(r.cdnr).toHaveLength(1);
+    expect(r.cdnr[0]).toMatchObject({ billNo: 'SRT-001', againstBillNo: 'SB-1', rate: 18, taxable: 200 });
+    expect(r.b2cs[0]).toMatchObject({ rate: 18, taxable: 400 });
+    expect(r.counts.cdnr).toBe(1);
+    expect(r.notes.taxable).toBe(300);
+    expect(r.totals.taxable).toBe(1000 + 500 - 300);
+    expect(r.hsn[0]).toMatchObject({ qty: 0, taxable: 1200 });
   });
 });

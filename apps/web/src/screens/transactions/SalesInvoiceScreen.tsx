@@ -14,8 +14,13 @@
 //
 // Changed at the user's request (2026-10-11): the State sits beside the Name, picked from the
 // state list, and decides CGST + SGST or IGST; changing it recomputes every line.
+// Changed at the user's request (2026-11-09), as on the Purchase Invoice: Mobile, Address, Area,
+// City and GST No. moved into the "Other Details" popup beside GST. Picking a customer still
+// fills them. Enter: Name → State → Other Details (Enter opens it and walks its boxes; the last
+// one closes it and goes to the item).
 
 import {
+  CUSTOMER_GROUP,
   GST_STATES,
   INDIAN_STATES,
   f2,
@@ -31,8 +36,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { api, unwrap, type OkBody } from '../../api.ts';
 import { fa, fq } from '../../format.ts';
-import { ConfirmDelete } from '../../components/Dialog.tsx';
+import { preferences } from '../../prefs.ts';
+import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
 import { SearchSelect } from '../../components/SearchSelect.tsx';
+import { NewItemButton, NewLedgerButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText } from '../vouchers/shared.tsx';
 import { PrintInvoice } from './print.tsx';
@@ -54,6 +61,7 @@ import {
   focusNav,
   type GridCol,
 } from './shared.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 type Setup = OkBody<Awaited<ReturnType<typeof api.api.sales.setup.$get>>>;
 type Customer = Setup['customers'][number];
@@ -68,11 +76,7 @@ const NAV = {
   location: 3,
   customer: 4,
   state: 5,
-  mobile: 6,
-  address: 7,
-  area: 8,
-  city: 9,
-  gstNo: 10,
+  other: 6,
   item: 11,
   qty: 12,
   rate: 13,
@@ -85,6 +89,15 @@ const NAV = {
 } as const;
 
 const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
+
+/** The Other Details popup's boxes, in Enter order. */
+const OTHER = [
+  ['mobile', 'Mobile'],
+  ['address', 'Address'],
+  ['area', 'Area'],
+  ['city', 'City'],
+  ['gstNo', 'GST No'],
+] as const;
 
 type Header = {
   billNo: string;
@@ -130,6 +143,8 @@ const nextNo = async (prefix?: string) =>
   (await unwrap(api.api.sales.next.$get({ query: prefix ? { prefix } : {} }))).billNo;
 
 export function SalesInvoiceScreen() {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   const queryClient = useQueryClient();
   const me = useQuery({ queryKey: ['book-me'], queryFn: () => unwrap(api.api.book.me.$get()) });
   const setup = useQuery({
@@ -143,7 +158,10 @@ export function SalesInvoiceScreen() {
   const [h, setH] = useState<Header | null>(null);
   const [lines, setLines] = useState<SaleLine[]>([]);
   const [entry, setEntry] = useState<Entry>(blankEntry);
-  const [byCode, setByCode] = useState(false);
+  // Item Code or Item Name first, as the Admin set it in Company Settings.
+  const codeFirst = () => preferences().itemEntry === 'code';
+  const [byCode, setByCode] = useState(codeFirst);
+  const [otherOpen, setOtherOpen] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ saleType?: boolean; customer?: boolean }>({});
   const [saving, setSaving] = useState(false);
@@ -335,7 +353,7 @@ export function SalesInvoiceScreen() {
     setLines([]);
     setEditing(null);
     setErrors({});
-    setByCode(false);
+    setByCode(codeFirst());
     setEntry(blankEntry());
     focusNav(NAV.saleType);
   };
@@ -446,7 +464,7 @@ export function SalesInvoiceScreen() {
   const text = (id: 'area' | 'city' | 'address' | 'mobile' | 'gstNo' | 'location') => (
     <input
       id={`si-${id}`}
-      data-nav={NAV[id]}
+      data-nav={id === 'location' ? NAV.location : undefined}
       value={h[id]}
       autoComplete="off"
       onChange={(e) => set({ [id]: e.target.value })}
@@ -497,6 +515,18 @@ export function SalesInvoiceScreen() {
 
   const chips = <>{editing && <Chip tone="warn">Editing {editing}</Chip>}</>;
 
+  // Filled boxes in the popup, shown on its button so nothing there goes unseen.
+  const otherCount = OTHER.filter(([k]) => h[k].trim()).length;
+  const openOther = () => {
+    setOtherOpen(true);
+    // The cursor starts on the popup's first box.
+    setTimeout(() => document.getElementById(`si-${OTHER[0][0]}`)?.focus(), 50);
+  };
+  const closeOther = () => {
+    setOtherOpen(false);
+    focusNav(NAV.item);
+  };
+
   return (
     <>
       <TransactionPage title={['Sales', 'Invoice']} chips={chips}>
@@ -504,7 +534,6 @@ export function SalesInvoiceScreen() {
           className="flex min-h-0 flex-1 flex-col gap-2"
           onKeyDown={(e) =>
             enterToNext(e, {
-              [NAV.gstNo]: NAV.item,
               [NAV.discAmt]: NAV.add,
               [NAV.billDiscAmt]: NAV.save,
             })
@@ -549,19 +578,34 @@ export function SalesInvoiceScreen() {
             <Cell id="si-location" label="Location">
               {text('location')}
             </Cell>
-            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_3fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
+            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_auto] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
               <Cell id="si-customer" label="Name" required className="max-md:col-span-2">
-                <Lookup<Customer>
-                  id="si-customer"
-                  nav={NAV.customer}
-                  value={
-                    h.customer ?? (h.custName ? ({ code: '', name: h.custName } as Customer) : null)
-                  }
-                  items={data.customers.map((c) => ({ ...c, extra: c.gstNo }))}
-                  hint={data.customers.length ? 'Type to search customer' : sm.noCustomersHint}
-                  error={errors.customer}
-                  onChange={onCustomer}
-                />
+                <div className="flex gap-1.5">
+                  <div className="min-w-0 flex-1">
+                    <Lookup<Customer>
+                      id="si-customer"
+                      nav={NAV.customer}
+                      value={
+                        h.customer ??
+                        (h.custName ? ({ code: '', name: h.custName } as Customer) : null)
+                      }
+                      items={data.customers.map((c) => ({ ...c, extra: c.gstNo }))}
+                      hint={data.customers.length ? 'Type to search customer' : sm.noCustomersHint}
+                      error={errors.customer}
+                      onChange={onCustomer}
+                    />
+                  </div>
+                  {/* A new customer (under Sundry Debtors), picked here once saved. */}
+                  <NewLedgerButton
+                    under={CUSTOMER_GROUP}
+                    onCreated={(code) =>
+                      void setup.refetch().then((r) => {
+                        const c = r.data?.customers.find((x) => x.code === code);
+                        if (c) onCustomer(c);
+                      })
+                    }
+                  />
+                </div>
               </Cell>
               <Cell id="si-state" label="State">
                 <SearchSelect
@@ -574,29 +618,25 @@ export function SalesInvoiceScreen() {
                   onCommit={(state) => {
                     if (state !== h.state) applyState(state);
                   }}
-                  onNext={() => focusNav(NAV.mobile)}
+                  onNext={() => focusNav(NAV.other)}
                 />
               </Cell>
               <Cell label="GST">
                 <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
               </Cell>
-              <Cell id="si-mobile" label="Mobile">
-                {text('mobile')}
-              </Cell>
-            </div>
-            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_3fr] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
-              <Cell id="si-address" label="Address" className="max-md:col-span-2">
-                {text('address')}
-              </Cell>
-              <Cell id="si-area" label="Area">
-                {text('area')}
-              </Cell>
-              <Cell id="si-city" label="City">
-                {text('city')}
-              </Cell>
-              <Cell id="si-gstNo" label="GST No">
-                {text('gstNo')}
-              </Cell>
+              <button
+                type="button"
+                data-nav={NAV.other}
+                onClick={openOther}
+                className="flex h-[34px] cursor-pointer items-center justify-center gap-1.5 self-end whitespace-nowrap border-[1.5px] border-foreground px-3 text-[15px] font-semibold max-md:col-span-2"
+              >
+                Other Details…
+                {otherCount > 0 && (
+                  <span className="bg-primary px-1.5 text-xs text-primary-foreground">
+                    {otherCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
 
@@ -622,11 +662,21 @@ export function SalesInvoiceScreen() {
             </div>
 
             <div className="grid grid-cols-[repeat(5,minmax(0,1fr))_auto] items-end gap-2.5 max-lg:grid-cols-3 max-sm:grid-cols-2">
-              <div className="col-span-6 grid grid-cols-2 gap-2.5 max-lg:col-span-3 max-sm:col-span-2 max-sm:grid-cols-1">
-                {/* Always Item Code | Item Name, as the grid below; the radio only picks which one
-                    you type in (user's request, 2026-10-25). */}
-                {itemBox('code', byCode)}
-                {itemBox('name', !byCode)}
+              <div className="col-span-6 grid grid-cols-[1fr_1fr_auto] items-end gap-2.5 max-lg:col-span-3 max-sm:col-span-2 max-sm:grid-cols-[1fr_auto]">
+                {/* The box typed in comes first and the grid follows the same order (Name |
+                    Code or Code | Name); the switch starts on Company Settings › Item Entry
+                    (user's request, 2026-11-09). */}
+                {byCode ? itemBox('code', true) : itemBox('name', true)}
+                {byCode ? itemBox('name', false) : itemBox('code', false)}
+                {/* A new stock item (Masters › Stock Item), picked here once saved. */}
+                <NewItemButton
+                  onCreated={(code) =>
+                    void setup.refetch().then((r) => {
+                      const it = r.data?.items.find((x) => x.code === code);
+                      if (it) onItem(it);
+                    })
+                  }
+                />
               </div>
               <Cell id="si-qty" label="Required Qty" required>
                 <NumBox
@@ -688,7 +738,7 @@ export function SalesInvoiceScreen() {
             </div>
 
             <ItemGrid
-              cols={COLS}
+              cols={byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST}
               lines={lines}
               empty={sm.noLines}
               selected={entry.line}
@@ -782,7 +832,7 @@ export function SalesInvoiceScreen() {
           </button>
           <button
             type="button"
-            disabled={!editing}
+            disabled={!editing || !canEdit}
             onClick={() => setConfirm(true)}
             className={`${BAR_BTN} border-destructive text-destructive`}
           >
@@ -793,7 +843,7 @@ export function SalesInvoiceScreen() {
             type="button"
             data-nav={NAV.save}
             onClick={() => void save()}
-            disabled={saving}
+            disabled={saving || !canEdit}
             className="flex h-11 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary max-lg:min-w-[130px] px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
           >
             <span>{saving ? 'Saving...' : editing === null ? 'Save' : 'Update'}</span>
@@ -810,6 +860,47 @@ export function SalesInvoiceScreen() {
         defaultNo={editing ?? lastSaved}
         onDone={() => setPrintOpen(false)}
       />
+      <Dialog
+        open={otherOpen}
+        onClose={() => setOtherOpen(false)}
+        title={['Other', 'Details']}
+        className="w-[560px]"
+      >
+        <div className="flex flex-col gap-3 px-[26px] pb-[22px] pt-[14px]">
+          <div
+            className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 max-sm:grid-cols-1"
+            // Enter walks the boxes; on the last one it closes and goes to the item.
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' || e.defaultPrevented || e.shiftKey) return;
+              const i = OTHER.findIndex(([k]) => `si-${k}` === (e.target as HTMLElement).id);
+              if (i < 0) return;
+              e.preventDefault();
+              if (i < OTHER.length - 1) document.getElementById(`si-${OTHER[i + 1]![0]}`)?.focus();
+              else closeOther();
+            }}
+          >
+            {OTHER.map(([k, label]) => (
+              <Cell
+                key={k}
+                id={`si-${k}`}
+                label={label}
+                className={k === 'address' ? 'col-span-2 max-sm:col-span-1' : undefined}
+              >
+                {text(k)}
+              </Cell>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={closeOther}
+              className="flex h-11 cursor-pointer items-center bg-primary px-5 text-[15px] font-semibold text-primary-foreground"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </Dialog>
       <SaleList
         open={!!list}
         rows={list ?? []}
@@ -830,11 +921,16 @@ export function SalesInvoiceScreen() {
   );
 }
 
-/** MDA's grid columns for a sale (`_cols`), HSN Code last; Itm.Name takes the spare width. */
-const COLS: GridCol<SaleLine>[] = [
-  { label: 'SNo.', w: '42px', cell: (_, i) => String(i + 1) },
-  { label: 'Itm.Code', w: '74px', cell: (l) => l.itemCode },
-  { label: 'Itm.Name', w: 'minmax(130px,1fr)', cell: (l) => l.itemName },
+/** MDA's grid columns for a sale (`_cols`), HSN Code last; Itm.Name takes the spare width.
+ *  Name and Code swap places to match the entry boxes. */
+const SNO: GridCol<SaleLine> = { label: 'SNo.', w: '42px', cell: (_, i) => String(i + 1) };
+const CODE: GridCol<SaleLine> = { label: 'Itm.Code', w: '74px', cell: (l) => l.itemCode };
+const NAME: GridCol<SaleLine> = {
+  label: 'Itm.Name',
+  w: 'minmax(130px,1fr)',
+  cell: (l) => l.itemName,
+};
+const AMOUNTS: GridCol<SaleLine>[] = [
   { label: 'Qty.', w: '58px', num: true, cell: (l) => fq(l.qty) },
   { label: 'Rate', w: '72px', num: true, cell: (l) => fa(l.rate) },
   { label: 'DisP', w: '48px', num: true, cell: (l) => f2(l.disP) },
@@ -848,3 +944,5 @@ const COLS: GridCol<SaleLine>[] = [
   { label: 'IGST', w: '66px', num: true, cell: (l) => fa(l.igstA) },
   { label: 'HSN Code', w: '78px', cell: (l) => l.hsnNo ?? '' },
 ];
+const COLS_NAME_FIRST = [SNO, NAME, CODE, ...AMOUNTS];
+const COLS_CODE_FIRST = [SNO, CODE, NAME, ...AMOUNTS];

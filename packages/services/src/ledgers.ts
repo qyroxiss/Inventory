@@ -5,6 +5,7 @@
 import {
   type DrCr,
   ledgerFieldErrors,
+  parseOpeningBalance,
   ledgerMessages,
   LEDGER_CODE_PREFIX,
   LEDGER_CODE_WIDTH,
@@ -73,6 +74,7 @@ export async function createLedger(db: Db, bookId: string, input: LedgerInput): 
       under: input.under,
       pincode: input.pincode,
       mobile: input.mobile,
+      openingBalance: input.openingBalance,
     }),
   );
   const name = input.name.trim();
@@ -98,7 +100,7 @@ export async function createLedger(db: Db, bookId: string, input: LedgerInput): 
       accCode: code,
       accName: name,
       grpCode: input.under!,
-      opBal: input.openingBalance?.trim() || '0',
+      opBal: String(parseOpeningBalance(input.openingBalance) ?? 0),
       drCr: input.drCr ?? 'Dr',
       add1: input.address?.trim() || null,
       city: input.city?.trim() || null,
@@ -128,6 +130,7 @@ export async function updateLedger(
       under: input.under,
       pincode: input.pincode,
       mobile: input.mobile,
+      openingBalance: input.openingBalance,
     }),
   );
   const name = input.name.trim();
@@ -141,7 +144,7 @@ export async function updateLedger(
     .set({
       accName: name,
       grpCode: input.under!,
-      opBal: input.openingBalance?.trim() || '0',
+      opBal: String(parseOpeningBalance(input.openingBalance) ?? 0),
       drCr: input.drCr ?? 'Dr',
       add1: input.address?.trim() || null,
       city: input.city?.trim() || null,

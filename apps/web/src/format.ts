@@ -18,13 +18,29 @@ export function setDecimals(d: Decimals) {
   amtDec = d.amount;
 }
 
+// A figure missing from a reply (an older server, a field not sent) shows as 0 rather than
+// taking the whole page down.
+const n = (v: number | null | undefined) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+
+/** How many decimals [v] really has, up to [max] (the books' own precision). */
+const needed = (v: number, max: number) => {
+  for (let d = 0; d < max; d++) {
+    const s = v * 10 ** d;
+    if (Math.abs(s - Math.round(s)) < 1e-6) return d;
+  }
+  return max;
+};
+
+// The setting only trims zeros: it never hides a real paisa or gram (2026-11-11 audit). Boxes
+// are filled with these, and what a box shows is what gets saved, so a 0-decimal setting must
+// show 10.50 as 10.5, not round it to 11.
 /** A quantity: 10.000 */
-export const fq = (v: number) => v.toFixed(qtyDec);
+export const fq = (v: number) => n(v).toFixed(Math.max(qtyDec, needed(n(v), 3)));
 /** A rate or amount: 1450.00 */
-export const fa = (v: number) => v.toFixed(amtDec);
+export const fa = (v: number) => n(v).toFixed(Math.max(amtDec, needed(n(v), 2)));
 
 const grouped = (v: number, d: number) =>
-  v.toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
+  n(v).toLocaleString('en-IN', { minimumFractionDigits: d, maximumFractionDigits: d });
 /** With Indian grouping, for reports and prints: 12,34,567.89 */
 export const faIN = (v: number) => grouped(v, amtDec);
 export const fqIN = (v: number) => grouped(v, qtyDec);

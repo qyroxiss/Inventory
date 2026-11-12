@@ -26,6 +26,7 @@ When the new code and this spec disagree, the spec wins. When this spec and the 
 
 **Notes on what is missing in MDA:**
 - **There is no Contra voucher.** The `PRT` (Purchase Return), `SRT` (Sales Return) and `STJ` (Stock Journal) series are seeded, but nothing uses them.
+  - *Rebuild (2026-11-09):* Purchase Return (`PRT`) and Sales Return (`SRT`) are built, at the user's request. A return is always against one bill; each line goes back up to what is left (billed less earlier returns) at the bill's rate, discount and GST split. PRT: Dr supplier, Cr Purchase Return (PUR003) + input tax, stock out. SRT: Dr Sales Return (SAL003) + output tax, Cr customer (or the sale's Cash ledger) and Discount Allowed for the bill-discount share, stock in. An `Agst` bill reference reduces the party's outstanding. Printed as Debit Note / Credit Note; GSTR-1 lists credit notes to registered buyers (CDNR) and nets unregistered ones off B2CS; HSN, GSTR-3B, ITC and the GST audit are net of returns. Tables `returns` / `return_lines` (migration 0012).
 - The five `.bak` files in `_unused_legacy_pages/` are dead code and should be ignored.
 
 ---
@@ -361,7 +362,20 @@ These rules apply to all classic masters unless a master says otherwise.
 - You cannot delete the last active Admin.
 - Every change is written to the audit log.
 
-**Role matrix.** This is **displayed on the User Management screen only and not enforced**, ported as is (Q-12). The only access check is Admin-only save/update/delete inside User Management.
+**Role matrix.** In MDA this is **displayed on the User Management screen only and not enforced** (Q-12).
+
+**Role Permissions (beyond MDA, added 2026-11-12).** This rebuild enforces page access (`@qi/core` permissions.ts, `@qi/services` permissions.ts, `apps/api` access.ts):
+- **Levels.** The Admin sets every page, per role, to Hidden, View only or Full.
+- **Roles.** The Admin can add, rename and delete roles. MDA's four can't be renamed or deleted, and a role in use can't be deleted.
+- **Per-user changes.** One user's pages can differ from their role. Only the differences are stored.
+- **Starting values.** MDA's four roles start from the grid below. Any other role, MDA's "User" included, starts as a Manager. The Dashboard starts open to all.
+- **Fixed rules.**
+  - Admin always has full use of everything.
+  - User Management and Role Permissions are for Admins only.
+- **Enforcement.** The server checks every call against the user's current settings, read live from the database:
+  - a Hidden page's lists, bills, prints and reports are refused;
+  - on a View only page, saves, changes and cancels are refused;
+  - shared lookups (master lists, settings) stay open.
 
 | Feature | Admin | Manager | Operator | Viewer |
 |---|---|---|---|---|

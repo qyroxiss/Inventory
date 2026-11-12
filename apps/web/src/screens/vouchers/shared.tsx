@@ -10,6 +10,7 @@ import { api, unwrap, type OkBody } from '../../api.ts';
 import { BackButton } from '../../components/BackButton.tsx';
 import { Heading } from '../../components/ledger.tsx';
 import { inputClass } from '../../components/master.tsx';
+import { useCanEdit } from '../../access.tsx';
 
 export type Ledger = OkBody<Awaited<ReturnType<typeof api.api.ledgers.$get>>>[number];
 export type VoucherRow = OkBody<Awaited<ReturnType<typeof api.api.vouchers.$get>>>[number];
@@ -364,6 +365,8 @@ export function VoucherButtons({
   onClear: () => void;
   onSave: () => void;
 }) {
+  // Role Permissions: on a View only page nothing can be saved, changed or cancelled.
+  const canEdit = useCanEdit();
   return (
     <div className="flex flex-none flex-wrap items-center gap-2.5 border-t-[3px] border-double border-foreground bg-background py-3.5">
       <button type="button" onClick={onView} className={BTN}>
@@ -372,7 +375,7 @@ export function VoucherButtons({
       <button
         type="button"
         onClick={onRemove}
-        disabled={!canRemove}
+        disabled={!canRemove || !canEdit}
         className={`${BTN} border-destructive text-destructive`}
       >
         {removeLabel}
@@ -387,7 +390,7 @@ export function VoucherButtons({
       <button
         type="button"
         onClick={onSave}
-        disabled={busy}
+        disabled={busy || !canEdit}
         className="flex h-12 min-w-[200px] cursor-pointer items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70 max-sm:order-last max-sm:w-full max-sm:min-w-0"
       >
         <span>{saveLabel}</span>

@@ -38,6 +38,7 @@ import {
   type VoucherRow,
 } from './shared.tsx';
 import { fa } from '../../format.ts';
+import { NewLedgerButton } from '../../components/NewLedger.tsx';
 
 type Line = { key: number; ledger: string; debit: boolean; amount: string };
 type Form = {
@@ -247,13 +248,21 @@ export function JournalTab() {
               return (
                 <div key={l.key} className={`${COLS} items-start`}>
                   <div className="flex flex-col gap-1">
-                    <Select
-                      value={l.ledger}
-                      options={ledgerOptions(ledgers!)}
-                      placeholder={vm.selectLedger}
-                      error={e.ledger}
-                      onChange={(ledger) => setLine(l.key, { ledger })}
-                    />
+                    <div className="flex gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <Select
+                          value={l.ledger}
+                          options={ledgerOptions(ledgers!)}
+                          placeholder={vm.selectLedger}
+                          error={e.ledger}
+                          onChange={(ledger) => setLine(l.key, { ledger })}
+                        />
+                      </div>
+                      <NewLedgerButton
+                        tall
+                        onCreated={(code) => setLine(l.key, { ledger: code })}
+                      />
+                    </div>
                     {e.ledger && <span className="text-[13px] text-destructive">{e.ledger}</span>}
                     <div className="hidden gap-1.5 max-sm:flex">
                       {drCr(l, true)}

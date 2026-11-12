@@ -79,6 +79,43 @@ export async function setCompanyDecimals(
   return { qty, amount };
 }
 
+/** Company Settings › Item Entry (which of Item Name / Item Code comes first on Purchase and
+ *  Sales) and Print Layout (paper size and orientation for every print). */
+export type Preferences = {
+  itemEntry: 'name' | 'code';
+  paperSize: 'A4' | 'A5' | 'Letter' | 'Legal';
+  paperOrientation: 'portrait' | 'landscape';
+};
+const PAPERS = ['A4', 'A5', 'Letter', 'Legal'] as const;
+
+export async function companyPreferences(db: Db, companyId: string): Promise<Preferences> {
+  const [row] = await db
+    .select({
+      itemEntry: companies.itemEntry,
+      paperSize: companies.paperSize,
+      paperOrientation: companies.paperOrientation,
+    })
+    .from(companies)
+    .where(eq(companies.id, companyId));
+  return {
+    itemEntry: row?.itemEntry === 'code' ? 'code' : 'name',
+    paperSize: PAPERS.find((p) => p === row?.paperSize) ?? 'A4',
+    paperOrientation: row?.paperOrientation === 'landscape' ? 'landscape' : 'portrait',
+  };
+}
+
+export async function setCompanyPreferences(
+  db: Db,
+  companyId: string,
+  p: Preferences,
+): Promise<Preferences> {
+  await db
+    .update(companies)
+    .set({ itemEntry: p.itemEntry, paperSize: p.paperSize, paperOrientation: p.paperOrientation })
+    .where(eq(companies.id, companyId));
+  return companyPreferences(db, companyId);
+}
+
 export async function createCompany(
   db: Db,
   accountId: string,

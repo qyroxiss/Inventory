@@ -194,10 +194,157 @@ export function balanceSheet(
   };
 }
 
+// ── Ledger Statement ───────────────────────────────────────────────────────────
+
+export type StatementLine = {
+  date: string;
+  vchrNo: string;
+  type: string;
+  particulars: string;
+  narration: string;
+  debit: number;
+  credit: number;
+};
+export type StatementRow = StatementLine & { balance: number };
+
+/** A ledger's entries with the running balance after each one (Dr positive, Cr negative),
+ *  starting from its balance before the period. */
+export function ledgerStatement(opening: number, lines: StatementLine[]) {
+  let bal = round2(opening);
+  const rows: StatementRow[] = lines.map((l) => {
+    bal = round2(bal + l.debit - l.credit);
+    return { ...l, balance: bal };
+  });
+  const debit = round2(lines.reduce((a, l) => a + l.debit, 0));
+  const credit = round2(lines.reduce((a, l) => a + l.credit, 0));
+  return { opening: round2(opening), rows, debit, credit, closing: bal };
+}
+
+/** 1,234.50 Dr / 980.00 Cr: a balance with its side; zero has none. */
+export const drCr = (v: number, fmt: (n: number) => string) =>
+  Math.abs(v) < 0.005 ? fmt(0) : `${fmt(Math.abs(v))} ${v > 0 ? 'Dr' : 'Cr'}`;
+
+// ── Trial Balance ──────────────────────────────────────────────────────────────
+
+export type TrialRow = {
+  accCode: string;
+  accName: string;
+  grpName: string;
+  debit: number;
+  credit: number;
+};
+
+/** Every ledger with a balance, by its top-level group then name, in Debit or Credit. When the
+ *  opening balances don't agree, the gap shows as its own row so the two sides still total. */
+export function trialBalance(balances: LedgerBalance[], groups: Map<string, ReportGroup>) {
+  const rows: TrialRow[] = balances
+    .filter((b) => Math.abs(b.balance) >= 0.005)
+    .map((b) => ({
+      accCode: b.accCode,
+      accName: b.accName,
+      grpName: topGroupOf(b.grpCode, groups)?.grpName ?? '',
+      debit: b.balance > 0 ? round2(b.balance) : 0,
+      credit: b.balance < 0 ? round2(-b.balance) : 0,
+    }))
+    .sort((a, b) => a.grpName.localeCompare(b.grpName) || a.accName.localeCompare(b.accName));
+  const debit = round2(rows.reduce((a, r) => a + r.debit, 0));
+  const credit = round2(rows.reduce((a, r) => a + r.credit, 0));
+  const difference = round2(debit - credit);
+  return { rows, debit, credit, difference };
+}
+
+// ── Outstanding ────────────────────────────────────────────────────────────────
+
+export type BillRef = {
+  accCode: string;
+  accName: string;
+  billNo: string;
+  /** 'New' raises a bill; anything else settles the party's bills, oldest first. */
+  refType: string;
+  billDate: string;
+  amount: number;
+  creditDays: number;
+  /** Receivable (a sale to a customer) or payable (a purchase from a supplier). */
+  side: 'receivable' | 'payable';
+};
+export type OpenBill = {
+  accCode: string;
+  accName: string;
+  billNo: string;
+  billDate: string;
+  dueDate: string;
+  amount: number;
+  pending: number;
+  /** Days past the due date (0 when not yet due). */
+  overdueDays: number;
+  side: 'receivable' | 'payable';
+};
+
+const addDays = (iso: string, n: number) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+};
+const daysBetween = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000);
+
+/** Bills still unpaid as on [today], by the dashboard's rule (LOGIC-SPEC "Pending bills"): each
+ *  party's settlements are applied to its bills oldest first; due = bill date + credit days. */
+export function outstandingBills(refs: BillRef[], today: string): OpenBill[] {
+  const settled = new Map<string, number>();
+  const raised: BillRef[] = [];
+  for (const r of refs) {
+    if (r.refType !== 'New') settled.set(r.accCode, (settled.get(r.accCode) ?? 0) + r.amount);
+    else raised.push(r);
+  }
+  raised.sort((a, b) => a.accCode.localeCompare(b.accCode) || a.billDate.localeCompare(b.billDate));
+  const out: OpenBill[] = [];
+  for (const r of raised) {
+    const credit = settled.get(r.accCode) ?? 0;
+    const applied = Math.min(credit, r.amount);
+    settled.set(r.accCode, round2(credit - applied));
+    const pending = round2(r.amount - applied);
+    if (pending <= 0.005) continue;
+    const dueDate = addDays(r.billDate, r.creditDays);
+    out.push({
+      accCode: r.accCode,
+      accName: r.accName,
+      billNo: r.billNo,
+      billDate: r.billDate,
+      dueDate,
+      amount: r.amount,
+      pending,
+      overdueDays: Math.max(0, daysBetween(dueDate, today)),
+      side: r.side,
+    });
+  }
+  return out;
+}
+
+/** The ageing column a bill falls in, by days overdue. */
+export const AGEING = ['Not due', '1-30', '31-60', '61-90', 'Over 90'] as const;
+export const ageingOf = (overdueDays: number): (typeof AGEING)[number] =>
+  overdueDays <= 0
+    ? 'Not due'
+    : overdueDays <= 30
+      ? '1-30'
+      : overdueDays <= 60
+        ? '31-60'
+        : overdueDays <= 90
+          ? '61-90'
+          : 'Over 90';
+
 export const reportMessages = {
   noStock: 'No stock items yet',
+  noMovements: 'No stock movements in this period',
+  pickItem: 'Select an item to see its register',
   noVouchers: 'No vouchers in this period',
   noSales: 'No sales in this period',
+  noPurchases: 'No purchases in this period',
+  noEntries: 'No entries in this period',
+  pickLedger: 'Select a ledger to see its statement',
+  noBalances: 'No ledger has a balance',
+  noOutstanding: 'Nothing outstanding',
   badRange: 'The From date is after the To date.',
   differenceLabel: 'Difference in Opening Balances',
 } as const;

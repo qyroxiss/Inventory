@@ -10,6 +10,7 @@ import {
   ITEM_UNITS,
   TAXABLE,
   TAX_TYPES,
+  qtyValue,
   rateValue,
   stockItemMessages as msg,
 } from '@qi/core';
@@ -42,8 +43,14 @@ type Form = {
   hsn: string;
   purRate: string;
   saleRate: string;
+  /** Opening Stock, Opening Rate and MRP (user's request, 2026-11-10). */
+  opQty: string;
+  opRate: string;
+  mrp: string;
 };
-type Errors = { code?: string; name?: string; purRate?: string; saleRate?: string };
+type Errors = Partial<
+  Record<'code' | 'name' | 'purRate' | 'saleRate' | 'opQty' | 'opRate' | 'mrp', string>
+>;
 type Message = { kind: 'ok' | 'error'; title: [string, string]; text: string };
 
 const EMPTY: Form = {
@@ -57,6 +64,9 @@ const EMPTY: Form = {
   hsn: '',
   purRate: '',
   saleRate: '',
+  opQty: '',
+  opRate: '',
+  mrp: '',
 };
 const TITLE = 'Stock Item';
 const asOptions = (list: readonly string[]) => list.map((v) => ({ value: v, label: v }));
@@ -85,9 +95,22 @@ const printColumns: Column<Item>[] = [
 ];
 
 const focusId = (id: string) => setTimeout(() => document.getElementById(id)?.focus(), 0);
-const FIELD_IDS = { code: 'si-code', name: 'si-name', purRate: 'si-pur', saleRate: 'si-sale' };
+const FIELD_IDS = {
+  code: 'si-code',
+  name: 'si-name',
+  purRate: 'si-pur',
+  saleRate: 'si-sale',
+  opQty: 'si-opqty',
+  opRate: 'si-oprate',
+  mrp: 'si-mrp',
+};
+const CHECKED = ['code', 'name', 'opQty', 'opRate', 'saleRate', 'purRate', 'mrp'] as const;
 
-export function StockItemScreen() {
+/** Opened from a "+ New" beside an item box (2026-11-10): Back returns to that page, and a saved
+ *  item is handed back to it (after its "saved" message is closed). */
+export type EmbeddedItem = { onBack: () => void; onCreated: (code: string) => void };
+
+export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) {
   const queryClient = useQueryClient();
   const items = useQuery({
     queryKey: ['stock-items'],
@@ -107,6 +130,8 @@ export function StockItemScreen() {
   const [updateConfirm, setUpdateConfirm] = useState(false);
   const [removeConfirm, setRemoveConfirm] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
+  /** The item just saved, handed back to the calling page when its message is closed. */
+  const created = useRef<string | null>(null);
 
   const actionRef = useRef<HTMLButtonElement>(null);
   // The Tax Type just picked, for Enter's next stop: the GST Rate field only exists once the
@@ -139,17 +164,20 @@ export function StockItemScreen() {
     if (!form.name.trim()) e.name = msg.required;
     if (rateValue(form.purRate) === null) e.purRate = msg.invalidRate;
     if (rateValue(form.saleRate) === null) e.saleRate = msg.invalidRate;
+    if (qtyValue(form.opQty) === null) e.opQty = msg.invalidQty;
+    if (rateValue(form.opRate) === null) e.opRate = msg.invalidRate;
+    if (rateValue(form.mrp) === null) e.mrp = msg.invalidRate;
     setErrors(e);
-    const first = (['code', 'name', 'purRate', 'saleRate'] as const).find((k) => e[k]);
+    const first = CHECKED.find((k) => e[k]);
     if (first) focusId(FIELD_IDS[first]);
     return !first;
   };
 
   const failed = (err: unknown) => {
     const fe = err instanceof ApiError && err.status === 422 ? err.body.fieldErrors : undefined;
-    const first = fe && (['code', 'name', 'purRate', 'saleRate'] as const).find((k) => fe[k]);
+    const first = fe && CHECKED.find((k) => fe[k]);
     if (fe && first) {
-      setErrors({ code: fe.code, name: fe.name, purRate: fe.purRate, saleRate: fe.saleRate });
+      setErrors(Object.fromEntries(CHECKED.map((k) => [k, fe[k]])));
       focusId(FIELD_IDS[first]);
     } else {
       setMessage({
@@ -166,6 +194,7 @@ export function StockItemScreen() {
     try {
       const i = await unwrap(api.api['stock-items'].$post({ json: form }));
       await refresh();
+      if (embedded) created.current = i.code;
       setMessage({ kind: 'ok', title: [TITLE, 'Saved'], text: msg.saved(i.name) });
       clearForm();
     } catch (err) {
@@ -223,6 +252,9 @@ export function StockItemScreen() {
       hsn: i.hsn,
       purRate: rateText(i.purRate),
       saleRate: rateText(i.saleRate),
+      opQty: i.opQty > 0 ? String(i.opQty) : '',
+      opRate: rateText(i.opRate),
+      mrp: rateText(i.mrp),
     });
     focusId('si-code');
   };
@@ -235,14 +267,14 @@ export function StockItemScreen() {
         placeholder="HSN / SAC code"
         autoComplete="off"
         onChange={(e) => set({ hsn: e.target.value })}
-        onKeyDown={enterTo('si-pur')}
+        onKeyDown={enterTo('si-opqty')}
         className={inputClass()}
       />
     </FieldRow>
   );
 
   const rateField = (
-    key: 'purRate' | 'saleRate',
+    key: 'purRate' | 'saleRate' | 'opQty' | 'opRate' | 'mrp',
     label: string,
     placeholder: string,
     next: string | (() => void),
@@ -266,7 +298,7 @@ export function StockItemScreen() {
 
   return (
     <>
-      <MasterPage crumb={TITLE} title={['Stock', 'Item']}>
+      <MasterPage crumb={TITLE} title={['Stock', 'Item']} onBack={embedded?.onBack}>
         <FormBlock heading="STOCK ITEM DETAILS" pairs>
           <FieldRow id="si-code" label="Item Code" required error={errors.code}>
             <input
@@ -358,9 +390,16 @@ export function StockItemScreen() {
             </FieldRow>
           )}
           {hsnField}
-          {rateField('purRate', 'Purchase Rate', '0.00', 'si-sale')}
+          {/* Opening Stock | Opening Rate over Sale Rate | Purchase Rate, then MRP (user's
+              request, 2026-11-10). Opening Stock always starts a new row. */}
+          <div className="col-start-1">
+            {rateField('opQty', 'Opening Stock', '0.000', 'si-oprate')}
+          </div>
+          {rateField('opRate', 'Opening Rate', '0.00', 'si-sale')}
+          {rateField('saleRate', 'Sale Rate', '0.00', 'si-pur')}
+          {rateField('purRate', 'Purchase Rate', '0.00', 'si-mrp')}
           {/* Enter moves to Save Item, or to Update while an item is open (MDA). */}
-          {rateField('saleRate', 'Sale Rate', '0.00', toAction)}
+          {rateField('mrp', 'MRP', '0.00', toAction)}
         </FormBlock>
         <ActionBar
           wide
@@ -415,7 +454,12 @@ export function StockItemScreen() {
         kind={message?.kind}
         title={message?.title ?? [TITLE, '']}
         text={message?.text ?? ''}
-        onClose={() => setMessage(null)}
+        onClose={() => {
+          setMessage(null);
+          const code = created.current;
+          created.current = null;
+          if (embedded && code) embedded.onCreated(code);
+        }}
       />
     </>
   );
