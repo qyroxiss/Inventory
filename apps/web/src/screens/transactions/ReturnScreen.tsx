@@ -395,9 +395,15 @@ export function ReturnScreen({ kind }: { kind: ReturnKind }) {
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 border border-border bg-card px-3 py-1">
               <Total label="Qty" value={fq(t.qty)} />
               <Total label="Sub Total" value={fa(t.subTotal)} />
-              <Total label="SGST" value={fa(t.sgst)} />
-              <Total label="CGST" value={fa(t.cgst)} />
-              <Total label="IGST" value={fa(t.igst)} />
+              {/* Only the tax that applies (user's request, 2026-11-13). */}
+              {bill?.interState ? (
+                <Total label="IGST" value={fa(t.igst)} />
+              ) : (
+                <>
+                  <Total label="SGST" value={fa(t.sgst)} />
+                  <Total label="CGST" value={fa(t.cgst)} />
+                </>
+              )}
               {t.billDisc > 0 && <Total label="Bill Discount" value={fa(-t.billDisc)} />}
               {t.roundOff !== 0 && <Total label="Round Off" value={fa(t.roundOff)} />}
               <span className="flex-1" />

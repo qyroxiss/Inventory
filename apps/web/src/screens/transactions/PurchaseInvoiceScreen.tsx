@@ -41,6 +41,7 @@ import {
   BAR_BTN,
   Cell,
   ItemGrid,
+  gstCols,
   Total,
   type GridCol,
   Chip,
@@ -822,7 +823,7 @@ export function PurchaseInvoiceScreen() {
             </div>
 
             <ItemGrid
-              cols={byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST}
+              cols={gstCols(byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST, h.interState)}
               lines={lines}
               empty={pm.noLines}
               selected={entry.line}
@@ -835,9 +836,14 @@ export function PurchaseInvoiceScreen() {
               <Total label="Qty" value={fq(totals.qty)} />
               <Total label="Sub Total" value={fa(totals.subTotal)} />
               {totals.discount > 0 && <Total label="Discount" value={fa(totals.discount)} />}
-              <Total label="SGST" value={fa(totals.sgst)} />
-              <Total label="CGST" value={fa(totals.cgst)} />
-              <Total label="IGST" value={fa(totals.igst)} />
+              {h.interState ? (
+                <Total label="IGST" value={fa(totals.igst)} />
+              ) : (
+                <>
+                  <Total label="SGST" value={fa(totals.sgst)} />
+                  <Total label="CGST" value={fa(totals.cgst)} />
+                </>
+              )}
               <label className="flex items-center gap-1.5">
                 <span className="text-xs text-muted-foreground">Freight</span>
                 <span className="w-[110px]">

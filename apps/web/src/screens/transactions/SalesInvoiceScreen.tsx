@@ -12,17 +12,17 @@
 //   - The header Location is stamped on each line as it's added.
 //   - A cancelled bill opens for reference only and its Save collides with its own number.
 //
-// Changed at the user's request (2026-10-11): the State sits beside the Name, picked from the
-// state list, and decides CGST + SGST or IGST; changing it recomputes every line.
+// Changed at the user's request (2026-10-11): the State sits beside the Name and decides CGST +
+// SGST or IGST. Since 2026-11-13 it can't be edited here: it comes from the customer's ledger,
+// and picking a customer recomputes every line.
 // Changed at the user's request (2026-11-09), as on the Purchase Invoice: Mobile, Address, Area,
 // City and GST No. moved into the "Other Details" popup beside GST. Picking a customer still
-// fills them. Enter: Name → State → Other Details (Enter opens it and walks its boxes; the last
+// fills them. Enter: Name → Other Details (Enter opens it and walks its boxes; the last
 // one closes it and goes to the item).
 
 import {
   CUSTOMER_GROUP,
   GST_STATES,
-  INDIAN_STATES,
   f2,
   isInterState,
   round2,
@@ -38,7 +38,6 @@ import { api, unwrap, type OkBody } from '../../api.ts';
 import { fa, fq } from '../../format.ts';
 import { preferences } from '../../prefs.ts';
 import { ConfirmDelete, Dialog } from '../../components/Dialog.tsx';
-import { SearchSelect } from '../../components/SearchSelect.tsx';
 import { NewItemButton, NewLedgerButton } from '../../components/NewLedger.tsx';
 import { toast } from '../../components/Toast.tsx';
 import { DateBox, defaultVoucherDate, errorText, numberTaken } from '../vouchers/shared.tsx';
@@ -76,7 +75,6 @@ const NAV = {
   billDate: 2,
   location: 3,
   customer: 4,
-  state: 5,
   other: 6,
   item: 11,
   qty: 12,
@@ -89,7 +87,6 @@ const NAV = {
   save: 19,
 } as const;
 
-const STATE_OPTIONS = INDIAN_STATES.map((s) => ({ value: s, label: s }));
 
 /** The Other Details popup's boxes, in Enter order. */
 const OTHER = [
@@ -281,7 +278,7 @@ export function SalesInvoiceScreen() {
     });
     applyState(c.state.trim() || GST_STATES[c.stateCode] || '');
     setErrors((e) => ({ ...e, customer: false }));
-    focusNav(NAV.state);
+    focusNav(NAV.other);
   };
 
   const onItem = (it: Item) => {
@@ -619,19 +616,10 @@ export function SalesInvoiceScreen() {
                   />
                 </div>
               </Cell>
-              <Cell id="si-state" label="State">
-                <SearchSelect
-                  id="si-state"
-                  nav={NAV.state}
-                  compact
-                  value={h.state}
-                  options={STATE_OPTIONS}
-                  placeholder="Search state…"
-                  onCommit={(state) => {
-                    if (state !== h.state) applyState(state);
-                  }}
-                  onNext={() => focusNav(NAV.other)}
-                />
+              {/* Read-only (user's request, 2026-11-13): the State is the customer's, from its
+                  ledger; change it in Ledger Creation. */}
+              <Cell label="State">
+                <ReadOnly text={h.state || '—'} />
               </Cell>
               <Cell label="GST">
                 <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
@@ -750,7 +738,7 @@ export function SalesInvoiceScreen() {
             </div>
 
             <ItemGrid
-              cols={byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST}
+              cols={gstCols(byCode ? COLS_CODE_FIRST : COLS_NAME_FIRST, h.interState)}
               lines={lines}
               empty={sm.noLines}
               selected={entry.line}
@@ -764,9 +752,14 @@ export function SalesInvoiceScreen() {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                 <Total label="Qty" value={fq(totals.qty)} />
                 <Total label="Sub Total" value={fa(totals.subTotal)} />
-                <Total label="CGST" value={fa(totals.cgst)} />
-                <Total label="SGST" value={fa(totals.sgst)} />
-                <Total label="IGST" value={fa(totals.igst)} />
+                {h.interState ? (
+                  <Total label="IGST" value={fa(totals.igst)} />
+                ) : (
+                  <>
+                    <Total label="CGST" value={fa(totals.cgst)} />
+                    <Total label="SGST" value={fa(totals.sgst)} />
+                  </>
+                )}
                 {totals.itemDisc > 0 && (
                   <Total label="Discount On Items" value={fa(totals.itemDisc)} />
                 )}
@@ -943,7 +936,7 @@ const NAME: GridCol<SaleLine> = {
   cell: (l) => l.itemName,
 };
 const AMOUNTS: GridCol<SaleLine>[] = [
-  { label: 'Qty.', w: '58px', num: true, cell: (l) => fq(l.qty) },
+  { label: 'Qty.', w: '80px', num: true, cell: (l) => fq(l.qty) },
   { label: 'Rate', w: '72px', num: true, cell: (l) => fa(l.rate) },
   { label: 'DisP', w: '48px', num: true, cell: (l) => f2(l.disP) },
   { label: 'DisA', w: '62px', num: true, cell: (l) => fa(l.disA) },
@@ -957,4 +950,8 @@ const AMOUNTS: GridCol<SaleLine>[] = [
   { label: 'HSN Code', w: '78px', cell: (l) => l.hsnNo ?? '' },
 ];
 const COLS_NAME_FIRST = [SNO, NAME, CODE, ...AMOUNTS];
+/** Only the tax that applies (user's request, 2026-11-13): IGST on an inter-state bill, else
+ *  SGST and CGST. */
+const gstCols = (cols: GridCol<SaleLine>[], inter: boolean) =>
+  cols.filter((c) => (inter ? !/^[SC]GST/.test(c.label) : !/^IGST/.test(c.label)));
 const COLS_CODE_FIRST = [SNO, CODE, NAME, ...AMOUNTS];
