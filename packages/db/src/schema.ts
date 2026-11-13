@@ -42,6 +42,10 @@ export const user = pgTable('auth_user', {
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /** Owner Panel (added 2026-11-13): a blocked account can't sign in; its data is kept. */
+  blocked: boolean('blocked').notNull().default(false),
+  /** Owner Panel: the last day the account works (yyyy-MM-dd); null = no limit. */
+  validTill: date('valid_till', { mode: 'string' }),
 });
 
 export const session = pgTable('auth_session', {

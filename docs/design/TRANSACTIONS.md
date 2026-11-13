@@ -147,8 +147,11 @@ that company and importing again.
     Sale Type."
 - **Customer:**
   - Picked from Sundry Debtors (and groups directly under it).
-  - Picking fills Address, City, State, Mobile and GST No, all still editable. The bill keeps
-    its own copy.
+  - Picking fills Address, City, State, Mobile and GST No. The bill keeps its own copy.
+  - The **State can't be edited** on the bill (owner's request, 2026-11-13): it shows read-only
+    beside the Name and always comes from the customer's ledger. To change it, change the
+    ledger in Ledger Creation and pick the customer again. Address, City, Mobile and GST No stay
+    editable in Other Details.
   - CGST + SGST or IGST is decided as on a purchase.
 - **Cash or Credit:**
   - A cash sale is debited to the first Cash-in-Hand ledger by code (a book with none gets

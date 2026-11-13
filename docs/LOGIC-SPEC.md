@@ -684,3 +684,16 @@ A full review of the code found the issues below. Each fix has a test in `packag
 - **GSTR-3B set-off.** Leftover IGST credit goes first to whatever CGST or SGST their own credit can't pay (rule 88A).
 - **GSTR-1.** A return to an unregistered buyer against a B2CL bill goes to CDNUR, not off B2CS.
 - **HSN quantities** keep 3 decimals.
+
+## Owner Panel (2026-11-13)
+
+Added at the user's request; MDA has none. The software's owner manages every account.
+
+- **Who is the owner:** the server setting `OWNER_EMAILS` (comma-separated). Only a signed-in account with one of those emails sees the **Owner Panel** button (company screen) and can call `/api/owner/*`; anyone else gets 403 "Only the software owner can open this page."
+- **Sign-up is closed.** A browser sign-up is refused ("New accounts are created by your software provider.") unless the email is an owner email. The sign-in screen shows Create Account only while no owner account exists yet (`GET /api/setup`).
+- **New Account:** Name, Email, Password (at least 8 characters), optional Valid Till. The email must be new ("An account with this email already exists.").
+- **Reset Password:** sets a new password and signs the account out everywhere.
+- **Block / Unblock:** a blocked account can't sign in ("This account is blocked. Please contact your software provider.") and is signed out at once. Its companies and data are kept. There is no delete.
+- **Valid Till:** the last day the account works, checked against today's date in India. After it the account is shut out on its next click and at sign-in ("This account expired on dd-mm-yyyy. Please contact your software provider to renew it."). A later date, or No Limit, renews it.
+- The owner's own account can't be blocked or given an end date.
+- The list shows Name, Email, Companies, Created, Last Sign-in, Valid Till and Status (Active / Blocked / Expired / Owner), with a search by name or email.

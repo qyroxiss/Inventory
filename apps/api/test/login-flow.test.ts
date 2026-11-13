@@ -40,7 +40,7 @@ describe('cloud: account layer in front of MDA login', () => {
 
   beforeAll(() => {
     const secret = 'test-secret-test-secret-test-secret';
-    const app = createApp({ db, secret, accountAuth: createAccountAuth(db, { secret, baseURL: BASE }) });
+    const app = createApp({ db, secret, accountAuth: createAccountAuth(db, { secret, baseURL: BASE, ownerEmails: ['owner@example.com'] }) });
     call = client(app);
   });
 
@@ -93,7 +93,7 @@ describe('cloud: account layer in front of MDA login', () => {
       createApp({
         db,
         secret: 'test-secret-test-secret-test-secret',
-        accountAuth: createAccountAuth(db, { secret: 'test-secret-test-secret-test-secret', baseURL: BASE }),
+        accountAuth: createAccountAuth(db, { secret: 'test-secret-test-secret-test-secret', baseURL: BASE, ownerEmails: ['b@example.com'] }),
       }),
     );
     await other('POST', '/api/auth/sign-up/email', { name: 'B', email: 'b@example.com', password: 'account-pass-2' });
@@ -104,7 +104,7 @@ describe('cloud: account layer in front of MDA login', () => {
 describe('desktop: no account layer, account is always "local"', () => {
   test('companies are reachable without signing in', async () => {
     const call = client(createApp({ db, secret: 'desktop-secret' }));
-    expect((await call('GET', '/api/account')).body).toEqual({ accountId: 'local' });
+    expect((await call('GET', '/api/account')).body).toEqual({ accountId: 'local', owner: false });
     expect((await call('GET', '/api/companies')).status).toBe(200);
   });
 });

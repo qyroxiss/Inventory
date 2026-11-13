@@ -393,6 +393,11 @@ export type GridCol<T> = {
   cell: (line: T, index: number) => string;
 };
 
+/** Only the tax that applies (user's request, 2026-11-13): IGST columns on an inter-state bill,
+ *  else SGST and CGST. */
+export const gstCols = <T,>(cols: GridCol<T>[], inter: boolean) =>
+  cols.filter((c) => (inter ? !/^[SC]GST/.test(c.label) : !/^IGST/.test(c.label)));
+
 /** The item grid under the entry row: tap a row to edit it, ✎ and ✕ on each. It fills the
  *  space left and scrolls on its own, sideways too on narrow screens; the page doesn't. */
 export function ItemGrid<T>({

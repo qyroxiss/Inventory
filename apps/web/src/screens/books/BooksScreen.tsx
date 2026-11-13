@@ -21,6 +21,10 @@ export function BooksScreen() {
   });
   const [picked, setPicked] = useState<{ companyId: string; yearId: string | null } | null>(null);
   const passRef = useRef<HTMLInputElement>(null);
+  const account = useQuery({
+    queryKey: ['account-owner'],
+    queryFn: () => unwrap(api.api.account.$get()),
+  });
 
   const accountGone = index.error instanceof ApiError && index.error.status === 401;
   useEffect(() => {
@@ -82,6 +86,9 @@ export function BooksScreen() {
               onNewCompany={() => void navigate({ to: '/company/new' })}
               onManageYears={(id) =>
                 void navigate({ to: '/years', search: id ? { company: id } : {} })
+              }
+              onOwnerPanel={
+                account.data?.owner ? () => void navigate({ to: '/owner' }) : undefined
               }
             />
             {company && year ? (

@@ -214,6 +214,14 @@ export {
   type UserAccessInfo,
 } from './permissions.ts';
 export {
+  emailTaken,
+  listAccounts,
+  requireAccount as requireOwnerAccount,
+  setAccountBlocked,
+  setAccountValidTill,
+  type OwnerAccount,
+} from './owner.ts';
+export {
   PL_LEDGER_NAME,
   carryMessages,
   carryOpenings,
