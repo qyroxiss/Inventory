@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { serve } from '@hono/node-server';
 import { createAccountAuth } from '@qi/auth';
+import { parseOwnerEmails } from '@qi/core';
 import { openDatabase } from '@qi/db';
 import { createApp } from './app.ts';
 
@@ -38,15 +39,23 @@ const localAccount = process.env.LOCAL_ACCOUNT === '1';
 if (localAccount && process.env.DATABASE_URL)
   throw new Error('LOCAL_ACCOUNT is for local development only.');
 
+// The software owner's emails (comma-separated): they alone open the Owner Panel and may sign
+// themselves up; every other account is created there.
+const ownerEmails = parseOwnerEmails(process.env.OWNER_EMAILS);
+if (!localAccount && !ownerEmails.length)
+  console.warn('OWNER_EMAILS not set - nobody can open the Owner Panel or create accounts.');
+
 const app = createApp({
   db,
   secret,
+  ownerEmails,
   accountAuth: localAccount
     ? undefined
     : createAccountAuth(db, {
         secret,
         baseURL,
         trustedOrigins: (process.env.TRUSTED_ORIGINS ?? 'http://localhost:5173').split(','),
+        ownerEmails,
       }),
   secureCookies: baseURL.startsWith('https://'),
 });

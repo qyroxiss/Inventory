@@ -21,6 +21,7 @@ import {
 import { api } from './api.ts';
 import { Toaster } from './components/Toast.tsx';
 import { AccountScreen } from './screens/AccountScreen.tsx';
+import { OwnerScreen } from './screens/OwnerScreen.tsx';
 import { CompanyScreen } from './screens/company/CompanyScreen.tsx';
 import { YearsScreen } from './screens/company/YearsScreen.tsx';
 import { BooksScreen } from './screens/books/BooksScreen.tsx';
@@ -131,6 +132,18 @@ const yearsRoute = createRoute({
   validateSearch: companySearch,
   beforeLoad: requireAccount,
   component: YearsScreen,
+});
+
+/** Owner Panel (added 2026-11-13): the software owner's accounts; anyone else goes back. */
+const ownerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/owner',
+  beforeLoad: async () => {
+    const res = await api.api.account.$get();
+    if (res.status === 401) throw redirect({ to: '/signin' });
+    if (!res.ok || !(await res.json()).owner) throw redirect({ to: '/' });
+  },
+  component: OwnerScreen,
 });
 
 const appRoute = createRoute({
@@ -288,6 +301,7 @@ export const router = createRouter({
     booksRoute,
     newCompanyRoute,
     yearsRoute,
+    ownerRoute,
     appRoute.addChildren([
       dashboardRoute,
       sectionRoute,

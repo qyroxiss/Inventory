@@ -3,9 +3,10 @@
 // Layout lives here only; colours come from packages/ui/src/styles.css.
 
 import { brand } from '@qi/core';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { api } from '../api.ts';
 import { AppHeader } from '../components/AppHeader.tsx';
 import { Heading, PrimaryButton, LabeledField } from '../components/ledger.tsx';
 import {
@@ -52,6 +53,24 @@ export function AccountScreen() {
   const [errors, setErrors] = useState<Errors>({});
   const [formErr, setFormErr] = useState('');
   const passRef = useRef<HTMLInputElement>(null);
+  // Owner Panel (2026-11-13): public sign-up is closed. Create Account shows only until the
+  // software owner has made their own account; everyone else gets theirs from the owner.
+  const setup = useQuery({
+    queryKey: ['account-setup'],
+    queryFn: async () => (await (await api.api.setup.$get()).json()).ownerSignUp,
+  });
+  const canCreate = setup.data === true;
+  // Shut out while signed in (blocked, or past the valid-till date): say why.
+  useEffect(() => {
+    void api.api.account
+      .$get()
+      .then(async (r) => {
+        if (r.status !== 401) return;
+        const m = ((await r.json().catch(() => ({}))) as { message?: string }).message;
+        if (m && m !== 'Please sign in to your account.') setFormErr(m);
+      })
+      .catch(() => undefined);
+  }, []);
 
   const switchTo = (m: Mode) => {
     setMode(m);
@@ -153,16 +172,18 @@ export function AccountScreen() {
           className="flex min-w-0 flex-[0_0_540px] items-center justify-center overflow-y-auto px-16 py-10 max-lg:flex-none max-lg:overflow-visible max-lg:px-6 max-lg:py-8 max-sm:px-4 max-sm:pb-6 max-sm:pt-5"
         >
           <div className="flex w-full max-w-[420px] flex-col gap-7 max-sm:gap-5">
-            <div
-              role="group"
-              aria-label="Sign In or Create Account"
-              className="flex border-b-[3px] border-double border-foreground"
-            >
-              {tab('signin', 'Sign In')}
-              {tab('create', 'Create Account')}
-            </div>
+            {canCreate && (
+              <div
+                role="group"
+                aria-label="Sign In or Create Account"
+                className="flex border-b-[3px] border-double border-foreground"
+              >
+                {tab('signin', 'Sign In')}
+                {tab('create', 'Create Account')}
+              </div>
+            )}
 
-            {mode === 'signin' ? (
+            {mode === 'signin' || !canCreate ? (
               <form onSubmit={submitSignIn} noValidate className="flex flex-col gap-6 max-sm:gap-4">
                 <div className="flex flex-col gap-2">
                   <Heading lead="Sign" tail="In" className="text-[42px] max-sm:text-[32px]" />

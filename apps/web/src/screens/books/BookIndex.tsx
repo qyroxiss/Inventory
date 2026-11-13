@@ -27,6 +27,7 @@ export function BookIndex({
   onPickYear,
   onNewCompany,
   onManageYears,
+  onOwnerPanel,
 }: {
   companies: IndexCompany[];
   companyId: string | null;
@@ -36,6 +37,8 @@ export function BookIndex({
   onNewCompany: () => void;
   /** Opens Manage Years with this company selected. */
   onManageYears: (companyId: string | null) => void;
+  /** The software owner only: opens the Owner Panel (added 2026-11-13). */
+  onOwnerPanel?: () => void;
 }) {
   const [q, setQ] = useState('');
   const qRef = useRef<HTMLInputElement>(null);
@@ -209,6 +212,25 @@ export function BookIndex({
             Manage Years
           </OutlineButton>
           <ImportFromMda />
+          {onOwnerPanel && (
+            <OutlineButton type="button" onClick={onOwnerPanel}>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="9" cy="8" r="3.5" />
+                <path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14.8c1.7.8 2.7 2.6 3 5.2" />
+              </svg>
+              Owner Panel
+            </OutlineButton>
+          )}
         </div>
       </div>
 

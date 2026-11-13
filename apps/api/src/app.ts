@@ -5,7 +5,14 @@
 //   2. book     — MDA's login at /api/book/*, kept in a signed cookie per browser
 
 import { zValidator } from '@hono/zod-validator';
-import type { AccountAuth } from '@qi/auth';
+import {
+  accountBlockedMessage,
+  createCustomerAccount,
+  endAccountSessions,
+  passwordLimits,
+  setAccountPassword,
+  type AccountAuth,
+} from '@qi/auth';
 import * as contract from '@qi/contract';
 import {
   MISC_CITY_CODE_PREFIX,
@@ -14,6 +21,7 @@ import {
   canEdit,
   canView,
   isAdminRole,
+  ownerMessages,
   loginMessages,
   permissionMessages,
   partyStateCode,
@@ -23,6 +31,11 @@ import { and, eq, schema, type Db } from '@qi/db';
 import {
   UserError,
   accessFor,
+  emailTaken,
+  listAccounts,
+  requireOwnerAccount,
+  setAccountBlocked,
+  setAccountValidTill,
   liveBookUser,
   createRole,
   deleteRole,
@@ -166,9 +179,11 @@ export type AppOptions = {
   accountAuth?: AccountAuth;
   /** Send cookies with the Secure flag (true behind HTTPS). */
   secureCookies?: boolean;
+  /** The software owner's emails (OWNER_EMAILS): they alone open the Owner Panel. */
+  ownerEmails?: string[];
 };
 
-type Env = { Variables: { accountId: string } };
+type Env = { Variables: { accountId: string; accountEmail: string } };
 
 const BOOK_COOKIE = 'qi_book';
 type StoredBook = BookSession & { accountId: string };
@@ -201,6 +216,8 @@ const json = <T extends ZodType>(schema: T) =>
 
 export function createApp(opts: AppOptions) {
   const { db, secret, accountAuth } = opts;
+  const owners = (opts.ownerEmails ?? []).map((e) => e.toLowerCase());
+  const isOwner = (email: string) => owners.includes(email.toLowerCase());
 
   // The signed-in book user, checked against the database once per request (liveBookUser):
   // a deleted or deactivated user, or a deleted year or company, is signed out at once, and
@@ -251,15 +268,31 @@ export function createApp(opts: AppOptions) {
       accountAuth ? accountAuth.handler(c.req.raw) : c.json({ message: 'Not available' }, 404),
     )
 
+    // Before signing in: may the owner still create their own account? (Owner Panel: public
+    // sign-up is closed; the owner signs up once, then creates everyone else's accounts.)
+    .get('/api/setup', async (c) => {
+      if (!accountAuth || !owners.length) return c.json({ ownerSignUp: false });
+      let made = false;
+      for (const e of owners) if (await emailTaken(db, e)) made = true;
+      return c.json({ ownerSignUp: !made });
+    })
+
     .use('/api/*', async (c, next) => {
-      if (c.req.path.startsWith('/api/auth/')) return next();
+      if (c.req.path.startsWith('/api/auth/') || c.req.path === '/api/setup') return next();
       if (!accountAuth) {
         c.set('accountId', 'local');
+        c.set('accountEmail', '');
         return next();
       }
       const session = await accountAuth.api.getSession({ headers: c.req.raw.headers });
       if (!session) return c.json({ message: 'Please sign in to your account.' }, 401);
+      // Blocked or past its valid-till date: shut out at once, not just at the next sign-in.
+      if (!isOwner(session.user.email)) {
+        const why = await accountBlockedMessage(db, { id: session.user.id });
+        if (why) return c.json({ message: why }, 401);
+      }
       c.set('accountId', session.user.id);
+      c.set('accountEmail', session.user.email);
       return next();
     })
 
@@ -267,7 +300,7 @@ export function createApp(opts: AppOptions) {
     .use('/api/*', async (c, next) => {
       const open = ['/api/book/login', '/api/book/me', '/api/book/change-password', '/api/book/logout'];
       if (open.includes(c.req.path) || !c.req.path.startsWith('/api/')) return next();
-      if (c.req.path.startsWith('/api/auth/')) return next();
+      if (c.req.path.startsWith('/api/auth/') || c.req.path.startsWith('/api/owner/')) return next();
       const book = await readBook(c);
       if (book?.mustChangePassword) return c.json({ message: loginMessages.changeRequired }, 403);
       return next();
@@ -304,7 +337,74 @@ export function createApp(opts: AppOptions) {
       return next();
     })
 
-    .get('/api/account', (c) => c.json({ accountId: c.get('accountId') }))
+    .get('/api/account', (c) =>
+      c.json({ accountId: c.get('accountId'), owner: isOwner(c.get('accountEmail')) }),
+    )
+
+    // ── Owner Panel (added 2026-11-13): the software owner manages every account ──────
+    .use('/api/owner/*', async (c, next) => {
+      if (!accountAuth || !isOwner(c.get('accountEmail')))
+        return c.json({ message: ownerMessages.notOwner }, 403);
+      return next();
+    })
+    .get('/api/owner/accounts', async (c) =>
+      c.json({ accounts: await listAccounts(db, owners), ...(await passwordLimits(accountAuth!)) }),
+    )
+    .post(
+      '/api/owner/accounts',
+      json(
+        z.object({
+          name: z.string().trim().min(1),
+          email: z.string().trim().email(),
+          password: z.string().min(1),
+          validTill: isoDate.nullable().optional(),
+        }),
+      ),
+      async (c) => {
+        const v = c.req.valid('json');
+        const lim = await passwordLimits(accountAuth!);
+        if (v.password.length < lim.minPasswordLength)
+          throw new UserError('Password too short', { password: 'Password too short' });
+        if (await emailTaken(db, v.email))
+          throw new UserError(ownerMessages.emailTaken, { email: ownerMessages.emailTaken });
+        const id = await createCustomerAccount(accountAuth!, v);
+        if (v.validTill) await setAccountValidTill(db, owners, id, v.validTill);
+        return c.json({ id }, 201);
+      },
+    )
+    .post(
+      '/api/owner/accounts/:id/password',
+      json(z.object({ password: z.string().min(1) })),
+      async (c) => {
+        const id = c.req.param('id');
+        const { password } = c.req.valid('json');
+        await requireOwnerAccount(db, id);
+        const lim = await passwordLimits(accountAuth!);
+        if (password.length < lim.minPasswordLength)
+          throw new UserError('Password too short', { password: 'Password too short' });
+        await setAccountPassword(accountAuth!, id, password);
+        return c.json({ ok: true });
+      },
+    )
+    .post(
+      '/api/owner/accounts/:id/block',
+      json(z.object({ blocked: z.boolean() })),
+      async (c) => {
+        const id = c.req.param('id');
+        const { blocked } = c.req.valid('json');
+        await setAccountBlocked(db, owners, id, blocked);
+        if (blocked) await endAccountSessions(accountAuth!, id);
+        return c.json({ ok: true });
+      },
+    )
+    .post(
+      '/api/owner/accounts/:id/valid-till',
+      json(z.object({ validTill: isoDate.nullable() })),
+      async (c) => {
+        await setAccountValidTill(db, owners, c.req.param('id'), c.req.valid('json').validTill);
+        return c.json({ ok: true });
+      },
+    )
 
     // ── Company & year registry (the screen before MDA's login) ─────────────────
     .get('/api/book-index', async (c) => c.json(await listBookIndex(db, c.get('accountId'))))

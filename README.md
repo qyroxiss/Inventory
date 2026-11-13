@@ -38,7 +38,8 @@ Open http://localhost:5173. You'll see the account sign-in screen, as on the web
 
 **Test logins:**
 
-- **Account:** sign in with **demo@example.com / password1**, which has 16 sample companies, or create a new account.
+- **Account:** sign in with **demo@example.com / password1**, which has 16 sample companies.
+- **Owner Panel:** start the API with `$env:OWNER_EMAILS='demo@example.com'` and the demo account gets the **Owner Panel** button on the company screen. There you create customer accounts, reset their passwords, block them and set a Valid Till date. The sign-in screen has no Create Account: only an owner email may sign itself up, and only until its account exists.
 - **Books:** every new financial year starts with **admin / admin**, and the first login asks for a new password (as in MDA).
 
 **To work as the desktop app does** (no account sign-in, account `local`): start the API with `$env:LOCAL_ACCOUNT='1'; pnpm --filter @qi/api dev`. This is for local development only; the server refuses it when `DATABASE_URL` is set.
@@ -58,7 +59,8 @@ cloudflared tunnel --no-autoupdate --url http://localhost:4173
 # 3. In a third window, from this folder: start the API with that address allowed and a random secret
 $env:TRUSTED_ORIGINS = 'http://localhost:5173,http://localhost:4173,https://PASTE-THE-ADDRESS.trycloudflare.com'
 $env:APP_SECRET = node -e "process.stdout.write(require('crypto').randomBytes(32).toString('base64url'))"
+$env:OWNER_EMAILS = 'demo@example.com'
 pnpm --filter @qi/api dev
 ```
 
-Anyone with the link can open the app and create an account, so share it only with people you trust. The data is your local test data.
+Nobody can create an account from the link; you create the accounts in the Owner Panel. Share it only with people you trust. The data is your local test data.
