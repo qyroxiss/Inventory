@@ -6,8 +6,10 @@
 //   APP_SECRET       random secret for sessions and the book cookie
 //   PUBLIC_URL       optional; defaults to the project's production address
 //   TRUSTED_ORIGINS  optional; defaults to the production, branch and deployment addresses
+//   OWNER_EMAILS     the software owner's email(s), comma-separated: they open the Owner Panel
 
 import { createAccountAuth } from '@qi/auth';
+import { parseOwnerEmails } from '@qi/core';
 import { openDatabase } from '@qi/db';
 import { Hono } from 'hono';
 import { createApp } from './app.ts';
@@ -27,12 +29,15 @@ function build() {
   ].filter((o): o is string => !!o);
   const baseURL = process.env.PUBLIC_URL ?? vercelHosts[0] ?? 'http://localhost:3000';
   const trustedOrigins = process.env.TRUSTED_ORIGINS?.split(',') ?? [baseURL, ...vercelHosts];
+  // Without it nobody can create customer accounts (public sign-up is closed).
+  const ownerEmails = parseOwnerEmails(process.env.OWNER_EMAILS);
 
   return openDatabase({ url }).then(({ db }) =>
     createApp({
       db,
       secret,
-      accountAuth: createAccountAuth(db, { secret, baseURL, trustedOrigins }),
+      ownerEmails,
+      accountAuth: createAccountAuth(db, { secret, baseURL, trustedOrigins, ownerEmails }),
       secureCookies: baseURL.startsWith('https://'),
     }),
   );
