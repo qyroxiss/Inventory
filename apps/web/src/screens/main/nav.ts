@@ -11,7 +11,7 @@ export const NAV: NavSection[] = [
     groups: [
       {
         label: 'Accounting Masters',
-        items: ['Group Master', 'Sub Group Master', 'Ledger Creation'],
+        items: ['Group Master', 'Sub Group Master', 'Ledger Creation', 'Sales Executive'],
       },
       {
         label: 'Inventory Masters',

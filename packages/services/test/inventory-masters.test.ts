@@ -80,15 +80,29 @@ describe('Stock Sub Group', () => {
     ]);
   });
 
-  test('a removed group leaves its sub groups pointing at nothing (Q-40)', async () => {
+  test('a group or sub group in use can not be removed', async () => {
     await createStockGroup(db, bookId, { name: 'Grocery' });
     await createStockSubGroup(db, bookId, { name: 'Chips', under: 'SG0001' });
-    await removeStockGroup(db, bookId, 'SG0001');
-    expect(await listStockSubGroups(db, bookId)).toEqual([
-      { code: 'SSG0001', name: 'Chips', under: 'SG0001', underName: '' },
-    ]);
+    await rejects(
+      removeStockGroup(db, bookId, 'SG0001'),
+      '"Grocery" has 1 stock sub group(s) under it and cannot be removed.',
+    );
+    await createStockItem(db, bookId, { code: 'C1', name: 'Lays', subGrpCode: 'SSG0001' });
+    await rejects(
+      removeStockSubGroup(db, bookId, 'SSG0001'),
+      '"Chips" is used by 1 stock item(s) and cannot be removed.',
+    );
+    await removeStockItem(db, bookId, 'C1');
     await removeStockSubGroup(db, bookId, 'SSG0001');
+    await removeStockGroup(db, bookId, 'SG0001');
     expect(await listStockSubGroups(db, bookId)).toEqual([]);
+  });
+
+  test('an item can be made inactive; an update without the status keeps it', async () => {
+    await createStockItem(db, bookId, { code: 'A1', name: 'CHIPPS' });
+    await updateStockItem(db, bookId, 'A1', { code: 'A1', name: 'CHIPPS', isActive: false });
+    await updateStockItem(db, bookId, 'A1', { code: 'A1', name: 'CHIPPS', unit: 'Pcs' });
+    expect(await listStockItems(db, bookId)).toMatchObject([{ isActive: false }]);
   });
 });
 
@@ -160,8 +174,8 @@ describe('Stock Item', () => {
       regType: 'Exempt',
     });
     expect(await listStockItems(db, bookId)).toEqual([
-      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0 },
-      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0 },
+      { code: 'A1', name: 'CHIPPS', printName: '', subGrpCode: '', subGrpName: '', unit: 'Pcs', regType: 'Exempt', gstRate: '', hsn: '', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0, isActive: true },
+      { code: 'U001', name: 'UNCLE CHIPPS', printName: 'UNCLE CHIPPS', subGrpCode: 'SSG0001', subGrpName: 'Chips', unit: 'Pcs', regType: 'Taxable', gstRate: '18%', hsn: '2005', purRate: 0, saleRate: 0, opQty: 0, opRate: 0, mrp: 0, isActive: true },
     ]); // prettier-ignore
   });
 

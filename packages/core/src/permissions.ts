@@ -33,6 +33,7 @@ export const PERMISSION_SECTIONS: { label: string; pages: string[] }[] = [
       'Group Master',
       'Sub Group Master',
       'Ledger Creation',
+      'Sales Executive',
       'Stock Group',
       'Stock Sub Group',
       'Stock Item',

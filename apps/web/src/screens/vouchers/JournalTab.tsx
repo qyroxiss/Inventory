@@ -1,7 +1,7 @@
 // Journal tab (accounting_vouchers_page.dart:1335-1651): free Dr/Cr lines over any ledger, at
 // least two; Add Entry adds a Dr line; the running totals show "Balanced ✓" or the difference.
-// Save is refused while it doesn't balance. No party, no bill reference. Printing isn't built in
-// MDA ("arrives with the report module").
+// Save is refused while it doesn't balance. No party, no bill reference. Print shows every line
+// (MDA's Print said "arrives with the report module"; built 2026-11-14).
 
 import {
   amountProblem,
@@ -17,6 +17,7 @@ import { api, unwrap } from '../../api.ts';
 import { ConfirmDelete, MessageDialog } from '../../components/Dialog.tsx';
 import { FieldRow, inputClass } from '../../components/master.tsx';
 import { VoucherList } from './lists.tsx';
+import { PrintVoucher } from './print.tsx';
 import {
   AmountBox,
   DateBox,
@@ -80,6 +81,7 @@ export function JournalTab() {
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<VoucherRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
 
   useEffect(() => {
@@ -263,7 +265,7 @@ export function JournalTab() {
                       <div className="min-w-0 flex-1">
                         <Select
                           value={l.ledger}
-                          options={ledgerOptions(ledgers!)}
+                          options={ledgerOptions(ledgers!, l.ledger)}
                           placeholder={vm.selectLedger}
                           error={e.ledger}
                           onChange={(ledger) => setLine(l.key, { ledger })}
@@ -362,19 +364,19 @@ export function JournalTab() {
               }
             }}
             onRemove={() => setConfirm(true)}
-            onPrint={() =>
-              setMessage({
-                kind: 'ok',
-                title: ['Journal', 'Print'],
-                text: vm.printLater('Journal'),
-              })
-            }
+            onPrint={() => setPrinting(true)}
             onClear={() => void clear()}
             onSave={() => void save()}
           />
         </div>
       </VoucherPage>
 
+      <PrintVoucher
+        kind="journal"
+        open={printing}
+        defaultNo={form.vchrNo}
+        onDone={() => setPrinting(false)}
+      />
       <VoucherList
         title={['Journal', 'Vouchers']}
         open={!!list}

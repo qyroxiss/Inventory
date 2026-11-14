@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, test } from 'vitest';
-import { returnMessages as rm } from '@qi/core';
+import { returnMessages as rm, saleTotals } from '@qi/core';
 import { and, eq, openDatabase, schema, sql, type Db } from '@qi/db';
 import {
   UserError,
@@ -154,7 +154,7 @@ describe('Purchase Return', () => {
 });
 
 describe('Sales Return', () => {
-  // 5 kg of rice @ 120 + 18% on credit, less 10% on the bill: gross 708, discount 70.80.
+  // 5 kg of rice @ 120 + 18% on credit, less 10% on the bill before tax: 600 - 60 = 540 taxed.
   const sell = (isCash: boolean) =>
     saveSale(db, ctx, {
       billNo: 'SB-0001', billDate: '2026-05-10', isCash, custCode: 'AC0002', custName: 'Acme Traders',
@@ -166,18 +166,21 @@ describe('Sales Return', () => {
   test('posts the sale turned round with its share of the bill discount; goods come back', async () => {
     await sell(false);
     const r = await saveReturn(db, ctx, 'SRT', ret);
-    // 2 kg: taxable 240, tax 43.20 → 283.20, less 10% (28.32) → 254.88, rounded to 255.
+    // 2 kg: 240, less 10% (24) → 216 taxed, + 19.44 + 19.44 → 254.88, rounded to 255.
     expect(r).toEqual({ returnNo: 'SRT-001', net: 255 });
     const { lines } = await postingOf('SRT', 'SRT-001');
     expect(lines).toEqual([
       ['SAL003', 240, 0],
-      ['TAX004', 21.6, 0],
-      ['TAX005', 21.6, 0],
+      ['TAX004', 19.44, 0],
+      ['TAX005', 19.44, 0],
       ['TAX007', 0.12, 0],
-      ['SAL002', 0, 28.32],
+      ['SAL002', 0, 24],
       ['AC0002', 0, 255],
     ]);
     expect(await rice()).toBe(20 - 5 + 2);
+    // Printed as a Credit Note: the lines as entered plus the discount give the same total.
+    const doc = (await returnDoc(db, ctx.bookId, 'SRT', 'SRT-001'))!;
+    expect(saleTotals(doc.lines, 0, doc.billDisc)).toMatchObject({ billDisc: 24, cgst: 19.44, net: 255 });
     const open = await outstandingReport(db, ctx.bookId, '2026-06-30');
     const due = open.find((b) => b.billNo === 'SB-0001')!;
     expect(due.pending).toBe(due.amount - 255);
@@ -185,8 +188,9 @@ describe('Sales Return', () => {
     // GSTR-3B outward supplies and the HSN summary are net of the return.
     const g = { bookId: ctx.bookId, companyStateCode: '27' };
     const p = { from: '2026-04-01', to: '2027-03-31' };
-    expect((await gstr3bReport(db, g, p)).outward).toMatchObject({ taxable: 360, cgst: 32.4, sgst: 32.4 });
-    expect((await hsnReport(db, g, { ...p, side: 'out' }))[0]).toMatchObject({ qty: 3, taxable: 360 });
+    // Sold 540 taxed (48.60 + 48.60), returned 216 (19.44 + 19.44).
+    expect((await gstr3bReport(db, g, p)).outward).toMatchObject({ taxable: 324, cgst: 29.16, sgst: 29.16 });
+    expect((await hsnReport(db, g, { ...p, side: 'out' }))[0]).toMatchObject({ qty: 3, taxable: 324 });
   });
 
   test('a cash sale is refunded from the Cash ledger, with no bill reference', async () => {

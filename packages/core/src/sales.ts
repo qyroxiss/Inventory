@@ -11,39 +11,66 @@ export const saleLine = purcLine;
 
 export type SaleTotals = {
   qty: number;
+  /** Σ line values after their own discounts, before the bill discount. */
   subTotal: number;
   /** Σ line discounts, shown only ("Discount On Items"). */
   itemDisc: number;
-  /** The bill-level discount, taken after tax. */
+  /** The bill-level discount, taken BEFORE tax (since 2026-11-14; MDA took it after tax: Q-28). */
   billDisc: number;
   sgst: number;
   cgst: number;
   igst: number;
   roundOff: number;
   net: number;
+  /** The lines with the bill discount shared out and their GST worked out again: what the bill
+   *  is taxed on (stored for the GST returns). */
+  taxed: SaleLine[];
 };
 
-/** `SaleTotals.of`: the bill discount % wins over its amount, and comes off after tax. */
+/**
+ * Shares a bill discount out over the lines by their value (the last line takes what rounding
+ * leaves), and works each line's GST out again on its reduced value. Under GST a discount shown
+ * on the invoice lowers the taxable value, so tax is charged on the discounted amount.
+ */
+export function allocateBillDiscount(lines: SaleLine[], billDisc: number): SaleLine[] {
+  const base = round2(lines.reduce((a, l) => a + l.amount, 0));
+  if (billDisc <= 0 || base <= 0) return lines;
+  let left = round2(billDisc);
+  return lines.map((l, i) => {
+    const share = i === lines.length - 1 ? left : round2((billDisc * l.amount) / base);
+    left = round2(left - share);
+    const amount = round2(l.amount - share);
+    const sgstA = round2((amount * l.sgstP) / 100);
+    const cgstA = round2((amount * l.cgstP) / 100);
+    const igstA = round2((amount * l.igstP) / 100);
+    return { ...l, amount, sgstA, cgstA, igstA, lineTotal: round2(amount + sgstA + cgstA + igstA) };
+  });
+}
+
+/** `SaleTotals.of`: the bill discount % (of the value before tax) wins over its amount; it comes
+ *  off before tax, so GST is on the discounted value. */
 export function saleTotals(lines: SaleLine[], billDiscPct = 0, billDiscAmt = 0): SaleTotals {
-  const total = (f: (l: SaleLine) => number) => round2(lines.reduce((a, l) => a + f(l), 0));
-  const subTotal = total((l) => l.amount);
-  const sgst = total((l) => l.sgstA);
-  const cgst = total((l) => l.cgstA);
-  const igst = total((l) => l.igstA);
-  const gross = round2(subTotal + sgst + cgst + igst);
-  const billDisc = billDiscPct > 0 ? round2((gross * billDiscPct) / 100) : round2(billDiscAmt);
-  const afterDisc = round2(gross - billDisc);
+  const total = (list: SaleLine[], f: (l: SaleLine) => number) =>
+    round2(list.reduce((a, l) => a + f(l), 0));
+  const subTotal = total(lines, (l) => l.amount);
+  const billDisc = billDiscPct > 0 ? round2((subTotal * billDiscPct) / 100) : round2(billDiscAmt);
+  const taxed = allocateBillDiscount(lines, billDisc);
+  const sgst = total(taxed, (l) => l.sgstA);
+  const cgst = total(taxed, (l) => l.cgstA);
+  const igst = total(taxed, (l) => l.igstA);
+  const afterDisc = round2(subTotal - billDisc + sgst + cgst + igst);
   const round = roundOff(afterDisc);
   return {
-    qty: total((l) => l.qty),
+    qty: total(lines, (l) => l.qty),
     subTotal,
-    itemDisc: total((l) => l.disA),
+    itemDisc: total(lines, (l) => l.disA),
     billDisc,
     sgst,
     cgst,
     igst,
     roundOff: round,
     net: round2(afterDisc + round),
+    taxed,
   };
 }
 
@@ -103,6 +130,7 @@ export const saleMessages = {
   /** Added 2026-11-12: MDA's screen never lets these go negative; the server now checks too. */
   lineNegative: (name: string) => `Discount and GST rate cannot be negative for ${name}.`,
   billDiscNegative: 'Bill discount cannot be negative.',
+  billDiscTooBig: 'Bill discount is more than the value of the items.',
   lineDiscount: (name: string) => `Discount is more than the value of ${name}.`,
   zero: 'Bill value cannot be zero or negative.',
   billUsed: (no: string) =>
@@ -113,6 +141,10 @@ export const saleMessages = {
   cancelledEdit: 'A cancelled sale cannot be edited.',
   notEnoughStock: (name: string, needed: number, inHand: number) =>
     `Not enough stock for ${name}: ${needed.toFixed(2)} needed, ${inHand.toFixed(2)} in hand.`,
+  notEnoughInGodown: (name: string, godown: string, needed: number, inHand: number) =>
+    `Not enough stock for ${name} in ${godown}: ${needed.toFixed(2)} needed, ${inHand.toFixed(2)} in hand.`,
+  /** A cash sale's account must be a Cash-in-Hand or Bank ledger (2026-11-14). */
+  badCashAccount: 'Choose a Cash-in-Hand or Bank account for a cash sale.',
   // The page's own messages.
   selectItemFirst: 'Select an item first',
   qtyZero: 'Required Qty must be more than zero',
@@ -164,7 +196,9 @@ export function saleProblem(h: SaleHeaderCheck, lines: SaleLine[]): string | nul
     if (l.amount < 0) return m.lineDiscount(l.itemName);
   }
   if (h.billDiscPct < 0 || h.billDiscAmt < 0) return m.billDiscNegative;
-  if (saleTotals(lines, h.billDiscPct, h.billDiscAmt).net <= 0) return m.zero;
+  const t = saleTotals(lines, h.billDiscPct, h.billDiscAmt);
+  if (t.billDisc > t.subTotal) return m.billDiscTooBig;
+  if (t.net <= 0) return m.zero;
   return null;
 }
 

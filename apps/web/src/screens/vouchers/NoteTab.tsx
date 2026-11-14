@@ -2,9 +2,8 @@
 //   Debit Note:  Dr the party (Sundry Creditors) for the total, with the reason as its narration;
 //                Cr each entry ledger.
 //   Credit Note: Dr each entry ledger; Cr the party (Sundry Debtors) for the total, with the reason.
-// The party list is that one group (exact match), or every ledger if the group has none. Reopening
-// a note doesn't bring its reason back, so it has to be chosen again to update (Q-46). No GST or
-// stock effect; printing isn't built in MDA.
+// The party list is that group and its sub groups, or every ledger if they have none. Reopening
+// a note brings its reason back (MDA didn't: Q-46). No GST or stock effect.
 
 import {
   CN_REASONS,
@@ -25,6 +24,7 @@ import { api, unwrap } from '../../api.ts';
 import { ConfirmDelete, MessageDialog } from '../../components/Dialog.tsx';
 import { FieldRow, inputClass } from '../../components/master.tsx';
 import { VoucherList } from './lists.tsx';
+import { PrintVoucher } from './print.tsx';
 import {
   AmountBox,
   DateBox,
@@ -76,7 +76,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
   const word = debit ? 'Debit Note' : 'Credit Note';
   const type = debit ? 'DRN' : 'CRN';
   const queryClient = useQueryClient();
-  const { me, ledgers, ready } = useVoucherData();
+  const { me, ledgers, groups, ready } = useVoucherData();
   const draftKey = `${me?.bookId}:${kind}`;
 
   const blank = (vchrNo = ''): Form => ({
@@ -96,6 +96,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
   const [busy, setBusy] = useState(false);
   const [list, setList] = useState<VoucherRow[] | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
 
   // A debit note is raised against a supplier, a credit note for a customer; every ledger if
   // that group has none yet.
-  const grouped = ofGroup(ledgers!, debit ? CREDITORS_GROUP : DEBTORS_GROUP);
+  const grouped = ofGroup(ledgers!, debit ? CREDITORS_GROUP : DEBTORS_GROUP, groups);
   const parties = grouped.length ? grouped : ledgers!;
   const reasons = debit ? DN_REASONS : CN_REASONS;
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f!, ...patch }));
@@ -169,7 +170,12 @@ export function NoteTab({ kind }: { kind: Kind }) {
         lines: d.lines,
       };
       if (inEdit) {
-        await unwrap(api.api.vouchers[':id'].$put({ param: { id: form.editId! }, json: common }));
+        await unwrap(
+          api.api.vouchers[':id'].$put({
+            param: { id: form.editId! },
+            json: { ...common, bills: d.bills },
+          }),
+        );
       } else {
         await unwrap(
           api.api.vouchers.$post({
@@ -211,7 +217,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
   };
 
   /** Opens a note (`_loadVoucher`): its entry lines (the side opposite the party), the party,
-   *  ref and narration — but not the reason (Q-46). */
+   *  ref, narration and the reason (posted on the party's line; MDA lost it: Q-46). */
   const open = async (row: VoucherRow) => {
     setList(null);
     const rows = await fetchLines(row.id);
@@ -220,6 +226,8 @@ export function NoteTab({ kind }: { kind: Kind }) {
     const items = rows
       .filter((r) => (debit ? r.cr > 0 : r.dr > 0))
       .map((r) => item(known(r.accCode, ledgers!), fa(debit ? r.cr : r.dr)));
+    const posted = rows.find((r) => r.accCode === row.partyCode && r.narration)?.narration ?? '';
+    const reason = (reasons as readonly string[]).includes(posted) ? posted : '';
     setErrors({ items: {} });
     setShownCancelled(row.status === 'Cancelled');
     setForm({
@@ -227,7 +235,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
       vchrNo: row.vchrNo,
       party: known(row.partyCode ?? '', parties),
       ref: row.refNo,
-      reason: '',
+      reason,
       narration: row.narration,
       items: items.length ? items : [item()],
       editId: row.status === 'Cancelled' ? null : row.id,
@@ -262,7 +270,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
                   <Select
                     id="nt-party"
                     value={form.party}
-                    options={ledgerOptions(parties)}
+                    options={ledgerOptions(parties, form.party)}
                     placeholder={vm.selectParty}
                     error={errors.party}
                     onChange={(party) => {
@@ -325,7 +333,7 @@ export function NoteTab({ kind }: { kind: Kind }) {
                       <div className="min-w-0 flex-1">
                         <Select
                           value={i.ledger}
-                          options={ledgerOptions(ledgers!)}
+                          options={ledgerOptions(ledgers!, i.ledger)}
                           placeholder={vm.selectLedger}
                           error={e.ledger}
                           onChange={(ledger) => setItem(i.key, { ledger })}
@@ -400,19 +408,19 @@ export function NoteTab({ kind }: { kind: Kind }) {
               }
             }}
             onRemove={() => setConfirm(true)}
-            onPrint={() =>
-              setMessage({
-                kind: 'ok',
-                title: [word, 'Print'],
-                text: vm.printLater(debit ? 'Debit note' : 'Credit note'),
-              })
-            }
+            onPrint={() => setPrinting(true)}
             onClear={() => void clear()}
             onSave={() => void save()}
           />
         </div>
       </VoucherPage>
 
+      <PrintVoucher
+        kind={debit ? 'debit' : 'credit'}
+        open={printing}
+        defaultNo={form.vchrNo}
+        onDone={() => setPrinting(false)}
+      />
       <VoucherList
         title={debit ? ['Debit', 'Notes'] : ['Credit', 'Notes']}
         open={!!list}

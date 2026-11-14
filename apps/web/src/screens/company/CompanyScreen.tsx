@@ -2,7 +2,7 @@
 // approved design M1 (docs/design/MASTERS-SCREENS.md). Save goes back to Company & Year Setup,
 // Update stays, Delete clears the form, Cancel and Back go back — all as in MDA.
 
-import { brand, companyFieldErrors, companyMessages } from '@qi/core';
+import { brand, companyFieldErrors, companyMessages, financialYearOf } from '@qi/core';
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
@@ -103,6 +103,16 @@ export function CompanyScreen() {
     setBusy(true);
     try {
       const c = await unwrap(api.api.companies.$post({ json: form }));
+      // The current financial year is added with it, so the company can be opened at once
+      // (MDA made a company with no year: Q-05). More years are added in Manage Years.
+      const now = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+      const fy = financialYearOf(now);
+      await unwrap(
+        api.api.companies[':companyId'].years.$post({
+          param: { companyId: c.id },
+          json: { yearName: fy.name, fromDate: fy.from, toDate: fy.to },
+        }),
+      ).catch(() => undefined);
       await refresh();
       toast(companyMessages.saved(c.compName));
       back(); // MDA closes the page after saving

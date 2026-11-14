@@ -232,10 +232,13 @@ function Numbering() {
     queryKey: ['settings-series'],
     queryFn: () => unwrap(api.api.settings.series.$get()),
   });
-  const [edits, setEdits] = useState<Record<string, { prefix: string; width: string }>>({});
+  const [edits, setEdits] = useState<
+    Record<string, { prefix: string; width: string; startAt: string }>
+  >({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const rows = q.data ?? [];
-  const value = (s: Series) => edits[s.vchrType] ?? { prefix: s.prefix, width: String(s.width) };
+  const value = (s: Series) =>
+    edits[s.vchrType] ?? { prefix: s.prefix, width: String(s.width), startAt: '' };
   const save = async (s: Series) => {
     const v = value(s);
     const problem = seriesProblem(v.prefix, Number(v.width));
@@ -244,7 +247,11 @@ function Numbering() {
       await unwrap(
         api.api.settings.series[':type'].$put({
           param: { type: s.vchrType },
-          json: { prefix: v.prefix, width: Number(v.width) },
+          json: {
+            prefix: v.prefix,
+            width: Number(v.width),
+            ...(v.startAt ? { startAt: Number(v.startAt) } : {}),
+          },
         }),
       );
       const without = <T,>(m: Record<string, T>) => {
@@ -306,6 +313,26 @@ function Numbering() {
       cell: (s) => <span className="font-mono">{s.next}</span>,
     },
     {
+      // Added 2026-11-14: the number the series goes on from (MDA's counter never moved: Q-08).
+      head: 'Start From',
+      w: '90px',
+      cell: (s) => (
+        <input
+          aria-label={`${s.vchrName} start from`}
+          value={value(s).startAt}
+          inputMode="numeric"
+          placeholder="—"
+          onChange={(e) =>
+            setEdits((x) => ({
+              ...x,
+              [s.vchrType]: { ...value(s), startAt: e.target.value.replace(/\D/g, '') },
+            }))
+          }
+          className={`${boxClass(!!errors[s.vchrType])} text-right`}
+        />
+      ),
+    },
+    {
       head: '',
       w: '84px',
       cell: (s) =>
@@ -327,7 +354,7 @@ function Numbering() {
       <ReportTable cols={cols} rows={rows} rowKey={(s) => s.vchrType} empty="" minWidth={640} />
       <p className={`m-0 text-xs ${firstError ? 'text-destructive' : 'text-muted-foreground'}`}>
         {firstError ??
-          'A new prefix or digit count applies from the next voucher; numbers already used keep their form. Only an Admin can change these.'}
+          'A new prefix or digit count applies from the next voucher; numbers already used keep their form. Start From sets the next number (it cannot go below a number already used). Only an Admin can change these.'}
       </p>
     </>
   );
@@ -853,8 +880,8 @@ function OpeningBalances() {
             Bring this year&apos;s opening balances forward again from <b>{prev}</b>, as on its last
             day. Use it after entries were made or changed in {prev}. Ledgers and stock items in
             both years get last year&apos;s closing balance, quantity and value; last year&apos;s
-            profit or loss goes to the Profit &amp; Loss A/c. Opening balances typed by hand in
-            this year are replaced.
+            profit or loss goes to the Profit &amp; Loss A/c. Opening balances typed by hand in this
+            year are replaced.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <button

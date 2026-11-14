@@ -8,12 +8,12 @@
 // As in MDA:
 //   - The bill number shown on screen is passed in; if it's taken meanwhile the save is refused
 //     with "… Save again to take the next free number."
-//   - Update deletes the old PUR voucher and posts a new one, so the bill keeps its number but
-//     gets a new PUR-nnn voucher number (Q-07).
+//   - Update deletes the old PUR voucher and posts a new one under the same PUR-nnn number
+//     (MDA took a new number: Q-07, fixed 2026-11-14).
 //   - Cancel never deletes: bill and voucher are marked Cancelled, the stock rows are deleted so
 //     the quantities stop counting, and the ledger lines and bill reference stay.
-//   - The narration is passed as typed, so an empty one stays empty and MDA's fallback
-//     "Purchase <bill no>" never applies (Q-49).
+//   - A blank narration posts as "Purchase <bill no>" (MDA's fallback never applied: Q-49,
+//     fixed 2026-11-14); the bill keeps the narration as typed.
 
 import {
   ACTIVE,
@@ -33,8 +33,9 @@ import {
   type PurcLine,
   type PurcTotals,
 } from '@qi/core';
-import { and, asc, desc, eq, inArray, or, schema, sql, type Db } from '@qi/db';
+import { and, asc, desc, eq, inArray, schema, sql, type Db } from '@qi/db';
 import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
+import { groupFamilyCodes } from './groups.ts';
 import { UserError } from './errors.ts';
 import {
   assertLedgersExist,
@@ -73,6 +74,8 @@ export type Supplier = {
 };
 export type PurchaseItem = {
   code: string;
+  /** Inactive items are left out of new lines (2026-11-14). */
+  isActive: boolean;
   name: string;
   unit: string | null;
   hsnNo: string | null;
@@ -80,19 +83,10 @@ export type PurchaseItem = {
   purRate: number;
 };
 
-/** Suppliers (active ledgers in Sundry Creditors or a group directly under it), every stock item
+/** Suppliers (active ledgers in Sundry Creditors or any sub group under it), every stock item
  *  and every godown, each by name. */
 export async function purchaseLookups(db: Db, bookId: string) {
-  const groups = await db
-    .select({ code: accountGroups.grpCode })
-    .from(accountGroups)
-    .where(
-      and(
-        eq(accountGroups.bookId, bookId),
-        or(eq(accountGroups.grpCode, SUPPLIER_GROUP), eq(accountGroups.parentGrp, SUPPLIER_GROUP)),
-      ),
-    );
-  const codes = groups.map((g) => g.code);
+  const codes = await groupFamilyCodes(db, bookId, [SUPPLIER_GROUP]);
   const supp = codes.length
     ? await db
         .select()
@@ -126,6 +120,7 @@ export async function purchaseLookups(db: Db, bookId: string) {
     })),
     items: items.map((r): PurchaseItem => ({
       code: r.partCode,
+      isActive: r.isActive,
       name: r.partName,
       unit: r.unit,
       hsnNo: r.hsnNo,
@@ -353,6 +348,9 @@ async function postPurchase(
   input: PurchaseInput,
   lines: PurcLine[],
   t: PurcTotals,
+  /** On update, the bill's existing voucher number (kept since 2026-11-14; MDA took a new one:
+   *  Q-07). */
+  keepNo?: string,
 ): Promise<string> {
   await ensurePurchaseLedgers(db, ctx.bookId, input.interState, t.freight > 0);
 
@@ -362,7 +360,7 @@ async function postPurchase(
   if (Math.abs(totalDr - totalCr) >= 0.005)
     throw new UserError(pm.unbalanced(Math.abs(totalDr - totalCr)));
 
-  const vchrNo = await nextVoucherNo(db, ctx.bookId, 'PUR');
+  const vchrNo = keepNo ?? (await nextVoucherNo(db, ctx.bookId, 'PUR'));
   const [v] = await db
     .insert(vouchers)
     .values({
@@ -373,7 +371,8 @@ async function postPurchase(
       partyCode: input.suppCode,
       refNo: input.billNo,
       refDate: input.suppInvDate?.trim() ?? '',
-      narration: input.narration?.trim() ?? '',
+      // A blank narration reads "Purchase <bill no>" (MDA's fallback never applied: Q-49).
+      narration: input.narration?.trim() || `Purchase ${input.billNo}`,
       taxableAmt: money(t.subTotal),
       cgstAmt: money(t.cgst),
       sgstAmt: money(t.sgst),
@@ -385,7 +384,7 @@ async function postPurchase(
     })
     .returning({ id: vouchers.id });
   const voucherId = v!.id;
-  await commitVoucherNo(db, ctx.bookId, 'PUR', vchrNo);
+  if (!keepNo) await commitVoucherNo(db, ctx.bookId, 'PUR', vchrNo);
 
   await db.insert(voucherLines).values(
     acct.map((l, i) => ({
@@ -524,13 +523,26 @@ export async function updatePurchase(
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;
     await tx.delete(purchaseLines).where(eq(purchaseLines.purchaseId, old.id));
+    let keepNo: string | undefined;
     if (old.voucherId) {
       // The bill points at its voucher, so the link is released before the voucher goes; its
-      // ledger, item, stock and bill-reference rows go with it.
+      // ledger, item, stock and bill-reference rows go with it. Its number is kept.
+      const [ov] = await tx
+        .select({ no: vouchers.vchrNo })
+        .from(vouchers)
+        .where(eq(vouchers.id, old.voucherId));
+      keepNo = ov?.no;
       await tx.update(purchases).set({ voucherId: null }).where(eq(purchases.id, old.id));
       await tx.delete(vouchers).where(eq(vouchers.id, old.voucherId));
     }
-    const voucherId = await postPurchase(tx, ctx, { ...input, billNo: old.billNo }, lines, t);
+    const voucherId = await postPurchase(
+      tx,
+      ctx,
+      { ...input, billNo: old.billNo },
+      lines,
+      t,
+      keepNo,
+    );
     await tx
       .update(purchases)
       .set({

@@ -68,7 +68,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
   const word = receipt ? 'Receipt' : 'Payment';
   const typeOf = (bank: boolean) => (receipt ? (bank ? 'BNK' : 'RCP') : bank ? 'BPAY' : 'PAY');
   const queryClient = useQueryClient();
-  const { me, ledgers, ready } = useVoucherData();
+  const { me, ledgers, groups, ready } = useVoucherData();
   const draftKey = `${me?.bookId}:${kind}`;
 
   const blank = (): Form => ({
@@ -106,7 +106,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
   if (!ready || !form) return <VoucherPage tab={kind}>{null}</VoucherPage>;
 
   const set = (patch: Partial<Form>) => setForm((f) => ({ ...f!, ...patch }));
-  const accounts = ofGroup(ledgers!, form.bank ? BANK_GROUP : CASH_GROUP);
+  const accounts = ofGroup(ledgers!, form.bank ? BANK_GROUP : CASH_GROUP, groups);
   const inEdit = !!form.editId;
   /** Cash moves no cheque, so a cash receipt or payment has no reference box. */
   const showRef = form.bank;
@@ -160,7 +160,12 @@ export function CashBankTab({ kind }: { kind: Kind }) {
         lines: d.lines,
       };
       if (inEdit) {
-        await unwrap(api.api.vouchers[':id'].$put({ param: { id: form.editId! }, json: common }));
+        await unwrap(
+          api.api.vouchers[':id'].$put({
+            param: { id: form.editId! },
+            json: { ...common, bills: d.bills },
+          }),
+        );
         setMessage({ kind: 'ok', title: [word, 'Updated'], text: vm.updated(word, form.vchrNo) });
       } else {
         await unwrap(
@@ -216,7 +221,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
       code && list.some((l) => l.accCode === code) ? code : '';
     const dr = lines.find((l) => l.dr > 0)?.accCode;
     const cr = lines.find((l) => l.cr > 0)?.accCode;
-    const cashList = ofGroup(ledgers!, bank ? BANK_GROUP : CASH_GROUP);
+    const cashList = ofGroup(ledgers!, bank ? BANK_GROUP : CASH_GROUP, groups);
     setErrors({});
     setShownCancelled(row.status === 'Cancelled');
     setForm({
@@ -293,7 +298,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
                 <Select
                   id="cb-account"
                   value={form.account}
-                  options={ledgerOptions(accounts)}
+                  options={ledgerOptions(accounts, form.account)}
                   placeholder={accounts.length ? vm.selectAccount : vm.noAccounts(form.bank)}
                   error={errors.account}
                   onChange={(account) => {
@@ -323,7 +328,7 @@ export function CashBankTab({ kind }: { kind: Kind }) {
                 <Select
                   id="cb-party"
                   value={form.party}
-                  options={ledgerOptions(ledgers!)}
+                  options={ledgerOptions(ledgers!, form.party)}
                   placeholder="Select party / account"
                   error={errors.party}
                   onChange={(party) => {

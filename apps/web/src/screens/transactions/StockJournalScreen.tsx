@@ -175,6 +175,7 @@ export function StockJournalScreen() {
       hsnNo: null,
       gstRate: 0,
       purRate: 0,
+      isActive: false,
     };
     setE(side, { item: it, godown: l.godown ?? '', qty: fq(l.qty), rate: fa(l.rate), line: i });
     focusNav(NAV[side].qty);

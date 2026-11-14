@@ -214,12 +214,15 @@ export function PurchaseInvoiceScreen() {
   const set = (patch: Partial<Header>) => setH((x) => ({ ...x!, ...patch }));
   const setE = (patch: Partial<Entry>) => setEntry((x) => ({ ...x, ...patch }));
   // The lookups show each item's Unit, GST % and Rate beside it.
-  const itemRefs = data.items.map((i) => ({
-    ...i,
-    extra: [i.unit, `GST ${i.gstRate}%`, i.purRate > 0 ? `₹${fa(i.purRate)}` : '']
-      .filter(Boolean)
-      .join('  ·  '),
-  }));
+  // Inactive items can't go on a new line (2026-11-14); old lines keep their stored name.
+  const itemRefs = data.items
+    .filter((i) => i.isActive)
+    .map((i) => ({
+      ...i,
+      extra: [i.unit, `GST ${i.gstRate}%`, i.purRate > 0 ? `₹${fa(i.purRate)}` : '']
+        .filter(Boolean)
+        .join('  ·  '),
+    }));
   const gstRateOf = (code: string) => data.items.find((i) => i.code === code)?.gstRate ?? 0;
   const totals = purcTotals(lines, num(h.freight));
 
@@ -329,6 +332,7 @@ export function PurchaseInvoiceScreen() {
       hsnNo: l.hsnNo,
       gstRate: l.sgstP + l.cgstP + l.igstP,
       purRate: 0,
+      isActive: false,
     };
     setEntry({
       item: it,
@@ -910,7 +914,9 @@ export function PurchaseInvoiceScreen() {
       <PurchaseList
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void loadBill(r.billNo).catch((err: unknown) => toast(errorText(err), 'error'))}
+        onPick={(r) =>
+          void loadBill(r.billNo).catch((err: unknown) => toast(errorText(err), 'error'))
+        }
         onClose={() => setList(null)}
       />
       <Dialog

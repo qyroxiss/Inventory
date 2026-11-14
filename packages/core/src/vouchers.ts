@@ -159,7 +159,7 @@ export type VoucherDraft = {
   vchrType: string;
   partyCode: string | null;
   lines: PostingLine[];
-  /** Written on Save only; Update replaces the lines but writes no bill reference (Q-43). */
+  /** Written on Save and again on Update (MDA dropped them on Update: Q-43). */
   bills: { accCode: string; billNo: string; refType: string; amount: number }[];
 };
 

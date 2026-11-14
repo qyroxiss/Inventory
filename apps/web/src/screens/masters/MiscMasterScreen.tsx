@@ -1,14 +1,22 @@
-// Unit Master and Godown — MDA's "Unit Master" and "Godown Master" pages (unit_master_page.dart,
-// godown_master_page.dart), which are the same screen with the word swapped. One field; Print
+// Unit Master, Godown and Sales Executive — MDA's "Unit Master" and "Godown Master" pages
+// (unit_master_page.dart, godown_master_page.dart), which are the same screen with the word
+// swapped; Sales Executive (added 2026-11-14) also has a Mobile No. One name field; Print
 // and View on the left; Save, or Cancel / Update / Remove while a row is open. Unlike Group
 // Master, every button works by mouse or touch, and both Update and Remove clear the form
 // afterwards, as in MDA. Logic and quirks: packages/services/src/misc-masters.ts.
 
-import { MISC_MASTERS, miscMasterMessages, type MiscMasterKind } from '@qi/core';
+import {
+  MISC_MASTERS,
+  MISC_MASTER_WITH_MOBILE,
+  miscMasterMessages,
+  mobileProblem,
+  type MiscMasterKind,
+} from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { ApiError, api, unwrap, type OkBody } from '../../api.ts';
 import { ConfirmDelete, ConfirmUpdate, MessageDialog } from '../../components/Dialog.tsx';
+import { PhoneInput } from '../../components/PhoneInput.tsx';
 import {
   ActionBar,
   FieldRow,
@@ -34,7 +42,10 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
     queryFn: () => unwrap(endpoint.$get({ param: { kind } })),
   });
 
+  const withMobile = MISC_MASTER_WITH_MOBILE.includes(kind);
   const [name, setName] = useState('');
+  const [mobile, setMobile] = useState('');
+  const [mobileError, setMobileError] = useState('');
   const [error, setError] = useState('');
   const [editing, setEditing] = useState<Row | null>(null);
   const [busy, setBusy] = useState(false);
@@ -45,11 +56,14 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
 
   const nameRef = useRef<HTMLInputElement>(null);
   const actionRef = useRef<HTMLButtonElement>(null);
+  const mobileRef = useRef<HTMLInputElement>(null);
   const focusName = () => setTimeout(() => nameRef.current?.focus(), 0);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['misc-master', kind] });
 
   const clearForm = () => {
     setName('');
+    setMobile('');
+    setMobileError('');
     setError('');
     setEditing(null);
     focusName();
@@ -58,9 +72,12 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
   const validate = () => {
     const ok = !!name.trim();
     setError(ok ? '' : msg.nameRequired);
+    const badMobile = (withMobile && mobileProblem(mobile)) || '';
+    setMobileError(badMobile);
     if (!ok) nameRef.current?.focus();
-    return ok;
+    return ok && !badMobile;
   };
+  const body = () => ({ name, ...(withMobile ? { mobile: mobile || undefined } : {}) });
 
   const failed = (err: unknown) => {
     if (err instanceof ApiError && err.status === 422 && err.body.fieldErrors?.name) {
@@ -79,7 +96,7 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
     if (!validate()) return;
     setBusy(true);
     try {
-      const u = await unwrap(endpoint.$post({ param: { kind }, json: { name } }));
+      const u = await unwrap(endpoint.$post({ param: { kind }, json: body() }));
       await refresh();
       setMessage({ kind: 'ok', title: [label, 'Saved'], text: msg.saved(u.name, u.code) });
       clearForm();
@@ -93,7 +110,7 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
     if (!editing) return;
     setBusy(true);
     try {
-      const u = await unwrap(byCode.$put({ param: { kind, code: editing.code }, json: { name } }));
+      const u = await unwrap(byCode.$put({ param: { kind, code: editing.code }, json: body() }));
       await refresh();
       setMessage({ kind: 'ok', title: [label, 'Updated'], text: msg.updated(u.name) });
       clearForm();
@@ -125,12 +142,17 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
     setEditing(u);
     setError('');
     setName(u.name);
+    setMobile(u.mobile ?? '');
+    setMobileError('');
     focusName();
   };
 
   const columns: Column<Row>[] = [
     { head: 'Code', width: '90px', cell: (r) => r.code, mono: true },
     { head: `${label} Name`, width: 'minmax(0,1fr)', cell: (r) => r.name },
+    ...(withMobile
+      ? [{ head: 'Mobile No.', width: '160px', cell: (r: Row) => r.mobile ?? '' }]
+      : []),
   ];
 
   return (
@@ -153,12 +175,27 @@ export function MiscMasterScreen({ kind }: { kind: MiscMasterKind }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  actionRef.current?.focus();
+                  (withMobile ? mobileRef : actionRef).current?.focus();
                 }
               }}
               className={inputClass(error)}
             />
           </FieldRow>
+          {withMobile && (
+            <FieldRow id="master-mobile" label="Mobile No." error={mobileError}>
+              <PhoneInput
+                id="master-mobile"
+                inputRef={mobileRef}
+                value={mobile}
+                error={!!mobileError}
+                onChange={(v) => {
+                  setMobile(v);
+                  setMobileError('');
+                }}
+                onEnter={() => actionRef.current?.focus()}
+              />
+            </FieldRow>
+          )}
         </FormBlock>
         <ActionBar
           editing={!!editing}

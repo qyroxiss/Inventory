@@ -235,7 +235,11 @@ export async function saveVoucher(
   input: VoucherInput,
 ): Promise<{ id: string; vchrNo: string }> {
   gate(ctx, input.vchrType, input);
-  await assertLedgersExist(db, ctx.bookId, input.lines.map((l) => l.accCode));
+  await assertLedgersExist(
+    db,
+    ctx.bookId,
+    input.lines.map((l) => l.accCode),
+  );
   const net = sum(input.lines.map((l) => l.dr));
 
   return db.transaction(async (raw) => {
@@ -292,13 +296,17 @@ export async function updateVoucher(
   db: Db,
   ctx: PostingContext,
   id: string,
-  input: Omit<VoucherInput, 'vchrType' | 'vchrNo' | 'bills'>,
+  input: Omit<VoucherInput, 'vchrType' | 'vchrNo'>,
 ): Promise<{ id: string; vchrNo: string }> {
   const hdr = await findVoucher(db, ctx.bookId, id);
   if (!hdr) throw new UserError(postingMessages.notFound);
   if (hdr.status === CANCELLED) throw new UserError(postingMessages.cancelledEdit);
   gate(ctx, hdr.vchrType, { ...input, vchrType: hdr.vchrType });
-  await assertLedgersExist(db, ctx.bookId, input.lines.map((l) => l.accCode));
+  await assertLedgersExist(
+    db,
+    ctx.bookId,
+    input.lines.map((l) => l.accCode),
+  );
   const net = sum(input.lines.map((l) => l.dr));
 
   await db.transaction(async (raw) => {
@@ -317,8 +325,8 @@ export async function updateVoucher(
         modifiedAt: new Date(),
       })
       .where(eq(vouchers.id, id));
-    // No bill references on update, as in MDA (Q-43).
-    await writeLines(tx, id, { ...input, vchrType: hdr.vchrType }, false);
+    // The bill references are written again (MDA dropped them: Q-43, fixed 2026-11-14).
+    await writeLines(tx, id, { ...input, vchrType: hdr.vchrType }, true);
     await log(tx, ctx, 'UPDATE', `${hdr.vchrType}/${hdr.vchrNo}`, `Net ${net.toFixed(2)}`);
   });
   return { id, vchrNo: hdr.vchrNo };
@@ -461,15 +469,19 @@ export type VoucherPrint = {
   drName: string | null;
   party: typeof ledgers.$inferSelect | null;
   company: typeof companies.$inferSelect | null;
+  /** The credited account's name (a bank payment prints its bank). */
+  crName: string | null;
+  /** Every line, for the Journal / Debit Note / Credit Note sheet. */
+  lines: VoucherLineRow[];
 };
 
-/** One receipt or payment by number, with its party and the company, for printing. */
+/** One voucher by number, with its party, lines and the company, for printing. */
 export async function voucherForPrint(
   db: Db,
   bookId: string,
   vchrNo: string,
   types: string[],
-  partySide: 'dr' | 'cr',
+  partySide: 'dr' | 'cr' | null,
 ): Promise<VoucherPrint | null> {
   const [v] = await db
     .select()
@@ -486,7 +498,9 @@ export async function voucherForPrint(
   const lines = await voucherLinesOf(db, bookId, v.id);
   const dr = lines.find((l) => l.dr > 0);
   const cr = lines.find((l) => l.cr > 0);
-  const partyCode = (partySide === 'dr' ? dr : cr)?.accCode;
+  const partyCode = partySide
+    ? (partySide === 'dr' ? dr : cr)?.accCode
+    : (v.partyCode ?? undefined);
   const [party] = partyCode
     ? await db
         .select()
@@ -507,6 +521,8 @@ export async function voucherForPrint(
     refNo: v.refNo ?? '',
     narration: v.narration ?? '',
     drName: dr?.accName ?? null,
+    crName: cr?.accName ?? null,
+    lines,
     party: party ?? null,
     company: company?.company ?? null,
   };

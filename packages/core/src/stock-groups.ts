@@ -1,7 +1,7 @@
 // Stock Group, ported from MDA-Inventory lib/stock_group_page.dart. Stock groups are Misc_Master
 // rows of type 'StockGroup': the name, GST Rate in Misc_Gen1 and HSN No. in Misc_Gen2, both free
-// text as MDA stores them (e.g. "18%"). They're stored only; no item takes them as defaults
-// (docs/LOGIC-SPEC.md Q-33).
+// text as MDA stores them (e.g. "18%"). Since 2026-11-14 a new item placed under one of the
+// group's sub groups takes them as its defaults (MDA never used them: Q-33).
 
 export const STOCK_GROUP_TYPE = 'StockGroup';
 /** `SG` + 4 digits, highest existing Stock Group code + 1 (stock_group_page.dart:96-98). */
@@ -16,6 +16,9 @@ export const stockGroupMessages = {
   updated: (name: string) => `Stock Group "${name}" updated`,
   /** MDA shows this with the error/red colour even though it is a success message. */
   removed: (name: string) => `Stock Group "${name}" removed`,
+  /** Added 2026-11-14 (MDA removed it anyway: Q-40). */
+  inUse: (name: string, count: number) =>
+    `"${name}" has ${count} stock sub group(s) under it and cannot be removed.`,
   updateConfirm: (name: string) => `Update record "${name}"?`,
   deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
   noneFound: 'No stock groups saved yet.',

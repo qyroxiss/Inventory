@@ -135,8 +135,16 @@ export function Dashboard() {
             <h2 className="m-0 font-serif text-2xl font-normal leading-none">
               Recent Transactions
             </h2>
-            {/* In MDA "View all →" is a label only; it opens nothing (quirk Q-36). */}
-            <span className="text-[13px] text-muted-foreground">View all →</span>
+            {/* Opens the Day Book (in MDA it was a label that opened nothing: Q-36). */}
+            {access.view('Day Book') && (
+              <Link
+                to="/app/$screen"
+                params={{ screen: 'day-book' }}
+                className="text-[13px] text-primary-text hover:underline"
+              >
+                View all →
+              </Link>
+            )}
           </div>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
             {d?.recent.map((r, i) => (
@@ -146,9 +154,13 @@ export function Dashboard() {
               >
                 <span
                   aria-hidden="true"
-                  className={`grid size-6 place-items-center border ${r.isIn ? 'border-primary-text text-primary-text' : 'border-destructive text-destructive'}`}
+                  className={`grid size-6 place-items-center border ${r.isIn === null ? 'border-border text-muted-foreground' : r.isIn ? 'border-primary-text text-primary-text' : 'border-destructive text-destructive'}`}
                 >
-                  <Icon d={r.isIn ? ICONS.moneyIn : ICONS.moneyOut} size={13} width={2.2} />
+                  {r.isIn === null ? (
+                    <span className="text-xs leading-none">•</span>
+                  ) : (
+                    <Icon d={r.isIn ? ICONS.moneyIn : ICONS.moneyOut} size={13} width={2.2} />
+                  )}
                 </span>
                 <span className="flex min-w-0 flex-col">
                   <span className="text-sm font-semibold">{r.type}</span>
@@ -156,9 +168,9 @@ export function Dashboard() {
                 </span>
                 <span className="flex flex-col items-end">
                   <span
-                    className={`font-mono text-sm font-medium ${r.isIn ? 'text-primary-text' : 'text-destructive'}`}
+                    className={`font-mono text-sm font-medium ${r.isIn === null ? 'text-foreground' : r.isIn ? 'text-primary-text' : 'text-destructive'}`}
                   >
-                    {r.isIn ? '+' : '−'}
+                    {r.isIn === null ? '' : r.isIn ? '+' : '−'}
                     {inr(r.amount)}
                   </span>
                   <span className="font-mono text-[11px] text-muted-foreground">{r.when}</span>

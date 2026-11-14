@@ -11,7 +11,7 @@ import {
   LEDGER_CODE_WIDTH,
   nextCode,
 } from '@qi/core';
-import { and, asc, eq, ne, schema, type Db } from '@qi/db';
+import { and, asc, eq, ne, schema, sql, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 import { ledgerVoucherLineCount } from './vouchers.ts';
 
@@ -32,16 +32,62 @@ export type LedgerInput = {
   gstin?: string;
   openingBalance?: string;
   drCr?: DrCr;
+  country?: string;
+  aadhar?: string;
+  /** The Sales Executive master's code. */
+  salesExec?: string;
+  regType?: string;
+  /** Inactive ledgers drop out of the bill and voucher party lists. Defaults to active. */
+  isActive?: boolean;
 };
 
-/** Case-sensitive, exact match — same as MDA's `WHERE AccName = ?` (ledger_creation_page.dart:201-213). */
+const fieldErrorsOf = (input: LedgerInput) =>
+  ledgerFieldErrors({
+    name: input.name,
+    city: input.city,
+    state: input.state,
+    under: input.under,
+    pincode: input.pincode,
+    mobile: input.mobile,
+    openingBalance: input.openingBalance,
+    country: input.country,
+    aadhar: input.aadhar,
+    gstin: input.gstin,
+    pan: input.pan,
+    email: input.email,
+  });
+
+/** The columns Save and Update both write. */
+const columnsOf = (input: LedgerInput) => ({
+  grpCode: input.under!,
+  opBal: String(parseOpeningBalance(input.openingBalance) ?? 0),
+  drCr: input.drCr ?? 'Dr',
+  add1: input.address?.trim() || null,
+  city: input.city?.trim() || null,
+  state: input.state?.trim() || null,
+  pinCode: input.pincode?.trim() || null,
+  mobile: input.mobile?.trim() || null,
+  email: input.email?.trim() || null,
+  gstin: input.gstin?.trim().toUpperCase() || null,
+  pan: input.pan?.trim().toUpperCase() || null,
+  country: input.country?.trim() || null,
+  aadhar: input.aadhar?.replace(/\s/g, '') || null,
+  salesExec: input.salesExec?.trim() || null,
+  regType: input.regType?.trim() || null,
+  isActive: input.isActive ?? true,
+});
+
+/** Another ledger with this name, whatever its case (MDA matched case exactly: Q-15, fixed 2026-11-14). */
 async function nameClash(
   db: Db,
   bookId: string,
   name: string,
   excludeCode?: string,
 ): Promise<boolean> {
-  const clauses = [eq(ledgers.bookId, bookId), eq(ledgers.accName, name)];
+  const clauses = [
+    eq(ledgers.bookId, bookId),
+    sql`lower(${ledgers.accName}) = ${name.toLowerCase()}`,
+  ];
   if (excludeCode) clauses.push(ne(ledgers.accCode, excludeCode));
   const [clash] = await db
     .select({ id: ledgers.id })
@@ -66,17 +112,7 @@ export async function listLedgers(db: Db, bookId: string): Promise<LedgerWithGro
 }
 
 export async function createLedger(db: Db, bookId: string, input: LedgerInput): Promise<Ledger> {
-  assertNoFieldErrors(
-    ledgerFieldErrors({
-      name: input.name,
-      city: input.city,
-      state: input.state,
-      under: input.under,
-      pincode: input.pincode,
-      mobile: input.mobile,
-      openingBalance: input.openingBalance,
-    }),
-  );
+  assertNoFieldErrors(fieldErrorsOf(input));
   const name = input.name.trim();
 
   if (await nameClash(db, bookId, name)) {
@@ -99,17 +135,7 @@ export async function createLedger(db: Db, bookId: string, input: LedgerInput): 
       bookId,
       accCode: code,
       accName: name,
-      grpCode: input.under!,
-      opBal: String(parseOpeningBalance(input.openingBalance) ?? 0),
-      drCr: input.drCr ?? 'Dr',
-      add1: input.address?.trim() || null,
-      city: input.city?.trim() || null,
-      state: input.state?.trim() || null,
-      pinCode: input.pincode?.trim() || null,
-      mobile: input.mobile?.trim() || null,
-      email: input.email?.trim() || null,
-      gstin: input.gstin?.trim() || null,
-      pan: input.pan?.trim() || null,
+      ...columnsOf(input),
     })
     .returning();
   return row!;
@@ -122,17 +148,7 @@ export async function updateLedger(
   accCode: string,
   input: LedgerInput,
 ): Promise<Ledger> {
-  assertNoFieldErrors(
-    ledgerFieldErrors({
-      name: input.name,
-      city: input.city,
-      state: input.state,
-      under: input.under,
-      pincode: input.pincode,
-      mobile: input.mobile,
-      openingBalance: input.openingBalance,
-    }),
-  );
+  assertNoFieldErrors(fieldErrorsOf(input));
   const name = input.name.trim();
 
   if (await nameClash(db, bookId, name, accCode)) {
@@ -143,17 +159,7 @@ export async function updateLedger(
     .update(ledgers)
     .set({
       accName: name,
-      grpCode: input.under!,
-      opBal: String(parseOpeningBalance(input.openingBalance) ?? 0),
-      drCr: input.drCr ?? 'Dr',
-      add1: input.address?.trim() || null,
-      city: input.city?.trim() || null,
-      state: input.state?.trim() || null,
-      pinCode: input.pincode?.trim() || null,
-      mobile: input.mobile?.trim() || null,
-      email: input.email?.trim() || null,
-      gstin: input.gstin?.trim() || null,
-      pan: input.pan?.trim() || null,
+      ...columnsOf(input),
     })
     .where(and(eq(ledgers.bookId, bookId), eq(ledgers.accCode, accCode)))
     .returning();

@@ -1,6 +1,7 @@
-// Receipt / Payment printing (voucher_print.dart): ask for the voucher number, look it up,
-// refuse a cancelled one, then show the A4 voucher with a Print button. The sheet follows MDA's
-// layout; MDA's "An MDA Softwares" line is left out (unbranded, LOGIC-SPEC §15).
+// Voucher printing (voucher_print.dart): ask for the voucher number, look it up, refuse a
+// cancelled one, then show the A4 voucher with a Print button. Receipts and payments follow
+// MDA's layout; MDA's "An MDA Softwares" line is left out (unbranded, LOGIC-SPEC §15). Journal,
+// Debit Note and Credit Note (MDA had no print for them) list every line (added 2026-11-14).
 
 import { amountInWords, brand } from '@qi/core';
 import { useEffect, useRef, useState } from 'react';
@@ -11,7 +12,22 @@ import { fa } from '../../format.ts';
 type Printed = NonNullable<
   OkBody<Awaited<ReturnType<typeof api.api.vouchers.print.$get>>>['voucher']
 >;
-type Kind = 'receipt' | 'payment';
+type Kind = 'receipt' | 'payment' | 'journal' | 'debit' | 'credit';
+
+const WORD: Record<Kind, string> = {
+  receipt: 'Receipt',
+  payment: 'Payment',
+  journal: 'Journal',
+  debit: 'Debit Note',
+  credit: 'Credit Note',
+};
+const EXAMPLE: Record<Kind, string> = {
+  receipt: 'e.g. RCP-001',
+  payment: 'e.g. PAY-001',
+  journal: 'e.g. JNL-001',
+  debit: 'e.g. DRN-001',
+  credit: 'e.g. CRN-001',
+};
 
 const BTN =
   'flex h-11 cursor-pointer items-center border-[1.5px] border-foreground px-[18px] text-sm font-semibold';
@@ -30,7 +46,7 @@ export function PrintVoucher({
   defaultNo: string;
   onDone: () => void;
 }) {
-  const word = kind === 'receipt' ? 'Receipt' : 'Payment';
+  const word = WORD[kind];
   const [no, setNo] = useState(defaultNo);
   const [asking, setAsking] = useState(false);
   const [info, setInfo] = useState<{ title: [string, string]; text: string } | null>(null);
@@ -103,7 +119,7 @@ export function PrintVoucher({
             autoFocus
             value={no}
             onChange={(e) => setNo(e.target.value.toUpperCase())}
-            placeholder={kind === 'receipt' ? 'e.g. RCP-001' : 'e.g. PAY-001'}
+            placeholder={EXAMPLE[kind]}
             className="h-11 field-box px-3 font-mono text-base outline-none focus-visible:outline-none"
           />
           <div className="flex justify-end gap-2.5 pt-1">
@@ -166,9 +182,17 @@ export function PrintVoucher({
 }
 
 const sheetTitle = (v: Printed) =>
-  ({ RCP: 'Cash Receipt', BNK: 'Bank Receipt', PAY: 'Cash Payment', BPAY: 'Bank Payment' })[
-    v.vchrType
-  ] ?? v.vchrType;
+  (
+    {
+      RCP: 'Cash Receipt',
+      BNK: 'Bank Receipt',
+      PAY: 'Cash Payment',
+      BPAY: 'Bank Payment',
+      JNL: 'Journal Voucher',
+      DRN: 'Debit Note',
+      CRN: 'Credit Note',
+    } as Record<string, string>
+  )[v.vchrType] ?? v.vchrType;
 
 const join = (parts: (string | null | undefined)[], sep: string) =>
   parts
@@ -188,6 +212,7 @@ function stamp() {
 
 /** The voucher, laid out as MDA's CR.pdf (voucher_print.dart:290-465). */
 function Sheet({ v }: { v: Printed }) {
+  if (['JNL', 'DRN', 'CRN'].includes(v.vchrType)) return <LinesSheet v={v} />;
   const c = v.company;
   const p = v.party;
   const receipt = v.vchrType === 'RCP' || v.vchrType === 'BNK';
@@ -204,8 +229,9 @@ function Sheet({ v }: { v: Printed }) {
   const onAccountOf =
     v.narration.trim() ||
     `Amount ${receipt ? 'received' : 'paid'}${v.refNo.trim() ? ` Ag. ${v.refNo.trim()}` : ''}`;
-  // Payments always print "By Cash", bank ones too, as in MDA (Q-47).
-  const amountLabel = receipt ? 'By Cash/Bank' : 'By Cash';
+  // Bank vouchers print "By Bank" (MDA printed "By Cash" on bank payments: Q-47).
+  const bank = v.vchrType === 'BNK' || v.vchrType === 'BPAY';
+  const amountLabel = bank ? 'By Bank' : 'By Cash';
   const row = (label: string, value: string, strong = false) => (
     <div className="flex gap-2 py-[5px] text-[10.5pt]">
       <span className="w-[150px] flex-none text-[9.5pt] text-neutral-600">{label}</span>
@@ -238,6 +264,12 @@ function Sheet({ v }: { v: Printed }) {
                 {v.drName.toUpperCase()}
               </span>
             )}
+            {v.vchrType === 'BPAY' && v.crName && (
+              <span>
+                <span className="text-[9.5pt] text-neutral-600">Credited in A/c&nbsp;&nbsp;</span>
+                {v.crName.toUpperCase()}
+              </span>
+            )}
           </div>
           {row(
             receipt ? 'Received On Account Of' : 'Payment Made On Account Of',
@@ -255,6 +287,101 @@ function Sheet({ v }: { v: Printed }) {
         </div>
         <div className="flex items-start border-t border-neutral-900 px-3 pb-3 pt-2.5">
           <span className="flex-1 text-[9pt] text-neutral-600">NOTE :</span>
+          <div className="flex flex-col items-end gap-8">
+            <span className="text-[10pt] font-bold">For&nbsp;&nbsp;{compName.toUpperCase()}</span>
+            <span className="text-[9pt]">(Authorised Signatory)</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-between pt-1.5 text-[8pt] text-neutral-600">
+        <span>{stamp()}</span>
+        <span>Printed by {brand.appName}</span>
+      </div>
+    </div>
+  );
+}
+
+/** Journal, Debit Note and Credit Note: the company, the voucher, then every Dr and Cr line. */
+function LinesSheet({ v }: { v: Printed }) {
+  const c = v.company;
+  const compName = (c?.compName ?? '').trim() || 'Company';
+  const compAddr = join([c?.add1, c?.add2, c?.city, c?.state], ', ');
+  const compTax = join(
+    [c?.gstin ? `GSTIN: ${c.gstin}` : null, c?.pan ? `PAN: ${c.pan}` : null],
+    '   ',
+  );
+  const dr = v.lines.reduce((a, l) => a + l.dr, 0);
+  const cr = v.lines.reduce((a, l) => a + l.cr, 0);
+  const reason = v.lines.find((l) => l.narration)?.narration ?? '';
+  const cell = 'border border-neutral-900 px-2 py-1.5';
+  return (
+    <div className="font-sans text-neutral-900">
+      <div className="border border-neutral-900">
+        <div className="border-b border-neutral-900 px-3 py-2.5">
+          <div className="text-[15pt] font-bold uppercase text-blue-700 underline">{compName}</div>
+          {compAddr && <div className="text-[9.5pt]">{compAddr}</div>}
+          {compTax && <div className="text-[9.5pt]">{compTax}</div>}
+        </div>
+        <div className="border-b border-neutral-900 py-1.5 text-center text-[12pt] font-bold underline">
+          {sheetTitle(v)}
+        </div>
+        <div className="flex flex-wrap gap-x-[30px] px-3 py-2.5 text-[10.5pt]">
+          <span>
+            <span className="text-[9.5pt] text-neutral-600">Voucher No.&nbsp;&nbsp;</span>
+            <span className="font-bold">{v.vchrNo}</span>
+          </span>
+          <span>Date&nbsp;&nbsp;{dmy(v.vchrDate)}</span>
+          {v.refNo.trim() && <span>Ref.&nbsp;&nbsp;{v.refNo.trim()}</span>}
+          {v.party && (
+            <span>
+              <span className="text-[9.5pt] text-neutral-600">Party&nbsp;&nbsp;</span>
+              <span className="font-bold">{v.party.accName.toUpperCase()}</span>
+            </span>
+          )}
+        </div>
+        <div className="px-3 pb-3">
+          <table className="w-full border-collapse text-[10pt]">
+            <thead>
+              <tr className="bg-neutral-100 text-left">
+                <th className={cell}>Particulars</th>
+                <th className={`${cell} w-[130px] text-right`}>Debit</th>
+                <th className={`${cell} w-[130px] text-right`}>Credit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {v.lines.map((l) => (
+                <tr key={l.lineNo}>
+                  <td className={cell}>{l.accName ?? l.accCode}</td>
+                  <td className={`${cell} text-right`}>{l.dr ? fa(l.dr) : ''}</td>
+                  <td className={`${cell} text-right`}>{l.cr ? fa(l.cr) : ''}</td>
+                </tr>
+              ))}
+              <tr className="font-bold">
+                <td className={`${cell} text-right`}>Total</td>
+                <td className={`${cell} text-right`}>{fa(dr)}</td>
+                <td className={`${cell} text-right`}>{fa(cr)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div className="pt-2.5 text-[10pt]">
+            <span className="text-[9.5pt] text-neutral-600">Amount in words&nbsp;&nbsp;</span>
+            {amountInWords(Math.max(dr, cr))}
+          </div>
+          {v.vchrType !== 'JNL' && reason && (
+            <div className="pt-1.5 text-[10pt]">
+              <span className="text-[9.5pt] text-neutral-600">Reason&nbsp;&nbsp;</span>
+              {reason}
+            </div>
+          )}
+          {v.narration.trim() && (
+            <div className="pt-1.5 text-[10pt]">
+              <span className="text-[9.5pt] text-neutral-600">Narration&nbsp;&nbsp;</span>
+              {v.narration.trim()}
+            </div>
+          )}
+        </div>
+        <div className="flex items-start border-t border-neutral-900 px-3 pb-3 pt-2.5">
+          <span className="flex-1 text-[9pt] text-neutral-600">Prepared by</span>
           <div className="flex flex-col items-end gap-8">
             <span className="text-[10pt] font-bold">For&nbsp;&nbsp;{compName.toUpperCase()}</span>
             <span className="text-[9pt]">(Authorised Signatory)</span>

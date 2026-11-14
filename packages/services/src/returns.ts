@@ -9,6 +9,8 @@
 
 import {
   ACTIVE,
+  allocateBillDiscount,
+  saleLine,
   CANCELLED,
   PURCHASE_GROUP_SEEDS,
   PURCHASE_LEDGER_SEEDS,
@@ -202,7 +204,8 @@ export async function billForReturn(
       : [];
     partyCode = dr?.code ?? '';
   }
-  const gross = b.lines.reduce((a, l) => a + l.amount + l.sgstA + l.cgstA + l.igstA, 0);
+  // The bill discount comes off before tax (2026-11-14), so its % is of the value before tax.
+  const gross = b.lines.reduce((a, l) => a + l.amount, 0);
   return {
     billNo: b.billNo,
     billDate: b.billDate,
@@ -353,7 +356,11 @@ async function post(
     kind === 'PRT'
       ? purchaseReturnPosting(bill.partyCode, t, bill.interState)
       : salesReturnPosting(bill.partyCode, t, bill.interState);
-  await ensureLedgers(db, ctx.bookId, acct.map((l) => l.accCode));
+  await ensureLedgers(
+    db,
+    ctx.bookId,
+    acct.map((l) => l.accCode),
+  );
   const dr = acct.reduce((a, l) => a + l.dr, 0);
   const cr = acct.reduce((a, l) => a + l.cr, 0);
   if (Math.abs(dr - cr) >= 0.005) throw new UserError(rm.unbalanced(Math.abs(dr - cr)));
@@ -460,6 +467,11 @@ const headerValues = (input: ReturnInput, { bill, t }: Built) => ({
   netAmount: money(t.net),
 });
 
+/** A sales return's lines as taxed: its share of the bill discount comes off before tax, as on
+ *  the bill (2026-11-14), so the GST returns read the right taxable value. */
+const taxedLines = (kind: ReturnKind, { lines, t }: Built): Built['lines'] =>
+  kind === 'SRT' ? (allocateBillDiscount(lines, t.billDisc) as Built['lines']) : lines;
+
 async function writeLines(db: Db, returnId: string, lines: Built['lines']) {
   await db.insert(returnLines).values(
     lines.map((l, i) => ({
@@ -548,9 +560,15 @@ export async function saveReturn(
         createdBy: ctx.userName,
       })
       .returning({ id: returns.id });
-    await writeLines(tx, r!.id, built.lines);
+    await writeLines(tx, r!.id, taxedLines(kind, built));
     net = built.t.net;
-    await log(tx, ctx, 'CREATE', returnNo, `${kind} against ${built.bill.billNo}, Net ${net.toFixed(2)}`);
+    await log(
+      tx,
+      ctx,
+      'CREATE',
+      returnNo,
+      `${kind} against ${built.bill.billNo}, Net ${net.toFixed(2)}`,
+    );
   });
   return { returnNo, net };
 }
@@ -585,7 +603,7 @@ export async function updateReturn(
         modifiedAt: new Date(),
       })
       .where(eq(returns.id, old.id));
-    await writeLines(tx, old.id, built.lines);
+    await writeLines(tx, old.id, taxedLines(kind, built));
     net = built.t.net;
     await log(tx, ctx, 'UPDATE', old.returnNo, `Net ${net.toFixed(2)}`);
   });
@@ -680,26 +698,40 @@ export async function returnDoc(db: Db, bookId: string, kind: ReturnKind, return
     roundOff: Number(r.roundOff),
     netAmount: Number(r.netAmount),
     status: r.status,
-    lines: rows.map((l) => ({
-      srcLineNo: Number(l.srcLineNo),
-      itemCode: l.itemCode,
-      itemName: l.itemName ?? '',
-      hsnNo: l.hsnNo,
-      unit: l.unit,
-      location: l.location,
-      qty: Number(l.qty),
-      rate: Number(l.rate),
-      disP: Number(l.disP),
-      disA: Number(l.disA),
-      amount: Number(l.amount),
-      sgstP: Number(l.sgstP),
-      sgstA: Number(l.sgstA),
-      cgstP: Number(l.cgstP),
-      cgstA: Number(l.cgstA),
-      igstP: Number(l.igstP),
-      igstA: Number(l.igstA),
-      lineTotal: Number(l.lineTotal),
-    })),
+    // A sales return's stored lines carry their share of the bill discount (taken before tax,
+    // 2026-11-14); they're given back as entered, the discount travelling as billDisc.
+    lines: rows.map((l) => {
+      const stored = {
+        srcLineNo: Number(l.srcLineNo),
+        itemCode: l.itemCode,
+        itemName: l.itemName ?? '',
+        hsnNo: l.hsnNo,
+        unit: l.unit,
+        location: l.location,
+        qty: Number(l.qty),
+        rate: Number(l.rate),
+        disP: Number(l.disP),
+        disA: Number(l.disA),
+        amount: Number(l.amount),
+        sgstP: Number(l.sgstP),
+        sgstA: Number(l.sgstA),
+        cgstP: Number(l.cgstP),
+        cgstA: Number(l.cgstA),
+        igstP: Number(l.igstP),
+        igstA: Number(l.igstA),
+        lineTotal: Number(l.lineTotal),
+      };
+      if (kind !== 'SRT' || Number(r.billDisc) <= 0) return stored;
+      return {
+        ...saleLine({
+          ...stored,
+          disA: stored.disP > 0 ? 0 : stored.disA,
+          gstRate: stored.sgstP + stored.cgstP + stored.igstP,
+          interState: r.isInterState,
+        }),
+        srcLineNo: stored.srcLineNo,
+      };
+    }),
   };
 }
 export type ReturnDoc = NonNullable<Awaited<ReturnType<typeof returnDoc>>>;

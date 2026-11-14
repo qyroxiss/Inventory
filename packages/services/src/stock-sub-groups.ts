@@ -1,7 +1,7 @@
 // Stock Sub Group. Port of MDA-Inventory lib/stock_sub_group_page.dart: Misc_Master rows (our
 // misc_list) of type 'StockSubGroup', each pointing at its Stock Group's code in Misc_Pname.
 // As in MDA:
-//   - The name must be unique among stock sub groups, case-sensitively, on Save and on Update.
+//   - The name must be unique among stock sub groups (ignoring case, since 2026-11-14), on Save and on Update.
 //   - Under is required and stored as the group's code; Save stamps Misc_Date.
 //   - The list shows the group's current name; a sub group whose group was removed shows a
 //     blank Under, yet still points at the old code (Stock Group's Remove doesn't check, Q-40).
@@ -16,7 +16,7 @@ import {
   stockSubGroupFieldErrors,
   stockSubGroupMessages,
 } from '@qi/core';
-import { alias, and, asc, eq, ne, schema, type Db } from '@qi/db';
+import { alias, and, asc, eq, ne, schema, sql, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 
 const { miscList } = schema;
@@ -52,7 +52,7 @@ export async function listStockSubGroups(db: Db, bookId: string): Promise<StockS
 }
 
 async function assertNameFree(db: Db, bookId: string, name: string, exceptCode?: string) {
-  const clauses = [ofSubGroups(bookId), eq(miscList.miscName, name)];
+  const clauses = [ofSubGroups(bookId), sql`lower(${miscList.miscName}) = ${name.toLowerCase()}`];
   if (exceptCode) clauses.push(ne(miscList.miscCode, exceptCode));
   const [clash] = await db
     .select({ code: miscList.miscCode })
@@ -110,6 +110,18 @@ export async function updateStockSubGroup(
   return { code, name };
 }
 
+/** Refused while a stock item uses it (MDA removed it anyway: Q-41). */
 export async function removeStockSubGroup(db: Db, bookId: string, code: string): Promise<void> {
+  const [row] = await db
+    .select({ name: miscList.miscName })
+    .from(miscList)
+    .where(and(ofSubGroups(bookId), eq(miscList.miscCode, code)));
+  if (!row) return;
+  const [items] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.stockItems)
+    .where(and(eq(schema.stockItems.bookId, bookId), eq(schema.stockItems.subGrpCode, code)));
+  const n = Number(items?.n ?? 0);
+  if (n > 0) throw new UserError(stockSubGroupMessages.inUse(row.name, n));
   await db.delete(miscList).where(and(ofSubGroups(bookId), eq(miscList.miscCode, code)));
 }

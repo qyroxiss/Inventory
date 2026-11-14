@@ -3,8 +3,9 @@
 // expense accounts, and so on. Its Under Group list is every group AND sub group by name — not
 // just top-level groups like Sub Group Master's own Under Group list.
 //
-// Three fields — Aadhar No., Sales Executive and Reg. Type — are shown but MDA never saves them
-// (no matching column in Maacct); kept in the form for look and feel, never sent to the API.
+// MDA showed Country, Aadhar No., Sales Executive and Reg. Type but never saved them; since
+// 2026-11-14 all four are saved, Sales Executive lists the Sales Executive master, and Status
+// marks a ledger inactive (it then drops out of the bill and voucher party lists).
 // Unlike Group/Sub Group Master, Cancel here always navigates back to Masters (MDA's own
 // `_cancel` is `Navigator.pop`), rather than just clearing the form, and it's always shown, not
 // only while editing.
@@ -19,9 +20,9 @@ import {
   MISC_TYPE_CITY,
   mobileProblem,
   openingBalanceInvalid,
+  validators,
   parseOpeningBalance,
   REG_TYPES,
-  SALES_EXECUTIVES,
   stateOfCity,
   type DrCr,
 } from '@qi/core';
@@ -36,6 +37,7 @@ import { PhoneInput } from '../../components/PhoneInput.tsx';
 import { SearchSelect, type SearchOption } from '../../components/SearchSelect.tsx';
 import { fa } from '../../format.ts';
 import { useCanEdit } from '../../access.tsx';
+import { useBook } from '../reports/shared.tsx';
 
 type Ledger = OkBody<Awaited<ReturnType<typeof api.api.ledgers.$get>>>[number];
 type Form = {
@@ -55,6 +57,7 @@ type Form = {
   gstin: string;
   openingBalance: string;
   drCr: DrCr;
+  active: boolean;
 };
 
 const EMPTY_FORM: Form = {
@@ -74,6 +77,7 @@ const EMPTY_FORM: Form = {
   gstin: '',
   openingBalance: '',
   drCr: 'Dr',
+  active: true,
 };
 
 const BAR_BTN =
@@ -100,6 +104,11 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
     queryKey: ['groups', 'all'],
     queryFn: () => unwrap(api.api.groups.all.$get()),
   });
+  const book = useBook();
+  const salesExecs = useQuery({
+    queryKey: ['misc-master', 'salesExec'],
+    queryFn: () => unwrap(api.api['misc-masters'][':kind'].$get({ param: { kind: 'salesExec' } })),
+  });
   const cities = useQuery({
     queryKey: ['misc-list', MISC_TYPE_CITY],
     queryFn: () => unwrap(api.api['misc-list'].$get({ query: { type: MISC_TYPE_CITY } })),
@@ -109,7 +118,22 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
   /** The ledger just saved, handed back to the calling page when its message is closed. */
   const created = useRef<string | null>(null);
   const [errors, setErrors] = useState<
-    Partial<Record<'name' | 'city' | 'state' | 'under' | 'pincode' | 'mobile' | 'openingBalance', string>>
+    Partial<
+      Record<
+        | 'name'
+        | 'city'
+        | 'state'
+        | 'under'
+        | 'pincode'
+        | 'mobile'
+        | 'aadhar'
+        | 'email'
+        | 'pan'
+        | 'gstin'
+        | 'openingBalance',
+        string
+      >
+    >
   >({});
   const [editing, setEditing] = useState<Ledger | null>(null);
   const [busy, setBusy] = useState(false);
@@ -150,7 +174,10 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
       (l) => (l.city ?? '').toLowerCase() === city.toLowerCase() && (l.state ?? ''),
     )?.state ?? stateOfCity(city);
   const stateOptions: SearchOption[] = INDIAN_STATES.map((s) => ({ value: s, label: s }));
-  const salesExecOptions: SearchOption[] = SALES_EXECUTIVES.map((s) => ({ value: s, label: s }));
+  const salesExecOptions: SearchOption[] = (salesExecs.data ?? []).map((s) => ({
+    value: s.code,
+    label: s.name,
+  }));
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['ledgers'] });
 
@@ -176,9 +203,18 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
     if (!form.state.trim()) e.state = ledgerMessages.stateRequired;
     if (!form.under) e.under = ledgerMessages.underRequired;
     if (!form.pincode.trim()) e.pincode = ledgerMessages.pincodeRequired;
-    else if (!/^[1-9][0-9]{5}$/.test(form.pincode.trim())) e.pincode = ledgerMessages.pincodeFormat;
+    else if (form.country === 'India' && !/^[1-9][0-9]{5}$/.test(form.pincode.trim()))
+      e.pincode = ledgerMessages.pincodeFormat;
     const mobile = mobileProblem(form.mobile);
     if (mobile) e.mobile = mobile;
+    const aadhar = form.aadhar.replace(/\s/g, '');
+    if (aadhar && !/^\d{12}$/.test(aadhar)) e.aadhar = ledgerMessages.aadharFormat;
+    const gstinErr = validators.gstin(form.gstin);
+    if (gstinErr) e.gstin = gstinErr;
+    const panErr = validators.pan(form.pan);
+    if (panErr) e.pan = panErr;
+    const emailErr = validators.email(form.email);
+    if (emailErr) e.email = emailErr;
     if (parseOpeningBalance(form.openingBalance) === null) e.openingBalance = openingBalanceInvalid;
     setErrors(e);
     if (e.name) nameRef.current?.focus();
@@ -186,15 +222,20 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
     else if (e.state) focusId('ledger-state');
     else if (e.pincode) pincodeRef.current?.focus();
     else if (e.mobile) mobileRef.current?.focus();
+    else if (e.email) emailRef.current?.focus();
+    else if (e.pan) panRef.current?.focus();
+    else if (e.aadhar) aadharRef.current?.focus();
     else if (e.under) focusId('ledger-under');
+    else if (e.gstin) gstinRef.current?.focus();
     else if (e.openingBalance) openingBalRef.current?.focus();
     return Object.keys(e).length === 0;
   };
 
   const failed = (err: unknown) => {
-    if (err instanceof ApiError && err.status === 422 && err.body.fieldErrors?.name) {
-      setErrors((e) => ({ ...e, name: err.body.fieldErrors!.name }));
-      nameRef.current?.focus();
+    const fe = err instanceof ApiError && err.status === 422 ? err.body.fieldErrors : undefined;
+    if (fe && Object.keys(fe).length) {
+      setErrors((e) => ({ ...e, ...fe }));
+      if (fe.name) nameRef.current?.focus();
     } else {
       setMessage({
         kind: 'error',
@@ -217,6 +258,11 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
     gstin: form.gstin || undefined,
     openingBalance: form.openingBalance || undefined,
     drCr: form.drCr,
+    country: form.country || undefined,
+    aadhar: form.aadhar || undefined,
+    salesExec: form.salesExec || undefined,
+    regType: form.regType || undefined,
+    isActive: form.active,
   });
 
   async function save() {
@@ -288,8 +334,7 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
     setListOpen(true);
   }
 
-  /** Loading a ledger for edit starts from a clean form, so Aadhar/Sales Executive/Reg. Type/
-   *  Country (never saved) don't carry over from the previous one. */
+  /** Loading a ledger for edit fills every saved field. */
   const pick = (l: Ledger) => {
     setListOpen(false);
     setEditing(l);
@@ -308,6 +353,11 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
       gstin: l.gstin ?? '',
       openingBalance: l.opBal,
       drCr: l.drCr as DrCr,
+      country: l.country ?? 'India',
+      aadhar: l.aadhar ?? '',
+      salesExec: l.salesExec ?? '',
+      regType: l.regType ?? 'Regular',
+      active: l.isActive,
     }));
     focusName();
   };
@@ -472,10 +522,26 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
                 onEnter={() => emailRef.current?.focus()}
               />
             </Row>
+
+            <Row label="Status">
+              <select
+                id="ledger-status"
+                value={form.active ? 'Active' : 'Inactive'}
+                onChange={(e) => setForm((f) => ({ ...f, active: e.target.value === 'Active' }))}
+                className={selectClass()}
+              >
+                <option value="Active" className="bg-card text-foreground">
+                  Active
+                </option>
+                <option value="Inactive" className="bg-card text-foreground">
+                  Inactive
+                </option>
+              </select>
+            </Row>
           </div>
 
           <div className="flex max-w-[460px] flex-col gap-1">
-            <Row label="Email">
+            <Row label="Email" error={errors.email}>
               <input
                 id="ledger-email"
                 ref={emailRef}
@@ -483,36 +549,42 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
                 placeholder="example@email.com"
                 type="email"
                 autoComplete="off"
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, email: e.target.value }));
+                  setErrors((er) => ({ ...er, email: undefined }));
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     panRef.current?.focus();
                   }
                 }}
-                className={fieldClass(false)}
+                className={fieldClass(!!errors.email)}
               />
             </Row>
 
-            <Row label="PAN No.">
+            <Row label="PAN No." error={errors.pan}>
               <input
                 id="ledger-pan"
                 ref={panRef}
                 value={form.pan}
                 placeholder="ABCDE1234F"
                 autoComplete="off"
-                onChange={(e) => setForm((f) => ({ ...f, pan: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, pan: e.target.value }));
+                  setErrors((er) => ({ ...er, pan: undefined }));
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     aadharRef.current?.focus();
                   }
                 }}
-                className={fieldClass(false)}
+                className={fieldClass(!!errors.pan)}
               />
             </Row>
 
-            <Row label="Aadhar No.">
+            <Row label="Aadhar No." error={errors.aadhar}>
               <input
                 id="ledger-aadhar"
                 ref={aadharRef}
@@ -520,14 +592,17 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
                 placeholder="12-digit Aadhar"
                 inputMode="numeric"
                 autoComplete="off"
-                onChange={(e) => setForm((f) => ({ ...f, aadhar: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, aadhar: e.target.value }));
+                  setErrors((er) => ({ ...er, aadhar: undefined }));
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     focusId('ledger-under');
                   }
                 }}
-                className={fieldClass(false)}
+                className={fieldClass(!!errors.aadhar)}
               />
             </Row>
 
@@ -551,7 +626,11 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
                 id="ledger-sales-exec"
                 value={form.salesExec}
                 options={salesExecOptions}
-                placeholder="Search executive…"
+                placeholder={
+                  salesExecOptions.length
+                    ? 'Search executive…'
+                    : 'Add them in Sales Executive master'
+                }
                 onCommit={(value) => setForm((f) => ({ ...f, salesExec: value }))}
                 onNext={() => focusId('ledger-reg-type')}
               />
@@ -575,21 +654,24 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
               </select>
             </Row>
 
-            <Row label="GSTIN / UIN">
+            <Row label="GSTIN / UIN" error={errors.gstin}>
               <input
                 id="ledger-gstin"
                 ref={gstinRef}
                 value={form.gstin}
                 placeholder="22AAAAA0000A1Z5"
                 autoComplete="off"
-                onChange={(e) => setForm((f) => ({ ...f, gstin: e.target.value }))}
+                onChange={(e) => {
+                  setForm((f) => ({ ...f, gstin: e.target.value }));
+                  setErrors((er) => ({ ...er, gstin: undefined }));
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     openingBalRef.current?.focus();
                   }
                 }}
-                className={fieldClass(false)}
+                className={fieldClass(!!errors.gstin)}
               />
             </Row>
 
@@ -628,7 +710,7 @@ export function LedgerCreationScreen({ embedded }: { embedded?: EmbeddedLedger }
                 </select>
               </div>
               <span className="text-[12px] text-muted-foreground">
-                (on {openingBalanceFyLabel()})
+                (on {openingBalanceFyLabel(book?.fyFrom)})
               </span>
             </Row>
           </div>
@@ -717,9 +799,15 @@ const fieldClass = (error: boolean) =>
 const selectClass = () =>
   'h-[42px] w-full cursor-pointer field-box px-3 text-base text-foreground outline-none focus-visible:outline-none';
 
-/** "1-Apr-26" — MDA computes this live from today's date, independent of the open book's own
- * financial year (ledger_creation_page.dart:1288-1292), kept as is. */
-function openingBalanceFyLabel(): string {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "1-Apr-26": the open year's first day. MDA used today's date, which is wrong in any other
+ *  year (was Q-34, fixed 2026-11-14). */
+function openingBalanceFyLabel(fyFrom?: string | null): string {
+  if (fyFrom) {
+    const [y, m, d] = fyFrom.split('-').map(Number);
+    return `${d}-${MONTHS[m! - 1]}-${String(y! % 100).padStart(2, '0')}`;
+  }
   const now = new Date();
   const fy = now.getMonth() + 1 >= 4 ? now.getFullYear() : now.getFullYear() - 1;
   return `1-Apr-${String(fy % 100).padStart(2, '0')}`;

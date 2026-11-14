@@ -1,6 +1,8 @@
 // Book login: MDA's own login, unchanged. Port of MDA-Inventory lib/auth_page.dart:107-232.
 
 import {
+  LOGIN_LOCK_MINUTES,
+  LOGIN_MAX_TRIES,
   financialYearLabel,
   hashPassword,
   isLegacyPassword,
@@ -35,6 +37,11 @@ export type BookSession = {
   financialYearLabel: string;
 };
 
+// Wrong passwords per book and user name (2026-11-14; MDA allowed unlimited tries: Q-04).
+// Kept in memory: a restart clears them, which only ever lets someone in sooner.
+const failures = new Map<string, { count: number; lockedUntil: number }>();
+const failKey = (bookId: string, userName: string) => `${bookId}|${userName.trim().toLowerCase()}`;
+
 export async function bookLogin(
   db: Db,
   accountId: string,
@@ -57,9 +64,29 @@ export async function bookLogin(
       ),
     )
     .limit(1);
+  const key = failKey(year.bookId, input.username);
+  const f = failures.get(key);
+  if (f && f.lockedUntil > Date.now())
+    throw new UserError(loginMessages.locked(Math.ceil((f.lockedUntil - Date.now()) / 60_000)));
   if (!row || !(await verifyPassword(input.password, row.password))) {
+    const count = (f && f.lockedUntil <= Date.now() && f.lockedUntil > 0 ? 0 : (f?.count ?? 0)) + 1;
+    const locked = count >= LOGIN_MAX_TRIES;
+    failures.set(key, {
+      count: locked ? 0 : count,
+      lockedUntil: locked ? Date.now() + LOGIN_LOCK_MINUTES * 60_000 : 0,
+    });
+    await db.insert(schema.auditLog).values({
+      bookId: year.bookId,
+      userName: input.username.trim(),
+      action: 'LOGIN FAILED',
+      tableName: 'User',
+      recordKey: input.username.trim(),
+      details: locked ? `Locked for ${LOGIN_LOCK_MINUTES} minutes` : `Wrong password (${count})`,
+    });
+    if (locked) throw new UserError(loginMessages.locked(LOGIN_LOCK_MINUTES));
     throw new UserError(loginMessages.invalid);
   }
+  failures.delete(key);
 
   // Rows from before hashing hold plain text; upgrade now that the password is known.
   if (isLegacyPassword(row.password)) {

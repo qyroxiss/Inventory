@@ -3,12 +3,14 @@
 // agrees with the user's calendar.
 
 import { VCHR_KINDS, ago, round2, weekLabels, type DashboardData, type RecentTx } from '@qi/core';
-import { and, desc, eq, gte, lte, schema, sql, type Db } from '@qi/db';
+import { and, desc, eq, gte, inArray, lte, schema, sql, type Db } from '@qi/db';
+import { groupFamilyCodes } from './groups.ts';
 import { noteSettles, stockValues } from './reports.ts';
 
 const { billRefs, ledgers, purchases, sales, voucherLines, vouchers } = schema;
 
-/** Cash-in-Hand: the Cash Balance is the closing balance of the ledgers directly under it. */
+/** Cash-in-Hand: the Cash Balance is the closing balance of its ledgers, its sub groups' too
+ *  (MDA counted only ledgers directly in it: Q-31, fixed 2026-11-14). */
 const CASH_GROUP = 'A003';
 
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -72,12 +74,14 @@ async function salesWeek(db: Db, bookId: string, at: Date): Promise<number[]> {
 
 /** Closing cash (opening balances plus every active movement) and today's movement. */
 async function cashBalance(db: Db, bookId: string, today: string) {
+  const cashGroups = await groupFamilyCodes(db, bookId, [CASH_GROUP]);
+  if (!cashGroups.length) return { balance: 0, today: 0 };
   const [opening] = await db
     .select({
       bal: sql<string>`coalesce(sum(case when ${ledgers.drCr} = 'Cr' then -${ledgers.opBal} else ${ledgers.opBal} end), 0)`,
     })
     .from(ledgers)
-    .where(and(eq(ledgers.bookId, bookId), eq(ledgers.grpCode, CASH_GROUP)));
+    .where(and(eq(ledgers.bookId, bookId), inArray(ledgers.grpCode, cashGroups)));
   const [moved] = await db
     .select({
       bal: sql<string>`coalesce(sum(${voucherLines.drAmount} - ${voucherLines.crAmount}), 0)`,
@@ -93,7 +97,7 @@ async function cashBalance(db: Db, bookId: string, today: string) {
       and(
         eq(vouchers.bookId, bookId),
         eq(vouchers.status, 'Active'),
-        eq(ledgers.grpCode, CASH_GROUP),
+        inArray(ledgers.grpCode, cashGroups),
       ),
     );
   return {

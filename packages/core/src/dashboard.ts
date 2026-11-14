@@ -1,25 +1,33 @@
 // Dashboard wording and formats. Port of MDA-Inventory lib/main.dart:680-731 (money, trend
 // chips) and lib/dashboard_service.dart (voucher kinds, week window, relative time).
 
-/** Display label and money direction per voucher type: true = money in (dashboard_service.dart:6-19). */
-export const VCHR_KINDS: Record<string, readonly [label: string, isIn: boolean]> = {
+/** Display label and money direction per voucher type: true = money in, false = out, null =
+ *  neither (dashboard_service.dart:6-19). A journal or stock journal moves no money, so it shows
+ *  neither (MDA showed both as money in: Q-32, fixed 2026-11-14). */
+export const VCHR_KINDS: Record<string, readonly [label: string, isIn: boolean | null]> = {
   SAL: ['Sales Invoice', true],
   PUR: ['Purchase Invoice', false],
   RCP: ['Receipt', true],
   BNK: ['Bank Receipt', true],
   PAY: ['Payment', false],
   BPAY: ['Bank Payment', false],
-  JNL: ['Journal Voucher', true],
+  JNL: ['Journal Voucher', null],
   DRN: ['Debit Note', true],
   CRN: ['Credit Note', false],
   PRT: ['Purchase Return', true],
   SRT: ['Sales Return', false],
-  STJ: ['Stock Journal', true],
+  STJ: ['Stock Journal', null],
 };
 
 const WEEKDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-export type RecentTx = { type: string; party: string; amount: number; isIn: boolean; when: string };
+export type RecentTx = {
+  type: string;
+  party: string;
+  amount: number;
+  isIn: boolean | null;
+  when: string;
+};
 
 /** What the dashboard shows (DashboardData, dashboard_service.dart:42-60). */
 export type DashboardData = {

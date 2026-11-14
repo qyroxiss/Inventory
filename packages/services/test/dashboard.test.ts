@@ -110,7 +110,8 @@ describe('Dashboard', () => {
     );
     const d = await getDashboard(db, ctx, NOW);
     expect(d.recent.map((r) => [r.type, r.party, r.amount, r.isIn])).toEqual([
-      ['Journal Voucher', '—', 500, true],
+      // A journal moves no money: neither in nor out (2026-11-14).
+      ['Journal Voucher', '—', 500, null],
       ['Sales Invoice', 'Acme Traders', 283, true],
       ['Sales Invoice', 'Acme Traders', 708, true],
       ['Purchase Invoice', 'Bharat Suppliers', 1888, false],
