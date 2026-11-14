@@ -33,11 +33,42 @@ export function useVoucherData() {
     queryKey: ['ledgers'],
     queryFn: () => unwrap(api.api.ledgers.$get()),
   });
-  return { me: me.data, ledgers: ledgers.data, ready: !!me.data && !!ledgers.data };
+  const groups = useQuery({
+    queryKey: ['groups', 'all'],
+    queryFn: () => unwrap(api.api.groups.all.$get()),
+  });
+  return {
+    me: me.data,
+    ledgers: ledgers.data,
+    groups: groups.data,
+    ready: !!me.data && !!ledgers.data && !!groups.data,
+  };
 }
 
-/** Ledgers of one group, by name — an exact group match, as MDA's `GrpCode = ?` (Q-26). */
-export const ofGroup = (all: Ledger[], grp: string) => all.filter((l) => l.grpCode === grp);
+/** A group and every sub group under it, at any depth. */
+export function groupFamily(groups: { grpCode: string; parentGrp: string }[], grp: string) {
+  const family = new Set([grp]);
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const g of groups)
+      if (!family.has(g.grpCode) && family.has(g.parentGrp)) {
+        family.add(g.grpCode);
+        grew = true;
+      }
+  }
+  return family;
+}
+
+/** Ledgers of a group or any of its sub groups (MDA matched the group exactly, so a bank in a
+ *  sub group of Bank Accounts never showed: Q-26, fixed 2026-11-14). */
+export const ofGroup = (
+  all: Ledger[],
+  grp: string,
+  groups: { grpCode: string; parentGrp: string }[] = [],
+) => {
+  const family = groupFamily(groups, grp);
+  return all.filter((l) => family.has(l.grpCode));
+};
 
 const isoToday = () => {
   const d = new Date();
@@ -168,8 +199,12 @@ export function Select({
   );
 }
 
-export const ledgerOptions = (list: Ledger[]) =>
-  list.map((l) => ({ value: l.accCode, label: l.accName }));
+/** The ledgers to pick from: inactive ones are left out, except the one already chosen on a
+ *  voucher being reopened (MDA listed inactive ledgers too: Q-24, fixed 2026-11-14). */
+export const ledgerOptions = (list: Ledger[], current = '') =>
+  list
+    .filter((l) => l.isActive || l.accCode === current)
+    .map((l) => ({ value: l.accCode, label: l.accName }));
 
 /** An amount box: "₹" in front, digits and '.' only (MDA's input formatter). */
 export function AmountBox({

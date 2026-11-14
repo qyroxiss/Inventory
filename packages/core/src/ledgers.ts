@@ -1,12 +1,12 @@
 // Ledger Creation, ported from MDA-Inventory lib/ledger_creation_page.dart (fields, messages,
 // quirks) and the Maacct/Misc_Master tables in lib/db_service.dart (docs/LOGIC-SPEC.md §2, §7).
 //
-// MDA's own form has three fields that are collected but never saved anywhere — Aadhar No.,
-// Sales Executive and Reg. Type have no matching column in Maacct and are never written on save
-// or update. Kept in the UI for look and feel, but there is nothing here to validate or persist
-// for them; they never reach this module or the API.
+// MDA's form showed Country, Aadhar No., Sales Executive and Reg. Type but never saved them. Since
+// 2026-11-14 (user's request) all four are saved with the ledger, Sales Executive comes from its
+// own master (misc-masters.ts), and a ledger can be marked inactive.
 
 import { mobileProblem } from './contact.ts';
+import { validators } from './validators.ts';
 
 /** MDA's own list, in its own order (ledger_creation_page.dart:25-34). */
 export const INDIAN_STATES = [
@@ -20,10 +20,10 @@ export const INDIAN_STATES = [
   'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
 ] as const; // prettier-ignore
 
-/** Shown in the Country field, but never saved — MDA has no Country column on Maacct. */
+/** The Country field. Outside India the pincode may be any postal code. */
 export const COUNTRIES = ['India', 'Others'] as const;
 
-/** Shown in the Reg. Type field, but never saved — same dead-field pattern as Country. */
+/** The party's GST registration type. */
 export const REG_TYPES = [
   'Regular',
   'Composition',
@@ -31,12 +31,6 @@ export const REG_TYPES = [
   'Consumer',
   'Overseas',
 ] as const;
-
-/** MDA's own fake list for Sales Executive — never saved, decorative only. */
-export const SALES_EXECUTIVES = [
-  'Rahul Sharma', 'Priya Patel', 'Amit Singh', 'Neha Gupta',
-  'Suresh Kumar', 'Deepa Nair', 'Vijay Mehta', 'Anita Joshi',
-] as const; // prettier-ignore
 
 export const DR_CR = ['Dr', 'Cr'] as const;
 export type DrCr = (typeof DR_CR)[number];
@@ -58,6 +52,7 @@ export const ledgerMessages = {
   stateRequired: 'State is required',
   pincodeRequired: 'Pincode is required',
   pincodeFormat: 'Pincode must be 6 digits',
+  aadharFormat: 'Aadhar No. must be 12 digits',
   /** Bare "Required", unlike City/State's fuller phrasing — a genuine MDA inconsistency, kept. */
   underRequired: 'Required',
   saved: (name: string, code: string) => `Ledger "${name}" saved (Code: ${code})`,
@@ -94,6 +89,11 @@ export function ledgerFieldErrors(input: {
   pincode?: string;
   mobile?: string;
   openingBalance?: string;
+  country?: string;
+  aadhar?: string;
+  gstin?: string;
+  pan?: string;
+  email?: string;
 }) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = ledgerMessages.nameRequired;
@@ -102,7 +102,18 @@ export function ledgerFieldErrors(input: {
   if (!input.under) errors.under = ledgerMessages.underRequired;
   const pin = (input.pincode ?? '').trim();
   if (!pin) errors.pincode = ledgerMessages.pincodeRequired;
-  else if (!PINCODE_RE.test(pin)) errors.pincode = ledgerMessages.pincodeFormat;
+  // An Indian PIN is 6 digits; a postal code abroad can be anything.
+  else if ((input.country ?? 'India') === 'India' && !PINCODE_RE.test(pin))
+    errors.pincode = ledgerMessages.pincodeFormat;
+  const aadhar = (input.aadhar ?? '').replace(/\s/g, '');
+  if (aadhar && !/^\d{12}$/.test(aadhar)) errors.aadhar = ledgerMessages.aadharFormat;
+  // Added 2026-11-14 (MDA took any text: Q-10).
+  const gstin = validators.gstin(input.gstin);
+  if (gstin) errors.gstin = gstin;
+  const pan = validators.pan(input.pan);
+  if (pan) errors.pan = pan;
+  const email = validators.email(input.email);
+  if (email) errors.email = email;
   // Added: the mobile number, with its country code, when entered (contact.ts).
   const mobile = mobileProblem(input.mobile);
   if (mobile) errors.mobile = mobile;

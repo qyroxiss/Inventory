@@ -1,7 +1,7 @@
 // Sale Type Master. Port of MDA-Inventory lib/sale_type_service.dart: Misc_Master rows (our
 // misc_list) of type 'SaleType'. As in MDA:
 //   - Sale Name and Sale By are required; Sale Prefix is upper-cased; all trimmed.
-//   - The name must be unique among sale types, case-sensitively, on Save and on Update.
+//   - The name must be unique among sale types (ignoring case, since 2026-11-14), on Save and on Update.
 //   - Update has no confirmation step (the screen saves straight away).
 //   - Remove is refused once a sale bill (cancelled ones too) carries the type's name.
 
@@ -45,7 +45,7 @@ async function check(db: Db, bookId: string, input: SaleTypeInput, exceptCode?: 
   if (!(input.saleBy ?? '').trim()) {
     throw new UserError(msg.saleByRequiredService, { saleBy: msg.saleByRequired });
   }
-  const clauses = [ofTypes(bookId), eq(miscList.miscName, name)];
+  const clauses = [ofTypes(bookId), sql`lower(${miscList.miscName}) = ${name.toLowerCase()}`];
   if (exceptCode) clauses.push(ne(miscList.miscCode, exceptCode));
   const [clash] = await db
     .select({ code: miscList.miscCode })

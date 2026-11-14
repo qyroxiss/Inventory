@@ -54,6 +54,22 @@ const MASTER_TABLES = [
   'voucherSeries',
 ] as const;
 
+/** Copies a book's users and roles into a new, just-seeded book (its admin/admin is replaced). */
+export async function copyUsers(db: Db, fromBookId: string, toBookId: string): Promise<void> {
+  const users = await db.select().from(S.bookUsers).where(eq(S.bookUsers.bookId, fromBookId));
+  if (!users.length) return;
+  await db.delete(S.bookUsers).where(eq(S.bookUsers.bookId, toBookId));
+  await db.delete(S.bookRoles).where(eq(S.bookRoles.bookId, toBookId));
+  await db
+    .insert(S.bookUsers)
+    .values(users.map(({ id: _id, ...u }) => (void _id, { ...u, bookId: toBookId })));
+  const roles = await db.select().from(S.bookRoles).where(eq(S.bookRoles.bookId, fromBookId));
+  if (roles.length)
+    await db
+      .insert(S.bookRoles)
+      .values(roles.map(({ id: _id, ...r }) => (void _id, { ...r, bookId: toBookId })));
+}
+
 /** Copies every master of one book into another (a new, just-seeded one: its seeds are replaced). */
 export async function copyMasters(db: Db, fromBookId: string, toBookId: string): Promise<void> {
   for (const name of [...MASTER_TABLES].reverse()) {

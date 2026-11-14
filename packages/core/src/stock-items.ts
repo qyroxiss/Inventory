@@ -1,15 +1,6 @@
 // Stock Item, ported from MDA-Inventory lib/stock_item_page.dart (Part_Master).
 
-/**
- * The Unit list, hard-coded in the Stock Item page and not read from Unit Master: it differs
- * from the seeded units ("Kg" here, "Kgs" there; "Pack", "Carton", "Gross" only here)
- * (docs/LOGIC-SPEC.md Q-19). The field also takes any typed text.
- */
-export const ITEM_UNITS = [
-  'Nos', 'Pcs', 'Kg', 'Gm', 'Ltr', 'Ml', 'Mtr', 'Cm',
-  'Box', 'Set', 'Pair', 'Roll', 'Sheet', 'Pack', 'Bag',
-  'Carton', 'Dozen', 'Gross',
-]; // prettier-ignore
+// The Unit list is Unit Master's (MDA's page had its own fixed list: Q-19, fixed 2026-11-14).
 
 /** "Tax Type" (stored as RegType). */
 export const TAX_TYPES = ['Taxable', 'Non GST', 'Nil Rated', 'Exempt'] as const;
@@ -28,6 +19,9 @@ export const stockItemMessages = {
   updated: (name: string) => `Stock Item "${name}" updated`,
   /** MDA shows this with the error/red colour even though it is a success message. */
   removed: (name: string) => `Stock Item "${name}" removed`,
+  /** Added 2026-11-14 (MDA removed it anyway, orphaning its stock and bill lines: Q-42). */
+  inUse: (name: string, count: number) =>
+    `"${name}" is used in ${count} entry(ies) and cannot be removed. Mark it inactive instead.`,
   updateConfirm: (name: string) => `Update record "${name}"?`,
   deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
   noneFound: 'No stock items saved yet.',

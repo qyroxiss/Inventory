@@ -4,10 +4,17 @@
 // Both store Misc_Master rows (our misc_list). The unit seed is lib/db_service.dart:903-932;
 // MDA seeds no godowns.
 
+import { mobileProblem } from './contact.ts';
+
 export const MISC_MASTERS = {
   unit: { type: 'Unit', label: 'Unit', prefix: 'UN', width: 3 },
   godown: { type: 'Godown', label: 'Godown', prefix: 'GD', width: 3 },
+  /** Not in MDA (its list was eight made-up names, 2026-11-14): the people a ledger is assigned
+   *  to in Ledger Creation. Keeps a mobile number too (Misc_Gen1). */
+  salesExec: { type: 'SalesExec', label: 'Sales Executive', prefix: 'SE', width: 3 },
 } as const;
+/** The kinds that keep a mobile number beside the name. */
+export const MISC_MASTER_WITH_MOBILE: readonly MiscMasterKind[] = ['salesExec'];
 export type MiscMasterKind = keyof typeof MISC_MASTERS;
 export const MISC_MASTER_KINDS = Object.keys(MISC_MASTERS) as MiscMasterKind[];
 
@@ -26,12 +33,20 @@ export const miscMasterMessages = (kind: MiscMasterKind) => {
     deleteConfirm: (name: string) =>
       `Wants to remove this record "${name}"?\nThis cannot be undone.`,
     noneFound: `No ${label.toLowerCase()}s saved yet.`,
+    /** Not in MDA, which removed it anyway (2026-11-14). */
+    inUse: (name: string, count: number) =>
+      `"${name}" is used in ${count} record(s) and cannot be removed.`,
   };
 };
 
-export function miscMasterFieldErrors(kind: MiscMasterKind, input: { name?: string }) {
+export function miscMasterFieldErrors(
+  kind: MiscMasterKind,
+  input: { name?: string; mobile?: string },
+) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = miscMasterMessages(kind).nameRequired;
+  const mobile = MISC_MASTER_WITH_MOBILE.includes(kind) ? mobileProblem(input.mobile) : null;
+  if (mobile) errors.mobile = mobile;
   return errors;
 }
 

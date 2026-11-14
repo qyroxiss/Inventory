@@ -7,7 +7,6 @@
 
 import {
   ITEM_GST_RATES,
-  ITEM_UNITS,
   TAXABLE,
   TAX_TYPES,
   qtyValue,
@@ -47,6 +46,8 @@ type Form = {
   opQty: string;
   opRate: string;
   mrp: string;
+  /** Inactive items stay in old bills and reports but can't be picked on new ones. */
+  isActive: boolean;
 };
 type Errors = Partial<
   Record<'code' | 'name' | 'purRate' | 'saleRate' | 'opQty' | 'opRate' | 'mrp', string>
@@ -67,6 +68,7 @@ const EMPTY: Form = {
   opQty: '',
   opRate: '',
   mrp: '',
+  isActive: true,
 };
 const TITLE = 'Stock Item';
 const asOptions = (list: readonly string[]) => list.map((v) => ({ value: v, label: v }));
@@ -121,6 +123,20 @@ export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) 
     queryFn: () => unwrap(api.api['stock-sub-groups'].$get()),
   });
   const subGroupOptions = (subGroups.data ?? []).map((g) => ({ value: g.code, label: g.name }));
+  // Units come from Unit Master (MDA had its own fixed list here that didn't match it: Q-19).
+  const units = useQuery({
+    queryKey: ['misc-master', 'unit'],
+    queryFn: () => unwrap(api.api['misc-masters'][':kind'].$get({ param: { kind: 'unit' } })),
+  });
+  const stockGroups = useQuery({
+    queryKey: ['stock-groups'],
+    queryFn: () => unwrap(api.api['stock-groups'].$get()),
+  });
+  /** A sub group's Stock Group GST Rate and HSN, to fill a blank item (was Q-33). */
+  const groupDefaults = (subGrpCode: string) => {
+    const under = (subGroups.data ?? []).find((g) => g.code === subGrpCode)?.under;
+    return (stockGroups.data ?? []).find((g) => g.code === under);
+  };
 
   const [form, setForm] = useState<Form>(EMPTY);
   const [errors, setErrors] = useState<Errors>({});
@@ -255,6 +271,7 @@ export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) 
       opQty: i.opQty > 0 ? String(i.opQty) : '',
       opRate: rateText(i.opRate),
       mrp: rateText(i.mrp),
+      isActive: i.isActive,
     });
     focusId('si-code');
   };
@@ -347,7 +364,18 @@ export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) 
               value={form.subGrpCode}
               options={subGroupOptions}
               placeholder="Select sub group…"
-              onCommit={(code) => set({ subGrpCode: code })}
+              onCommit={(code) =>
+                setForm((f) => {
+                  const g = groupDefaults(code);
+                  const gst = !f.gstRate && g?.gstRate ? g.gstRate : '';
+                  return {
+                    ...f,
+                    subGrpCode: code,
+                    ...(gst ? { gstRate: gst, regType: f.regType || TAXABLE } : {}),
+                    ...(!f.hsn && g?.hsn ? { hsn: g.hsn } : {}),
+                  };
+                })
+              }
               onNext={() => focusId('si-unit')}
             />
           </FieldRow>
@@ -355,7 +383,7 @@ export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) 
             <SearchSelect
               id="si-unit"
               value={form.unit}
-              options={asOptions(ITEM_UNITS)}
+              options={asOptions((units.data ?? []).map((u) => u.name))}
               placeholder="Select unit…"
               freeText
               onCommit={(unit) => set({ unit })}
@@ -400,6 +428,17 @@ export function StockItemScreen({ embedded }: { embedded?: EmbeddedItem } = {}) 
           {rateField('purRate', 'Purchase Rate', '0.00', 'si-mrp')}
           {/* Enter moves to Save Item, or to Update while an item is open (MDA). */}
           {rateField('mrp', 'MRP', '0.00', toAction)}
+          <FieldRow id="si-status" label="Status">
+            <select
+              id="si-status"
+              value={form.isActive ? 'Active' : 'Inactive'}
+              onChange={(e) => set({ isActive: e.target.value === 'Active' })}
+              className={inputClass()}
+            >
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </FieldRow>
         </FormBlock>
         <ActionBar
           wide

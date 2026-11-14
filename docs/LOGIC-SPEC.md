@@ -585,6 +585,16 @@ Invoice item and party lookups show nothing until you type, and match by "contai
 
 The register stays as a map of non-obvious behaviours, so no one "fixes" them by accident.
 
+**Superseded (2026-11-14, user's request: "every option must work"; the app is an upgrade of MDA).** The rows below now describe what MDA did. These are **fixed**; the code comments name each one:
+
+- **Masters:** Q-10 (ledger GSTIN, PAN and email checked; company email and PIN), Q-11 (ledger Country, Aadhar, Sales Executive and Reg. Type saved; Sales Executive has its own master), Q-15 (duplicate names ignore case), Q-16/Q-17/Q-18 (user-made groups can be updated and removed, built-in ones renamed only; nothing with sub groups or ledgers under it is removed; a moved sub group takes its new parent's type), Q-19 (Stock Item units come from Unit Master), Q-33 (a new item takes its stock group's GST and HSN), Q-34 (the opening-balance date is the open year's), Q-37/Q-38/Q-39/Q-40/Q-41/Q-42 (no duplicate on Update; a unit keeps its long name; nothing in use is removed; items and ledgers can be made inactive).
+- **Vouchers:** Q-13/Q-43 (Update writes the bill reference again), Q-14/Q-46 (a note's reason comes back), Q-23/Q-47 (bank vouchers print "By Bank"), Q-24 (inactive ledgers aren't offered), Q-26 (sub groups at any depth are included). Journal, Debit Note and Credit Note print.
+- **Bills:** Q-07 (Update keeps the voucher number), Q-08 (a series can start from a chosen number), Q-22 (missing Sale Type or Name is said, not only shown red), Q-27 (stock is checked as on the bill date and in the bill's godown), Q-28 (the bill discount comes off **before** tax and is shared over the lines, so GST is on the discounted value; owner's decision), Q-30 (a cash sale picks its Cash or Bank account), Q-49 (a blank purchase narration posts as "Purchase <bill no>"), Q-51 (a cash sale can be to a walk-in customer), Q-52 (the sale's Location is a godown and applies to every line), Q-53 (a reopened bill keeps its customer). Sales Invoice has a Narration. The invoice prints the Mailing Name, Website and items' Print Names.
+- **Dashboard and tools:** Q-02 (a new user starts as Viewer), Q-03 (a new year gets the company's users and roles; owner's decision), Q-04 (five wrong passwords lock the user name for 15 minutes), Q-05 (a new company gets the current year), Q-06 (year dates in order, matching the name, not overlapping), Q-31 (cash balance includes sub groups), Q-32 (journals show neither in nor out), Q-36 ("View all" opens the Day Book), Q-54 (the last active Admin can't be demoted or switched off; you can't change your own role).
+- **Already fixed earlier:** Q-01, Q-09, Q-12, Q-21/Q-44, Q-25, Q-29, Q-35, Q-45, Q-48, Q-50.
+- **Still open:** Q-20 in part (barcode, cess and reorder levels are not on the Stock Item form).
+
+
 **How the few platform differences are handled.** Where a behaviour physically cannot exist on the web, we use the closest equivalent:
 - **Q-01:** `exit(0)` closes the app on desktop; in a browser, Back returns to the login screen.
 - **Q-02:** a Flutter debug assertion has no browser equivalent. The New User form opens with role `User` preselected, which is the value Flutter would have stored.

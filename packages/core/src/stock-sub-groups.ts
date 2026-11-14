@@ -15,6 +15,9 @@ export const stockSubGroupMessages = {
   updated: (name: string) => `Stock Sub Group "${name}" updated`,
   /** MDA shows this with the error/red colour even though it is a success message. */
   removed: (name: string) => `Stock Sub Group "${name}" removed`,
+  /** Added 2026-11-14 (MDA removed it anyway: Q-41). */
+  inUse: (name: string, count: number) =>
+    `"${name}" is used by ${count} stock item(s) and cannot be removed.`,
   updateConfirm: (name: string) => `Update record "${name}"?`,
   deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
   noneFound: 'No stock sub groups saved yet.',

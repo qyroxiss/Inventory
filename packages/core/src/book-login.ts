@@ -3,6 +3,9 @@
 export const loginMessages = {
   required: 'Required',
   invalid: 'Invalid username or password',
+  /** Added 2026-11-14 (MDA allowed unlimited tries: Q-04). */
+  locked: (minutes: number) =>
+    `Too many wrong passwords. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
   failed: 'Login failed. Please try again.',
   changeRequired: 'Password change is required to continue.',
   // Forced password change dialog (auth_page.dart:117-161)
@@ -44,3 +47,7 @@ export const SEED_ADMIN = {
 
 /** Role names offered in User Management (user_management_page.dart:22). */
 export const ROLES = ['Admin', 'Manager', 'Operator', 'Viewer'] as const;
+
+/** Wrong passwords allowed in a row before the user name is locked for a while (2026-11-14). */
+export const LOGIN_MAX_TRIES = 5;
+export const LOGIN_LOCK_MINUTES = 15;

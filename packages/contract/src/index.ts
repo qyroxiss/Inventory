@@ -84,8 +84,8 @@ export const subGroupCreate = z.object({
   under: z.string().optional(),
 });
 
-/** Only the fields Maacct actually stores — Aadhar/Sales Executive/Reg. Type/Country are shown
- * in Ledger Creation's form but MDA never saves them, so they're never sent here either. */
+/** Ledger Creation. Country, Aadhar, Sales Executive (its master code) and Reg. Type are saved
+ *  too (MDA showed them but never saved them), and a ledger can be made inactive. */
 export const ledgerCreate = z.object({
   name: z.string(),
   address: opt,
@@ -99,10 +99,15 @@ export const ledgerCreate = z.object({
   gstin: opt,
   openingBalance: opt,
   drCr: z.enum(['Dr', 'Cr']).optional(),
+  country: opt,
+  aadhar: opt,
+  salesExec: opt,
+  regType: opt,
+  isActive: z.boolean().optional(),
 });
 
-/** Unit Master and Godown (one field each). */
-export const miscMasterSave = z.object({ name: z.string() });
+/** Unit Master, Godown and Sales Executive (name; Sales Executive also a mobile number). */
+export const miscMasterSave = z.object({ name: z.string(), mobile: opt });
 
 /** Stock Group: GST Rate and HSN No. are free text, as MDA stores them. */
 export const stockGroupSave = z.object({ name: z.string(), gstRate: opt, hsn: opt });
@@ -128,6 +133,7 @@ export const stockItemSave = z.object({
   opQty: opt,
   opRate: opt,
   mrp: opt,
+  isActive: z.boolean().optional(),
 });
 
 /** A voucher as the tabs build it (receiptDraft, journalDraft, …). Rules are checked in @qi/core. */
@@ -157,7 +163,9 @@ export const voucherSave = z.object({
     )
     .optional(),
 });
-export const voucherUpdate = voucherSave.omit({ vchrType: true, vchrNo: true, bills: true });
+/** Update keeps the number and type; its bill references are written again (MDA dropped them,
+ *  so an edited receipt fell out of the party's Outstanding: Q-43, fixed 2026-11-14). */
+export const voucherUpdate = voucherSave.omit({ vchrType: true, vchrNo: true });
 
 /** A purchase bill as the screen sends it. Each line's tax is worked out again on the server. */
 export const purchaseSave = z.object({
@@ -228,6 +236,9 @@ export const saleSave = z.object({
   billDiscAmt: z.number(),
   interState: z.boolean(),
   lines: z.array(invoiceLine),
+  /** A cash sale's Cash or Bank ledger (2026-11-14). */
+  cashAccount: z.string().nullable().optional(),
+  narration: opt,
 });
 
 export const stockJournalSave = z.object({
@@ -256,7 +267,12 @@ export const bookUserSave = z.object({
   isActive: z.boolean(),
 });
 
-export const seriesSave = z.object({ prefix: z.string(), width: z.number().int() });
+/** A series' prefix and digits, and optionally the number to start from (2026-11-14). */
+export const seriesSave = z.object({
+  prefix: z.string(),
+  width: z.number().int(),
+  startAt: z.number().int().optional(),
+});
 
 /** A backup file's contents; its shape is checked when it's restored. */
 export const backupRestore = z.record(z.string(), z.unknown());

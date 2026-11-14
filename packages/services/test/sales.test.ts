@@ -101,17 +101,19 @@ describe('Sales Invoice', () => {
 
   test('a cash sale posts to the first cash ledger, with no bill reference, and takes stock out', async () => {
     const r = await saveSale(db, ctx, bill({ billDiscAmt: 8 }));
-    // 600 + 54 + 54 = 708, less 8 = 700.
-    expect(r.net).toBe(700);
+    // The discount comes off before tax (2026-11-14): 600 - 8 = 592, + 53.28 + 53.28 = 698.56,
+    // rounded to 699.
+    expect(r.net).toBe(699);
     const [v] = await listVouchers(db, ctx.bookId, ['SAL']);
     expect(v).toMatchObject({ vchrNo: 'SAL-001', refNo: 'CS-0001', narration: 'Sale CS-0001' });
     const lines = (await voucherLinesOf(db, ctx.bookId, v!.id)).map((l) => [l.accCode, l.dr, l.cr]);
     expect(lines).toEqual([
-      ['AC0003', 700, 0],
+      ['AC0003', 699, 0],
       ['SAL002', 8, 0],
       ['SAL001', 0, 600],
-      ['TAX004', 0, 54],
-      ['TAX005', 0, 54],
+      ['TAX004', 0, 53.28],
+      ['TAX005', 0, 53.28],
+      ['TAX007', 0, 0.44],
     ]);
     expect((await stockInHand(db, ctx.bookId, ['IT01'])).get('IT01')).toBe(15);
     const refs = await db
@@ -137,8 +139,9 @@ describe('Sales Invoice', () => {
     await rejects(saveSale(db, ctx, bill({ custName: ' ' })), sm.customerNameRequired);
     await rejects(saveSale(db, ctx, bill({ isCash: false, custCode: null })), sm.creditNeedsLedger);
     await rejects(saveSale(db, ctx, bill({ lines: [] })), sm.noItems);
+    await rejects(saveSale(db, ctx, bill({ billDiscAmt: 708 })), sm.billDiscTooBig);
     await rejects(
-      saveSale(db, ctx, bill({ billDiscAmt: 708 })),
+      saveSale(db, ctx, bill({ billDiscAmt: 600 })),
       'Bill value cannot be zero or negative.',
     );
     await rejects(
@@ -155,7 +158,8 @@ describe('Sales Invoice', () => {
     await updateSale(db, ctx, bill({ lines: [{ ...bill().lines[0]!, qty: 18 }] }));
     expect((await stockInHand(db, ctx.bookId, ['IT01'])).get('IT01')).toBe(2);
     const vs = await listVouchers(db, ctx.bookId, ['SAL'], true);
-    expect(vs.map((v) => v.vchrNo)).toEqual(['SAL-002']);
+    // The voucher keeps its number (MDA took a new one: Q-07).
+    expect(vs.map((v) => v.vchrNo)).toEqual(['SAL-001']);
     const b = await saleBill(db, ctx.bookId, 'CS-0001');
     expect(b!.lines[0]!.qty).toBe(18);
   });

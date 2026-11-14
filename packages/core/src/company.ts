@@ -58,6 +58,9 @@ export function companyFieldErrors(input: {
   cin?: string;
   bankAcNo?: string;
   bankIfsc?: string;
+  email?: string;
+  pinCode?: string;
+  country?: string;
 }) {
   const errors: Record<string, string> = {};
   if (!(input.name ?? '').trim()) errors.name = companyMessages.required;
@@ -70,6 +73,10 @@ export function companyFieldErrors(input: {
     ['cin', cinProblem(input.cin)],
     ['bankAcNo', bankAcNoProblem(input.bankAcNo)],
     ['bankIfsc', ifscProblem(input.bankIfsc)],
+    // Added 2026-11-14 (MDA took any text: Q-10).
+    ['email', validators.email(input.email)],
+    // An Indian PIN is 6 digits; a postal code abroad can be anything.
+    ['pinCode', (input.country ?? 'India') === 'India' ? validators.pincode(input.pinCode) : null],
   ];
   for (const [k, problem] of checks) if (problem) errors[k] = problem;
   return errors;
@@ -90,6 +97,11 @@ export const yearMessages = {
   selectCompany: 'Please select a company first',
   added: (year: string, company: string) => `Year "${year}" added for ${company}`,
   exists: (year: string) => `Year "${year}" already exists for this company`,
+  /** Added 2026-11-14 (MDA only checked that the dates were there: Q-06). */
+  fromAfterTo: 'From date must be before the To date',
+  nameMismatch: (name: string) =>
+    `The dates must fall in ${name}: From in its first year, To in its second`,
+  overlap: (other: string) => `These dates overlap the year "${other}"`,
   deleteConfirm: (year: string, company: string) =>
     `Delete "${year}" for ${company}?\nThis only removes the record — the database file is not deleted.`,
 };
@@ -132,7 +144,8 @@ export function yearChoices(today: Date, existing: readonly string[]): string[] 
   return names.filter((n) => !existing.includes(n));
 }
 
-/** Year form validation. From/To are only checked for presence, as in MDA (Q-06). */
+/** Year form validation: the name and the dates' presence. The dates themselves are checked
+ *  by yearDatesProblem (MDA checked presence only: Q-06). */
 export function yearFieldErrors(input: { yearName?: string; fromDate?: string; toDate?: string }) {
   const errors: Record<string, string> = {};
   const name = (input.yearName ?? '').trim();
@@ -141,4 +154,21 @@ export function yearFieldErrors(input: { yearName?: string; fromDate?: string; t
   if (!(input.fromDate ?? '').trim()) errors.fromDate = yearMessages.required;
   if (!(input.toDate ?? '').trim()) errors.toDate = yearMessages.required;
   return errors;
+}
+
+/** A year's dates (yyyy-MM-dd) against its name "2026-2027": From before To, From in 2026 and
+ *  To in 2027. Null when fine (added 2026-11-14). */
+export function yearDatesProblem(yearName: string, from: string, to: string): string | null {
+  if (from >= to) return yearMessages.fromAfterTo;
+  const m = /^(\d{4})-(\d{4})$/.exec(yearName.trim());
+  if (m && (from.slice(0, 4) !== m[1] || to.slice(0, 4) !== m[2]))
+    return yearMessages.nameMismatch(yearName.trim());
+  return null;
+}
+
+/** The financial year (April to March) a date falls in, as a name and dd-MM-yyyy dates. */
+export function financialYearOf(isoDay: string): { name: string; from: string; to: string } {
+  const y = Number(isoDay.slice(0, 4));
+  const start = Number(isoDay.slice(5, 7)) >= 4 ? y : y - 1;
+  return { name: `${start}-${start + 1}`, from: `01-04-${start}`, to: `31-03-${start + 1}` };
 }

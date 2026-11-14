@@ -21,6 +21,7 @@ const MASTERS: [prefix: string, page: string][] = [
   ['/api/ledgers', 'Ledger Creation'],
   ['/api/misc-masters/unit', 'Unit Master'],
   ['/api/misc-masters/godown', 'Godown'],
+  ['/api/misc-masters/salesExec', 'Sales Executive'],
   ['/api/stock-groups', 'Stock Group'],
   ['/api/stock-sub-groups', 'Stock Sub Group'],
   ['/api/stock-items', 'Stock Item'],
@@ -87,10 +88,16 @@ export async function ruleFor(call: CallInfo): Promise<Rule | null> {
         return page ? rule([page]) : deny(need);
       }
       if (path === '/api/vouchers/print') {
-        const kind = call.query('kind');
-        return rule(
-          kind === 'receipt' ? ['Receipt'] : kind === 'payment' ? ['Payment'] : VOUCHER_PAGES,
-        );
+        const page = (
+          {
+            receipt: 'Receipt',
+            payment: 'Payment',
+            journal: 'Journal Voucher',
+            debit: 'Debit Note',
+            credit: 'Credit Note',
+          } as Record<string, string>
+        )[call.query('kind') ?? ''];
+        return rule(page ? [page] : VOUCHER_PAGES);
       }
       return rule(VOUCHER_PAGES);
     }

@@ -80,6 +80,7 @@ function fromReturn(kind: 'PRT' | 'SRT', n: ReturnNote): Printed {
       inv: {
         company: n.company,
         party: n.party,
+        printNames: n.printNames,
         bill: {
           ...common,
           suppCode: d.partyCode,
@@ -96,6 +97,7 @@ function fromReturn(kind: 'PRT' | 'SRT', n: ReturnNote): Printed {
     inv: {
       company: n.company,
       party: n.party,
+      printNames: n.printNames,
       bill: {
         ...common,
         saleType: '',
@@ -579,7 +581,9 @@ function sheetModel(p: Printed): SheetModel {
   const sale = p.kind === 'sale';
   const lines = bill.lines as PurcLine[];
   const inter = bill.isInterState;
-  const compName = (c?.compName ?? '').trim() || 'Company';
+  // The Mailing Name, when set, is the name printed (it was saved but never used; 2026-11-14).
+  const compName = (c?.mailName ?? '').trim() || (c?.compName ?? '').trim() || 'Company';
+  const printNames = (p.inv as { printNames?: Record<string, string> }).printNames ?? {};
 
   // ── Totals, worked out as the bill screens do ──
   const st = sale ? saleTotals(lines, p.inv.bill.billDiscPct, p.inv.bill.billDiscAmt) : null;
@@ -597,6 +601,7 @@ function sheetModel(p: Printed): SheetModel {
       ['State Name', stateText(compState)],
       ['Contact', clean([c?.phone, c?.mobile]).join(', ')],
       ['E-Mail', (c?.email ?? '').trim()],
+      ['Website', (c?.website ?? '').trim()],
     ] as [string, string][],
   };
 
@@ -686,7 +691,7 @@ function sheetModel(p: Printed): SheetModel {
     const disc = l.disP > 0 ? l.disP : l.disA > 0 && gross > 0 ? (l.disA / gross) * 100 : 0;
     return {
       no: i + 1,
-      name: l.itemName,
+      name: printNames[l.itemCode] ?? l.itemName,
       desc: (l.desc ?? []).filter((d) => d.trim()),
       hsn: l.hsnNo ?? '',
       qty: `${fqIN(l.qty)} ${l.unit ?? ''}`.trim(),
@@ -706,11 +711,12 @@ function sheetModel(p: Printed): SheetModel {
     rate: rate !== null ? pct(rate) : '',
     amount: faIN(amount),
   });
+  // The bill discount comes off before tax (2026-11-14), so it is listed before the GST.
   const sideLines = [
+    ...(st && st.billDisc > 0 ? [side('Less : Discount', -st.billDisc)] : []),
     ...(inter
       ? [side('IGST', t.igst, oneRate)]
       : [side('CGST', t.cgst, oneRate), side('SGST', t.sgst, oneRate)]),
-    ...(st && st.billDisc > 0 ? [side('Less : Discount', -st.billDisc)] : []),
     ...(pt && pt.freight > 0 ? [side('Freight', pt.freight)] : []),
     ...(t.roundOff !== 0 ? [side('Round Off', t.roundOff)] : []),
   ];
@@ -725,7 +731,8 @@ function sheetModel(p: Printed): SheetModel {
     igst: number;
   };
   const hsn = new Map<string, Hsn>();
-  for (const l of lines) {
+  // Taxed values: after the bill discount's share, as the GST was worked out.
+  for (const l of st ? st.taxed : lines) {
     const rate = inter ? l.igstP : l.cgstP;
     const code = (l.hsnNo ?? '').trim();
     const key = `${code}|${rate}`;

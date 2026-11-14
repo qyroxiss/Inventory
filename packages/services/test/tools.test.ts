@@ -59,14 +59,14 @@ const rejects = async (p: Promise<unknown>, message: string) => {
 };
 
 describe('User Management', () => {
-  test('an Admin creates a user; the role starts as "User" (Q-02); the name must be new', async () => {
+  test('an Admin creates a user; the role starts as Viewer; the name must be new', async () => {
     const u = await createBookUser(db, admin, {
       userName: ' ravi ',
       password: 'pass1',
       confirmPassword: 'pass1',
       isActive: true,
     });
-    expect(u).toMatchObject({ userName: 'ravi', role: 'User', isActive: true });
+    expect(u).toMatchObject({ userName: 'ravi', role: 'Viewer', isActive: true });
     expect(u.userCode).toMatch(/^RAVI_\d+$/);
     expect((await listBookUsers(db, ctx.bookId)).map((x) => x.userName)).toEqual(['admin', 'ravi']);
     await rejects(

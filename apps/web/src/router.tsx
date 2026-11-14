@@ -199,6 +199,12 @@ const godownRoute = createRoute({
   component: () => <MiscMasterScreen key="godown" kind="godown" />,
 });
 
+const salesExecRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: 'sales-executive',
+  component: () => <MiscMasterScreen key="salesExec" kind="salesExec" />,
+});
+
 const stockGroupRoute = createRoute({
   getParentRoute: () => appRoute,
   path: 'stock-group',
@@ -310,6 +316,7 @@ export const router = createRouter({
       ledgerCreationRoute,
       unitMasterRoute,
       godownRoute,
+      salesExecRoute,
       stockGroupRoute,
       stockSubGroupRoute,
       stockItemRoute,

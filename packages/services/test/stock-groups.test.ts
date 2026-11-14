@@ -58,13 +58,13 @@ describe('Stock Group', () => {
     expect((await listStockGroups(db, bookId)).map((g) => g.name)).toEqual(['Dairy', 'Grocery']);
   });
 
-  test('required, and duplicates refused on Save and on Update (case-sensitive)', async () => {
+  test('required, and duplicates refused on Save and on Update, whatever the case', async () => {
     await rejects(createStockGroup(db, bookId, { name: ' ' }), msg.nameRequired);
     await createStockGroup(db, bookId, { name: 'Grocery' });
     await createStockGroup(db, bookId, { name: 'Dairy' });
     await rejects(createStockGroup(db, bookId, { name: 'Grocery' }), msg.duplicate);
-    expect((await createStockGroup(db, bookId, { name: 'GROCERY' })).code).toBe('SG0003');
-    await rejects(updateStockGroup(db, bookId, 'SG0002', { name: 'Grocery' }), msg.duplicate);
+    await rejects(createStockGroup(db, bookId, { name: 'GROCERY' }), msg.duplicate);
+    await rejects(updateStockGroup(db, bookId, 'SG0002', { name: 'grocery' }), msg.duplicate);
     // Its own name is fine.
     expect(
       await updateStockGroup(db, bookId, 'SG0002', { name: 'Dairy', gstRate: '12%', hsn: '0401' }),

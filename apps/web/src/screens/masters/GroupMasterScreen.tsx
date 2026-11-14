@@ -3,7 +3,14 @@
 // Always top-level groups (ParentGrp='Parent'); Sub Group Master, built separately, handles
 // the rest of this same table.
 
-import { brand, GROUP_TYPES, LEDGER_OPTIONS, groupMessages, type GroupType } from '@qi/core';
+import {
+  brand,
+  GROUP_TYPES,
+  LEDGER_OPTIONS,
+  groupMessages,
+  isBuiltInGroup,
+  type GroupType,
+} from '@qi/core';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
@@ -168,9 +175,9 @@ export function GroupMasterScreen() {
     focusName();
   };
 
-  // Every group loaded here is top-level — MDA disables Update/Remove by mouse once one is
-  // loaded, but Enter on Update still works (docs/LOGIC-SPEC.md Q-16). Kept exactly as is.
-  const editingTopLevel = !!editing;
+  // MDA locked every group once loaded (Q-16). Since 2026-11-14 Update works for all of them;
+  // a built-in group keeps its type and can't be removed, a group the user made can.
+  const builtIn = !!editing && isBuiltInGroup(editing.grpCode);
 
   return (
     <>
@@ -235,6 +242,8 @@ export function GroupMasterScreen() {
                 id="grp-type"
                 ref={typeRef}
                 value={form.type}
+                disabled={builtIn}
+                title={builtIn ? groupMessages.builtInType : undefined}
                 onChange={(e) => {
                   setForm((f) => ({ ...f, type: e.target.value as GroupType }));
                   setErrors((er) => ({ ...er, type: undefined }));
@@ -287,11 +296,11 @@ export function GroupMasterScreen() {
             </button>
             <span className="flex-1" />
             {editing && (
-              /* Q-16: every group here is top-level, and MDA never lets Remove reach one from
-                 this screen — truly inert, mouse or keyboard, unlike Update just below. */
               <button
                 type="button"
-                disabled
+                disabled={builtIn || busy || !canEdit}
+                title={builtIn ? 'Built-in groups can not be removed' : undefined}
+                onClick={() => setDeleteConfirm(true)}
                 className={`${BAR_BTN} border-destructive text-destructive`}
               >
                 Remove
@@ -300,16 +309,9 @@ export function GroupMasterScreen() {
             <button
               type="button"
               ref={saveRef}
-              aria-disabled={editingTopLevel ? 'true' : undefined}
-              onClick={editingTopLevel ? undefined : save}
-              onKeyDown={(e) => {
-                if (e.key !== 'Enter') return;
-                e.preventDefault();
-                if (editingTopLevel) setUpdateConfirm(true);
-                else void save();
-              }}
+              onClick={() => (editing ? setUpdateConfirm(true) : void save())}
               disabled={busy || !canEdit}
-              className={`flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait ${editingTopLevel ? 'opacity-60' : 'disabled:opacity-70'}`}
+              className="flex h-12 min-w-[220px] cursor-pointer max-sm:order-last max-sm:w-full max-sm:min-w-0 items-center justify-between gap-4 bg-primary px-[22px] text-[15px] font-semibold text-primary-foreground disabled:cursor-wait disabled:opacity-70"
             >
               <span>{editing ? 'Update' : 'Save Group'}</span>
               <span aria-hidden="true" className="text-xl">

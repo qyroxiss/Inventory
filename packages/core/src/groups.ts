@@ -22,8 +22,12 @@ export const groupMessages = {
   /** Verbatim, double period and all (group_master_page.dart:103). */
   duplicateOnSave: 'Name is Already Exists..',
   duplicateOnUpdate: 'This Name Already Exists',
-  /** Shown only if Remove is somehow reached on a top-level group; the button is disabled (Q-16). */
+  /** A built-in group can be renamed but not removed or given another type (2026-11-14; MDA
+   *  locked every group, even ones the user made: Q-16). */
   notDeletable: 'This record will be not deleted',
+  builtInType: 'The type of a built-in group can not be changed.',
+  inUse: (name: string, subGroups: number, ledgers: number) =>
+    `"${name}" has ${subGroups} sub group(s) and ${ledgers} ledger(s) under it and cannot be removed.`,
   updateConfirm: (name: string) => `Wants to update this record "${name}"?`,
   deleteConfirm: (name: string) => `Wants to remove this record "${name}"?\nThis cannot be undone.`,
   noneFound: 'No groups saved yet.',
@@ -50,6 +54,10 @@ export const subGroupMessages = {
   updateConfirm: (name: string) => `Update record "${name}"?`,
   deleteConfirm: (name: string) => `Remove "${name}"?\nThis cannot be undone.`,
   noneFound: 'No sub groups saved yet.',
+  /** Added 2026-11-14 (MDA deleted it anyway, orphaning its ledgers: Q-17). */
+  inUse: (name: string, subGroups: number, ledgers: number) =>
+    `"${name}" has ${subGroups} sub group(s) and ${ledgers} ledger(s) under it and cannot be removed.`,
+  underItself: 'A sub group can not be under itself.',
 };
 
 export function subGroupFieldErrors(input: { name?: string; under?: string }) {
@@ -124,3 +132,7 @@ export const DEFAULT_GROUPS: DefaultGroup[] = [
   { grpCode: 'I002', grpName: 'Indirect Incomes', grpType: 'Income', parentGrp: 'Parent', sortOrder: 2 },
   { grpCode: 'I003', grpName: 'Sales Accounts', grpType: 'Income', parentGrp: 'Parent', sortOrder: 3 },
 ]; // prettier-ignore
+
+/** One of the 28 groups every book starts with: renamable, but its type and place are fixed. */
+export const isBuiltInGroup = (grpCode: string) =>
+  DEFAULT_GROUPS.some((g) => g.grpCode === grpCode);

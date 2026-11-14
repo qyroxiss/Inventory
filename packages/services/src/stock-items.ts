@@ -2,11 +2,12 @@
 // As in MDA:
 //   - Item Code and Item Name are required. The code is typed by the user and can't be changed
 //     once saved; Save refuses a code that exists (exact match), then a name that exists.
-//   - Update checks the name against the other items only (case-sensitive).
+//   - Update checks the name against the other items only (ignoring case, since 2026-11-14).
 //   - Under Sub Group is optional (stored as the sub group's code, '' for none). Unit and GST
 //     Rate are free text. GST Rate is cleared unless the Tax Type is Taxable (the screen does
 //     this; the service stores what it's given, as MDA's does).
-//   - Remove doesn't check purchases, sales or stock (docs/LOGIC-SPEC.md Q-42).
+//   - Remove is refused while any stock entry or bill uses the item (MDA removed it anyway:
+//     Q-42, fixed 2026-11-14); an item can be marked inactive instead.
 // Added here: Purchase Rate and Sale Rate. MDA's table has them (the invoices fill them in and
 // stock is valued at them) but its form never sets them. Leaving them out of an update keeps
 // the stored rates, so an MDA import's rates survive.
@@ -19,7 +20,7 @@ import {
   stockItemFieldErrors,
   stockItemMessages as msg,
 } from '@qi/core';
-import { and, asc, eq, ne, schema, type Db } from '@qi/db';
+import { and, asc, eq, ne, schema, sql, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 
 const { miscList, stockItems } = schema;
@@ -40,6 +41,7 @@ export type StockItem = {
   opQty: number;
   opRate: number;
   mrp: number;
+  isActive: boolean;
 };
 export type StockItemInput = {
   code: string;
@@ -55,6 +57,8 @@ export type StockItemInput = {
   opQty?: string;
   opRate?: string;
   mrp?: string;
+  /** Left out, an update keeps the stored status; a new item is active. */
+  isActive?: boolean;
 };
 
 const t = (v: string | undefined) => (v ?? '').trim();
@@ -90,11 +94,15 @@ export async function listStockItems(db: Db, bookId: string): Promise<StockItem[
     // The opening value over the quantity gives back the rate as typed (2 decimals).
     opRate: Number(i.opQty) > 0 ? round2(Number(i.opValue) / Number(i.opQty)) : 0,
     mrp: Number(i.mrp),
+    isActive: i.isActive,
   }));
 }
 
 async function nameTaken(db: Db, bookId: string, name: string, exceptCode?: string) {
-  const clauses = [eq(stockItems.bookId, bookId), eq(stockItems.partName, name)];
+  const clauses = [
+    eq(stockItems.bookId, bookId),
+    sql`lower(${stockItems.partName}) = ${name.toLowerCase()}`,
+  ];
   if (exceptCode) clauses.push(ne(stockItems.partCode, exceptCode));
   const [clash] = await db
     .select({ code: stockItems.partCode })
@@ -114,6 +122,7 @@ const fields = (input: StockItemInput) => ({
   ...(input.purRate === undefined ? {} : { purRate: rateValue(input.purRate)!.toFixed(2) }),
   ...(input.saleRate === undefined ? {} : { saleRate: rateValue(input.saleRate)!.toFixed(2) }),
   ...(input.mrp === undefined ? {} : { mrp: rateValue(input.mrp)!.toFixed(2) }),
+  ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
   // Opening Stock × Opening Rate is kept as the item's opening value (MDA's OpValue), which the
   // Stock Summary and Profit & Loss read.
   ...(input.opQty === undefined && input.opRate === undefined
@@ -165,7 +174,62 @@ export async function updateStockItem(
   return { code, name: v.partName };
 }
 
+/** Stock entries and bill or journal lines that use the item. */
+async function itemUses(db: Db, bookId: string, code: string) {
+  const {
+    stockTrn,
+    purchases,
+    purchaseLines,
+    sales,
+    saleLines,
+    returns,
+    returnLines,
+    vouchers,
+    stockJournalLines,
+  } = schema;
+  const n = sql<number>`count(*)::int`;
+  const counts = await Promise.all([
+    db
+      .select({ n })
+      .from(stockTrn)
+      .where(and(eq(stockTrn.bookId, bookId), eq(stockTrn.partCode, code))),
+    db
+      .select({ n })
+      .from(purchaseLines)
+      .innerJoin(purchases, eq(purchases.id, purchaseLines.purchaseId))
+      .where(and(eq(purchases.bookId, bookId), eq(purchaseLines.itemCode, code))),
+    db
+      .select({ n })
+      .from(saleLines)
+      .innerJoin(sales, eq(sales.id, saleLines.saleId))
+      .where(and(eq(sales.bookId, bookId), eq(saleLines.itemCode, code))),
+    db
+      .select({ n })
+      .from(returnLines)
+      .innerJoin(returns, eq(returns.id, returnLines.returnId))
+      .where(and(eq(returns.bookId, bookId), eq(returnLines.itemCode, code))),
+    db
+      .select({ n })
+      .from(stockJournalLines)
+      .innerJoin(vouchers, eq(vouchers.id, stockJournalLines.voucherId))
+      .where(and(eq(vouchers.bookId, bookId), eq(stockJournalLines.itemCode, code))),
+  ]);
+  // A bill's stock entries and its lines are the same use: count the larger of the two.
+  const [trn, ...lines] = counts.map((r) => Number(r[0]?.n ?? 0));
+  return Math.max(
+    trn!,
+    lines.reduce((a, b) => a + b, 0),
+  );
+}
+
 export async function removeStockItem(db: Db, bookId: string, code: string): Promise<void> {
+  const [item] = await db
+    .select({ name: stockItems.partName })
+    .from(stockItems)
+    .where(and(eq(stockItems.bookId, bookId), eq(stockItems.partCode, code)));
+  if (!item) return;
+  const used = await itemUses(db, bookId, code);
+  if (used > 0) throw new UserError(msg.inUse(item.name, used));
   await db
     .delete(stockItems)
     .where(and(eq(stockItems.bookId, bookId), eq(stockItems.partCode, code)));

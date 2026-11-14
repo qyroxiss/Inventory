@@ -9,8 +9,13 @@
 //   - The customer is picked from Sundry Debtors; picking fills the address block, which stays
 //     editable for a one-off delivery address. An item jumps to Required Qty; Add returns to the
 //     item.
-//   - The header Location is stamped on each line as it's added.
 //   - A cancelled bill opens for reference only and its Save collides with its own number.
+//
+// Changed 2026-11-14 (user's request: every option must work):
+//   - Location is picked from Godown (when there are any) and applies to every line on save.
+//   - A cash sale picks its Cash or Bank account, and can be to a walk-in customer: a typed
+//     name, with the State chosen here and the GST No. in Other Details.
+//   - Other Details has a Narration; Sale Type and Name say what's missing, not just turn red.
 //
 // Changed at the user's request (2026-10-11): the State sits beside the Name and decides CGST +
 // SGST or IGST. Since 2026-11-13 it can't be edited here: it comes from the customer's ledger,
@@ -87,7 +92,6 @@ const NAV = {
   save: 19,
 } as const;
 
-
 /** The Other Details popup's boxes, in Enter order. */
 const OTHER = [
   ['mobile', 'Mobile'],
@@ -95,6 +99,7 @@ const OTHER = [
   ['area', 'Area'],
   ['city', 'City'],
   ['gstNo', 'GST No'],
+  ['narration', 'Narration'],
 ] as const;
 
 type Header = {
@@ -115,6 +120,9 @@ type Header = {
   interState: boolean;
   billDiscPct: string;
   billDiscAmt: string;
+  /** A cash sale's Cash or Bank ledger. */
+  cashAccount: string;
+  narration: string;
 };
 
 type Entry = {
@@ -137,6 +145,8 @@ const blankEntry = (): Entry => ({
   line: null,
 });
 const num = (s: string) => Number(s) || 0;
+/** Every state by name, for a walk-in customer's State. */
+const STATE_NAMES = [...new Set(Object.values(GST_STATES))].sort();
 const nextNo = async (prefix?: string) =>
   (await unwrap(api.api.sales.next.$get({ query: prefix ? { prefix } : {} }))).billNo;
 
@@ -191,6 +201,8 @@ export function SalesInvoiceScreen() {
     interState: false,
     billDiscPct: '0.00',
     billDiscAmt: fa(0),
+    cashAccount: data?.cashAccounts[0]?.code ?? '',
+    narration: '',
   });
 
   useEffect(() => {
@@ -210,12 +222,15 @@ export function SalesInvoiceScreen() {
   const set = (patch: Partial<Header>) => setH((x) => ({ ...x!, ...patch }));
   const setE = (patch: Partial<Entry>) => setEntry((x) => ({ ...x, ...patch }));
   // The lookups show each item's Unit, GST % and Rate beside it.
-  const itemRefs = data.items.map((i) => ({
-    ...i,
-    extra: [i.unit, `GST ${i.gstRate}%`, i.saleRate > 0 ? `₹${fa(i.saleRate)}` : '']
-      .filter(Boolean)
-      .join('  ·  '),
-  }));
+  // Inactive items can't go on a new line (2026-11-14); old lines keep their stored name.
+  const itemRefs = data.items
+    .filter((i) => i.isActive)
+    .map((i) => ({
+      ...i,
+      extra: [i.unit, `GST ${i.gstRate}%`, i.saleRate > 0 ? `₹${fa(i.saleRate)}` : '']
+        .filter(Boolean)
+        .join('  ·  '),
+    }));
   const gstRateOf = (code: string) => data.items.find((i) => i.code === code)?.gstRate ?? 0;
   const totals = saleTotals(lines, num(h.billDiscPct), num(h.billDiscAmt));
   // The entry row's discount: the box typed in wins, the other shows what it comes to.
@@ -328,6 +343,7 @@ export function SalesInvoiceScreen() {
       hsnNo: l.hsnNo,
       gstRate: l.sgstP + l.cgstP + l.igstP,
       saleRate: 0,
+      isActive: false,
     };
     setEntry({
       item: it,
@@ -364,6 +380,9 @@ export function SalesInvoiceScreen() {
     // The form's validators: Sale Type and the customer turn red.
     const e = { saleType: !h.saleType, customer: !h.custName.trim() };
     setErrors(e);
+    // The message too, not just the red box (MDA's text was hidden: Q-22).
+    if (e.saleType) toast(sm.saleTypeRequired, 'error');
+    else if (e.customer) toast(sm.customerRequired, 'error');
     if (e.saleType || e.customer || saving) return;
     setSaving(true);
     const body = {
@@ -384,12 +403,15 @@ export function SalesInvoiceScreen() {
       billDiscPct: num(h.billDiscPct),
       billDiscAmt: num(h.billDiscAmt),
       interState: h.interState,
+      cashAccount: h.isCash ? h.cashAccount || null : null,
+      narration: h.narration,
       lines: lines.map((l) => ({
         itemCode: l.itemCode,
         itemName: l.itemName,
         hsnNo: l.hsnNo,
         unit: l.unit,
-        location: l.location,
+        // The bill's Location applies to every line (MDA stamped it as each line was added).
+        location: h.location.trim() || null,
         qty: l.qty,
         rate: l.rate,
         disP: l.disP,
@@ -434,7 +456,21 @@ export function SalesInvoiceScreen() {
       billDate: bill.billDate,
       saleType: data.saleTypes.find((t) => t.name === bill.saleType) ?? null,
       isCash: bill.payMode !== 'Credit',
-      customer: data.customers.find((c) => c.code === bill.custCode) ?? null,
+      // A customer no longer listed (inactive, or moved) keeps its link (MDA dropped it: Q-53).
+      customer:
+        data.customers.find((c) => c.code === bill.custCode) ??
+        (bill.custCode
+          ? {
+              code: bill.custCode,
+              name: bill.custName,
+              address: bill.address,
+              city: bill.city,
+              state: bill.state,
+              stateCode: stateCodeOfName(bill.state),
+              mobile: bill.mobile,
+              gstNo: bill.gstNo,
+            }
+          : null),
       custName: bill.custName,
       area: bill.area,
       city: bill.city,
@@ -446,6 +482,8 @@ export function SalesInvoiceScreen() {
       interState: bill.isInterState,
       billDiscPct: f2(bill.billDiscPct),
       billDiscAmt: fa(bill.billDiscAmt),
+      cashAccount: bill.cashAccount,
+      narration: bill.narration,
     });
     setLines(bill.lines);
     setEditing(cancelled ? null : bill.billNo);
@@ -470,7 +508,9 @@ export function SalesInvoiceScreen() {
     setSaving(false);
   };
 
-  const text = (id: 'area' | 'city' | 'address' | 'mobile' | 'gstNo' | 'location') => (
+  const text = (
+    id: 'area' | 'city' | 'address' | 'mobile' | 'gstNo' | 'location' | 'narration',
+  ) => (
     <input
       id={`si-${id}`}
       data-nav={id === 'location' ? NAV.location : undefined}
@@ -585,9 +625,23 @@ export function SalesInvoiceScreen() {
               />
             </Cell>
             <Cell id="si-location" label="Location">
-              {text('location')}
+              {data.godowns.length ? (
+                <Lookup<{ code: string; name: string }>
+                  id="si-location"
+                  nav={NAV.location}
+                  value={data.godowns.find((g) => g.name === h.location) ?? null}
+                  items={data.godowns}
+                  hint="Select godown"
+                  onChange={(g) => {
+                    set({ location: g.name });
+                    focusNav(NAV.customer);
+                  }}
+                />
+              ) : (
+                text('location')
+              )}
             </Cell>
-            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_auto] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
+            <div className="col-span-5 grid grid-cols-[4fr_3fr_2fr_3fr_auto] gap-x-2.5 gap-y-1.5 max-lg:col-span-3 max-md:col-span-2 max-md:grid-cols-2">
               <Cell id="si-customer" label="Name" required className="max-md:col-span-2">
                 <div className="flex gap-1.5">
                   <div className="min-w-0 flex-1">
@@ -602,6 +656,15 @@ export function SalesInvoiceScreen() {
                       hint={data.customers.length ? 'Type to search customer' : sm.noCustomersHint}
                       error={errors.customer}
                       onChange={onCustomer}
+                      onFreeText={
+                        h.isCash
+                          ? (name) => {
+                              // A walk-in customer: no ledger, just the name on the bill.
+                              set({ customer: null, custName: name });
+                              setErrors((x) => ({ ...x, customer: false }));
+                            }
+                          : undefined
+                      }
                     />
                   </div>
                   {/* A new customer (under Sundry Debtors), picked here once saved. */}
@@ -618,9 +681,42 @@ export function SalesInvoiceScreen() {
               </Cell>
               {/* Read-only (user's request, 2026-11-13): the State is the customer's, from its
                   ledger; change it in Ledger Creation. */}
-              <Cell label="State">
-                <ReadOnly text={h.state || '—'} />
+              <Cell id="si-state" label="State">
+                {h.customer ? (
+                  <ReadOnly text={h.state || '—'} />
+                ) : (
+                  <select
+                    id="si-state"
+                    value={h.state}
+                    onChange={(e) => applyState(e.target.value)}
+                    className={boxClass()}
+                  >
+                    <option value="">Own state</option>
+                    {STATE_NAMES.map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </Cell>
+              {h.isCash && (
+                <Cell id="si-cashAccount" label="Cash / Bank A/c">
+                  <select
+                    id="si-cashAccount"
+                    value={h.cashAccount}
+                    onChange={(e) => set({ cashAccount: e.target.value })}
+                    className={boxClass()}
+                  >
+                    {!data.cashAccounts.length && <option value="">Cash</option>}
+                    {data.cashAccounts.map((a) => (
+                      <option key={a.code} value={a.code}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </Cell>
+              )}
               <Cell label="GST">
                 <ReadOnly text={h.interState ? 'IGST' : 'CGST + SGST'} strong />
               </Cell>
@@ -752,6 +848,8 @@ export function SalesInvoiceScreen() {
               <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
                 <Total label="Qty" value={fq(totals.qty)} />
                 <Total label="Sub Total" value={fa(totals.subTotal)} />
+                {/* The bill discount comes off before tax (2026-11-14). */}
+                {totals.billDisc > 0 && <Total label="Less Discount" value={fa(totals.billDisc)} />}
                 {h.interState ? (
                   <Total label="IGST" value={fa(totals.igst)} />
                 ) : (
@@ -766,7 +864,11 @@ export function SalesInvoiceScreen() {
                 <span className="flex-1" />
                 <Total
                   label="Total"
-                  value={fa(round2(totals.subTotal + totals.cgst + totals.sgst + totals.igst))}
+                  value={fa(
+                    round2(
+                      totals.subTotal - totals.billDisc + totals.cgst + totals.sgst + totals.igst,
+                    ),
+                  )}
                 />
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
@@ -909,7 +1011,9 @@ export function SalesInvoiceScreen() {
       <SaleList
         open={!!list}
         rows={list ?? []}
-        onPick={(r) => void loadBill(r.billNo).catch((err: unknown) => toast(errorText(err), 'error'))}
+        onPick={(r) =>
+          void loadBill(r.billNo).catch((err: unknown) => toast(errorText(err), 'error'))
+        }
         onClose={() => setList(null)}
       />
       <ConfirmDelete

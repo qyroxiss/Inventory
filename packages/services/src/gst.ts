@@ -22,10 +22,10 @@ import {
   type GstLine,
   type GstNote,
 } from '@qi/core';
-import { and, asc, eq, gte, inArray, lte, or, schema, sql, type Db } from '@qi/db';
+import { and, asc, eq, gte, inArray, lte, schema, sql, type Db } from '@qi/db';
+import { groupFamilyCodes } from './groups.ts';
 
 const {
-  accountGroups,
   books,
   companies,
   ledgers,
@@ -208,21 +208,39 @@ async function returnNotes(
   if (kind === 'SRT') {
     const nos = [...new Set(heads.map((h) => h.againstBillNo))];
     const ss = await db
-      .select({ billNo: sales.billNo, gstNo: sales.gstNo, stateCode: sales.stateCode, state: sales.state, value: sales.netAmount })
+      .select({
+        billNo: sales.billNo,
+        gstNo: sales.gstNo,
+        stateCode: sales.stateCode,
+        state: sales.state,
+        value: sales.netAmount,
+      })
       .from(sales)
       .where(and(eq(sales.bookId, bookId), inArray(sales.billNo, nos)));
-    for (const s of ss) saleGst.set(s.billNo, { gstin: s.gstNo ?? '', stateCode: s.stateCode, state: s.state, value: Number(s.value) });
+    for (const s of ss)
+      saleGst.set(s.billNo, {
+        gstin: s.gstNo ?? '',
+        stateCode: s.stateCode,
+        state: s.state,
+        value: Number(s.value),
+      });
   }
   const supp = new Map<string, { gstin: string; stateCode: string | null; state: string | null }>();
   if (kind === 'PRT') {
     const codes = [...new Set(heads.map((h) => h.partyCode ?? ''))].filter(Boolean);
     const ls = codes.length
       ? await db
-          .select({ code: ledgers.accCode, gstin: ledgers.gstin, stateCode: ledgers.stateCode, state: ledgers.state })
+          .select({
+            code: ledgers.accCode,
+            gstin: ledgers.gstin,
+            stateCode: ledgers.stateCode,
+            state: ledgers.state,
+          })
           .from(ledgers)
           .where(and(eq(ledgers.bookId, bookId), inArray(ledgers.accCode, codes)))
       : [];
-    for (const l of ls) supp.set(l.code, { gstin: l.gstin ?? '', stateCode: l.stateCode, state: l.state });
+    for (const l of ls)
+      supp.set(l.code, { gstin: l.gstin ?? '', stateCode: l.stateCode, state: l.state });
   }
   return heads.map((h) => {
     const who = kind === 'SRT' ? saleGst.get(h.againstBillNo) : supp.get(h.partyCode ?? '');
@@ -369,19 +387,10 @@ export async function gstAudit(db: Db, ctx: GstContext, p: Period): Promise<Audi
       ref: company?.name ?? '',
     });
 
-  // Party GSTINs (customers and suppliers, and groups directly under them).
-  const groups = await db
-    .select({ code: accountGroups.grpCode })
-    .from(accountGroups)
-    .where(
-      and(
-        eq(accountGroups.bookId, ctx.bookId),
-        or(
-          inArray(accountGroups.grpCode, [DEBTORS_GROUP, CREDITORS_GROUP]),
-          inArray(accountGroups.parentGrp, [DEBTORS_GROUP, CREDITORS_GROUP]),
-        ),
-      ),
-    );
+  // Party GSTINs (customers and suppliers, and every sub group under them).
+  const groups = (await groupFamilyCodes(db, ctx.bookId, [DEBTORS_GROUP, CREDITORS_GROUP])).map(
+    (code) => ({ code }),
+  );
   if (groups.length) {
     const parties = await db
       .select({ name: ledgers.accName, code: ledgers.accCode, gstin: ledgers.gstin })

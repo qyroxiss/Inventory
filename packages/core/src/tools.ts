@@ -4,8 +4,9 @@
 
 // ── User Management (user_management_page.dart) ─────────────────────────────────
 
-/** A new user's role before one is picked: 'User', which isn't in the role list (Q-02). */
-export const NEW_USER_ROLE = 'User';
+/** A new user's role before one is picked: Viewer, the one with the least access (MDA used
+ *  'User', which isn't in the role list: Q-02, fixed 2026-11-14). */
+export const NEW_USER_ROLE = 'Viewer';
 
 /** The ROLE PERMISSIONS grid. Shown only — nothing enforces it (Q-12). */
 export const ROLE_PERMISSIONS: [feature: string, admin: boolean, manager: boolean, operator: boolean, viewer: boolean][] = [
@@ -29,6 +30,9 @@ export const userMessages = {
   exists: (name: string) => `User "${name}" already exists`,
   notSelf: 'Cannot delete the currently logged-in user',
   lastAdmin: 'Cannot delete the only Admin user',
+  /** Added 2026-11-14 (MDA let the last Admin be demoted or switched off: Q-54). */
+  lastAdminChange: 'At least one active Admin user is needed; this would leave none.',
+  notSelfChange: 'You can not change your own role or switch yourself off.',
   deleteConfirm: (name: string) => `Delete user "${name}"? This cannot be undone.`,
   none: 'No users yet',
 } as const;
@@ -68,6 +72,10 @@ export const seriesMessages = {
   prefixRequired: 'Prefix is required',
   prefixChars: 'Use letters, digits, - or / only (up to 8)',
   width: 'Digits must be 1 to 8',
+  /** Added 2026-11-14 (MDA's counter never moved: Q-08). */
+  startNumber: 'Start From must be a whole number above 0',
+  startTooLow: (lowest: number) =>
+    `Numbers below ${lowest} are already used; start from ${lowest} or higher.`,
   saved: (name: string) => `Numbering for ${name} updated`,
   adminOnly: 'Only an Admin user can change company settings',
   companyUpdated: (name: string) => `Company "${name}" updated successfully`,

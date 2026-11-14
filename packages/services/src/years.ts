@@ -6,11 +6,12 @@ import {
   hashPassword,
   parseDate,
   yearCode,
+  yearDatesProblem,
   yearFieldErrors,
   yearMessages,
 } from '@qi/core';
 import { and, asc, desc, eq, lt, schema, type Db } from '@qi/db';
-import { carryOpenings, copyMasters } from './carry-forward.ts';
+import { carryOpenings, copyMasters, copyUsers } from './carry-forward.ts';
 import { getCompany } from './companies.ts';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 import { seedDefaultGroups } from './groups.ts';
@@ -74,6 +75,8 @@ export async function createYear(
   const toDate = parseDate(input.toDate);
   if (!fromDate) throw new UserError(yearMessages.required, { fromDate: yearMessages.required });
   if (!toDate) throw new UserError(yearMessages.required, { toDate: yearMessages.required });
+  const datesProblem = yearDatesProblem(yearName, fromDate, toDate);
+  if (datesProblem) throw new UserError(datesProblem, { fromDate: datesProblem });
 
   const adminPassword = await hashPassword(SEED_ADMIN.password);
 
@@ -83,6 +86,13 @@ export async function createYear(
       .from(financialYears)
       .where(and(eq(financialYears.companyId, companyId), eq(financialYears.yearCode, code)));
     if (clash) throw new UserError(yearMessages.exists(yearName));
+    // No two years of a company may share a day.
+    const others = await tx
+      .select()
+      .from(financialYears)
+      .where(eq(financialYears.companyId, companyId));
+    const overlap = others.find((o) => o.fromDate <= toDate && o.toDate >= fromDate);
+    if (overlap) throw new UserError(yearMessages.overlap(overlap.yearName));
 
     let [book] = await tx
       .select()
@@ -103,6 +113,16 @@ export async function createYear(
           await copyMasters(tx as unknown as Db, prev.bookId, book!.id);
           await carryOpenings(tx as unknown as Db, prev.bookId, book!.id, prev.toDate);
         }
+      } else {
+        // The company's users (and roles) come along into every new year, so nobody starts
+        // again from admin/admin (user's decision, 2026-11-14; MDA: Q-03).
+        const [latest] = await tx
+          .select()
+          .from(financialYears)
+          .where(eq(financialYears.companyId, companyId))
+          .orderBy(desc(financialYears.toDate))
+          .limit(1);
+        if (latest) await copyUsers(tx as unknown as Db, latest.bookId, book!.id);
       }
     }
 

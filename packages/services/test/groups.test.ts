@@ -110,10 +110,33 @@ describe('updateGroup', () => {
 });
 
 describe('deleteGroup', () => {
-  test('a top-level group can never be removed from Group Master (Q-16)', async () => {
+  test('a group the user made can be removed once nothing is under it', async () => {
     const g = await createGroup(db, bookId, { name: 'Petty Cash', type: 'Assets' });
-    await rejects(deleteGroup(db, bookId, g.grpCode), 'This record will be not deleted');
-    expect(await listGroups(db, bookId)).toHaveLength(17); // 16 seeded + the new one, untouched
+    const sub = await createSubGroup(db, bookId, { name: 'Till', under: g.grpCode });
+    await rejects(
+      deleteGroup(db, bookId, g.grpCode),
+      '"Petty Cash" has 1 sub group(s) and 0 ledger(s) under it and cannot be removed.',
+    );
+    await deleteSubGroup(db, bookId, sub.grpCode);
+    await deleteGroup(db, bookId, g.grpCode);
+    expect(await listGroups(db, bookId)).toHaveLength(16);
+  });
+
+  test('a built-in group can be renamed but keeps its type', async () => {
+    await rejects(
+      updateGroup(db, bookId, 'A001', { name: 'Current Assets', type: 'Income' }),
+      'The type of a built-in group can not be changed.',
+    );
+    const g = await updateGroup(db, bookId, 'A001', { name: 'Assets (Current)', type: 'Assets' });
+    expect(g.grpName).toBe('Assets (Current)');
+  });
+
+  test("a user-made group's new type passes down to its sub groups", async () => {
+    const g = await createGroup(db, bookId, { name: 'Misc', type: 'Assets' });
+    const sub = await createSubGroup(db, bookId, { name: 'Misc Sub', under: g.grpCode });
+    await updateGroup(db, bookId, g.grpCode, { name: 'Misc', type: 'Expenses' });
+    const rows = await listSubGroups(db, bookId);
+    expect(rows.find((r) => r.grpCode === sub.grpCode)!.grpType).toBe('Expenses');
   });
 
   test('a seeded top-level group is equally protected', async () => {
@@ -155,7 +178,7 @@ describe('createSubGroup', () => {
 });
 
 describe('updateSubGroup', () => {
-  test('renames and re-parents, but never changes GrpType (Q-18)', async () => {
+  test("renames and re-parents, taking the new parent's type", async () => {
     const g = await createSubGroup(db, bookId, { name: 'Temp', under: 'A001' }); // Assets
     const updated = await updateSubGroup(db, bookId, g.grpCode, {
       name: 'Renamed',
@@ -163,7 +186,11 @@ describe('updateSubGroup', () => {
     });
     expect(updated.grpName).toBe('Renamed');
     expect(updated.parentGrp).toBe('L002');
-    expect(updated.grpType).toBe('Assets'); // unchanged, even under a Liabilities parent
+    expect(updated.grpType).toBe('Liabilities');
+    await rejects(
+      updateSubGroup(db, bookId, g.grpCode, { name: 'Renamed', under: g.grpCode }),
+      'A sub group can not be under itself.',
+    );
   });
 
   test('rejects a rename onto an existing name', async () => {

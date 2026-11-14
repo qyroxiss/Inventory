@@ -239,12 +239,15 @@ export function Lookup<T extends Ref>({
   showCode,
   error,
   onChange,
+  onFreeText,
 }: {
   id: string;
   nav?: number;
   value: T | null;
   items: T[];
   hint: string;
+  /** Takes typed text that matches nothing (a walk-in customer's name, 2026-11-14). */
+  onFreeText?: (text: string) => void;
   /** Item Code entry: the box reads the code alone; the name has its own box beside it. MDA's
    *  "CODE  -  Name" was changed at the user's request (2026-10-25). */
   showCode?: boolean;
@@ -299,6 +302,11 @@ export function Lookup<T extends Ref>({
       // Enter takes the highlighted match; the screen then moves on.
       e.preventDefault();
       pick(matches[hi] ?? matches[0]!);
+    } else if (e.key === 'Enter' && onFreeText && text !== null && text.trim()) {
+      // Nothing matches: the typed text is taken as it is.
+      onFreeText(text.trim());
+      setText(null);
+      setBrowse(false);
     } else if (e.key === 'Escape' && (text !== null || browse)) {
       e.preventDefault();
       setText(null);
@@ -324,6 +332,8 @@ export function Lookup<T extends Ref>({
             setHi(0);
           }}
           onBlur={() => {
+            if (onFreeText && text !== null && text.trim() && text.trim() !== shown)
+              onFreeText(text.trim());
             setText(null);
             setBrowse(false);
           }}

@@ -6,17 +6,22 @@
 // customer's bill reference, plus an audit entry.
 //
 // As in MDA:
-//   - Nothing is sold beyond the stock in hand (all godowns together).
-//   - A cash sale is debited to the first Cash-in-Hand ledger by code; a book with none gets a
-//     "Cash" ledger (CASH001) so a cash sale is never blocked (Q-30).
+//   - Nothing is sold beyond the stock in hand: in all, as on the bill date, and in the bill's
+//     godown (MDA looked at all godowns and every date: Q-27, fixed 2026-11-14).
+//   - A cash sale is debited to the Cash or Bank account chosen on the bill (2026-11-14), else
+//     the first Cash-in-Hand ledger by code; a book with none gets a "Cash" ledger (CASH001) so
+//     a cash sale is never blocked (was Q-30).
+//   - A cash sale may be to a walk-in customer: a typed name, no ledger (was Q-51).
 //   - Bill numbers run per sale-type prefix; the SALEBILL counter is a floor only for the
 //     standard prefix and is never moved (Q-08).
-//   - Update reposts the voucher under a new SAL number, keeping the bill number (Q-07).
+//   - Update reposts the voucher under its same SAL number (MDA took a new one: Q-07, fixed
+//     2026-11-14).
 //   - Cancel never deletes: bill and voucher marked Cancelled, the goods go back into stock.
-//   - The screen has no Narration box, so the voucher reads "Sale <bill no>".
+//   - The voucher's narration is the bill's Narration, or "Sale <bill no>" when blank.
 
 import {
   ACTIVE,
+  BANK_GROUP,
   CANCELLED,
   CASH_SALE_LEDGER,
   CUSTOMER_GROUP,
@@ -34,8 +39,9 @@ import {
   type SaleLine,
   type SaleTotals,
 } from '@qi/core';
-import { and, asc, desc, eq, inArray, or, schema, sql, type Db } from '@qi/db';
+import { and, asc, desc, eq, inArray, schema, sql, type Db } from '@qi/db';
 import { assertNoReturns, assertReturnsFit } from './bill-returns.ts';
+import { groupFamilyCodes } from './groups.ts';
 import { UserError } from './errors.ts';
 import { listSaleTypes } from './sale-types.ts';
 import { assertStockAvailable } from './stock.ts';
@@ -77,19 +83,10 @@ export type Customer = {
   gstNo: string;
 };
 
-/** Customers (active ledgers in Sundry Debtors or a group directly under it), items with their
+/** Customers (active ledgers in Sundry Debtors or any sub group under it), items with their
  *  sale rate, and the sale types by name. */
 export async function saleLookups(db: Db, bookId: string) {
-  const groups = await db
-    .select({ code: accountGroups.grpCode })
-    .from(accountGroups)
-    .where(
-      and(
-        eq(accountGroups.bookId, bookId),
-        or(eq(accountGroups.grpCode, CUSTOMER_GROUP), eq(accountGroups.parentGrp, CUSTOMER_GROUP)),
-      ),
-    );
-  const codes = groups.map((g) => g.code);
+  const codes = await groupFamilyCodes(db, bookId, [CUSTOMER_GROUP]);
   const cust = codes.length
     ? await db
         .select()
@@ -121,6 +118,7 @@ export async function saleLookups(db: Db, bookId: string) {
     })),
     items: items.map((r) => ({
       code: r.partCode,
+      isActive: r.isActive,
       name: r.partName,
       unit: r.unit,
       hsnNo: r.hsnNo,
@@ -128,7 +126,32 @@ export async function saleLookups(db: Db, bookId: string) {
       saleRate: Number(r.saleRate),
     })),
     saleTypes: await listSaleTypes(db, bookId),
+    // A cash sale's account (Cash-in-Hand or Bank, with their sub groups), and the godowns.
+    cashAccounts: await cashAccountsOf(db, bookId),
+    godowns: await db
+      .select({ code: schema.miscList.miscCode, name: schema.miscList.miscName })
+      .from(schema.miscList)
+      .where(and(eq(schema.miscList.bookId, bookId), eq(schema.miscList.miscType, 'Godown')))
+      .orderBy(asc(schema.miscList.miscName)),
   };
+}
+
+/** Cash-in-Hand ledgers first (the first is the default), then the banks. */
+async function cashAccountsOf(db: Db, bookId: string) {
+  const cash = await groupFamilyCodes(db, bookId, [CASH_SALE_LEDGER.group]);
+  const groups = [...cash, ...(await groupFamilyCodes(db, bookId, [BANK_GROUP]))];
+  if (!groups.length) return [];
+  const rows = await db
+    .select({ code: ledgers.accCode, name: ledgers.accName, grpCode: ledgers.grpCode })
+    .from(ledgers)
+    .where(
+      and(eq(ledgers.bookId, bookId), inArray(ledgers.grpCode, groups), eq(ledgers.isActive, true)),
+    )
+    .orderBy(asc(ledgers.accCode));
+  const isCash = (g: string) => cash.includes(g);
+  return rows
+    .sort((x, y) => Number(isCash(y.grpCode)) - Number(isCash(x.grpCode)))
+    .map((r) => ({ code: r.code, name: r.name }));
 }
 
 // ── Numbering (nextBillNo) ──────────────────────────────────────────────────────
@@ -202,6 +225,9 @@ export type SaleInput = {
   billDiscAmt: number;
   interState: boolean;
   lines: SaleLineInput[];
+  /** A cash sale's Cash-in-Hand or Bank ledger; blank takes the first cash ledger. */
+  cashAccount?: string | null;
+  narration?: string;
 };
 
 const buildLines = (input: SaleInput): SaleLine[] =>
@@ -244,7 +270,7 @@ const masterValues = (input: SaleInput, tot: SaleTotals) => ({
   mobile: t(input.mobile),
   gstNo: t(input.gstNo),
   location: t(input.location),
-  narration: null,
+  narration: t(input.narration) || null,
   isInterState: input.interState,
   totalQty: qty3(tot.qty),
   subTotal: money(tot.subTotal),
@@ -328,6 +354,21 @@ async function resolveDebtor(db: Db, bookId: string, input: SaleInput): Promise<
     await assertLedgersExist(db, bookId, [input.custCode]);
     return input.custCode;
   }
+  const cashGroups = await groupFamilyCodes(db, bookId, [CASH_SALE_LEDGER.group, BANK_GROUP]);
+  if (input.cashAccount) {
+    const [chosen] = await db
+      .select({ code: ledgers.accCode })
+      .from(ledgers)
+      .where(
+        and(
+          eq(ledgers.bookId, bookId),
+          eq(ledgers.accCode, input.cashAccount),
+          inArray(ledgers.grpCode, cashGroups),
+        ),
+      );
+    if (!chosen) throw new UserError(sm.badCashAccount);
+    return chosen.code;
+  }
   const [cash] = await db
     .select({ code: ledgers.accCode })
     .from(ledgers)
@@ -358,6 +399,9 @@ async function postSale(
   input: SaleInput,
   lines: SaleLine[],
   tot: SaleTotals,
+  /** On update, the bill's existing voucher number (kept since 2026-11-14; MDA took a new one:
+   *  Q-07). */
+  keepNo?: string,
 ): Promise<string> {
   const debtor = await resolveDebtor(db, ctx.bookId, input);
   const acct = salePosting(debtor, tot, input.interState);
@@ -366,7 +410,7 @@ async function postSale(
   if (Math.abs(totalDr - totalCr) >= 0.005)
     throw new UserError(sm.unbalanced(Math.abs(totalDr - totalCr)));
 
-  const vchrNo = await nextVoucherNo(db, ctx.bookId, 'SAL');
+  const vchrNo = keepNo ?? (await nextVoucherNo(db, ctx.bookId, 'SAL'));
   const [v] = await db
     .insert(vouchers)
     .values({
@@ -376,7 +420,7 @@ async function postSale(
       vchrDate: input.billDate,
       partyCode: input.custCode || null,
       refNo: input.billNo,
-      narration: `Sale ${input.billNo}`,
+      narration: t(input.narration) || `Sale ${input.billNo}`,
       placeOfSupply: input.stateCode ?? null,
       taxableAmt: money(tot.subTotal),
       cgstAmt: money(tot.cgst),
@@ -390,7 +434,7 @@ async function postSale(
     })
     .returning({ id: vouchers.id });
   const voucherId = v!.id;
-  await commitVoucherNo(db, ctx.bookId, 'SAL', vchrNo);
+  if (!keepNo) await commitVoucherNo(db, ctx.bookId, 'SAL', vchrNo);
 
   await db.insert(voucherLines).values(
     acct.map((l, i) => ({
@@ -484,8 +528,8 @@ export async function saveSale(
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;
     if (await findSale(tx, ctx.bookId, billNo)) throw new UserError(sm.billUsed(billNo));
-    await assertStockAvailable(tx, ctx.bookId, lines);
-    const voucherId = await postSale(tx, ctx, { ...input, billNo }, lines, tot);
+    await assertStockAvailable(tx, ctx.bookId, lines, input.billDate);
+    const voucherId = await postSale(tx, ctx, { ...input, billNo }, tot.taxed, tot);
     const [s] = await tx
       .insert(sales)
       .values({
@@ -497,7 +541,7 @@ export async function saveSale(
         createdBy: ctx.userName,
       })
       .returning({ id: sales.id });
-    await writeLines(tx, s!.id, lines);
+    await writeLines(tx, s!.id, tot.taxed);
     await log(tx, ctx, 'CREATE', billNo, `Net ${tot.net.toFixed(2)}, ${lines.length} item(s)`);
   });
   return { billNo, net: tot.net };
@@ -526,13 +570,26 @@ export async function updateSale(
   await db.transaction(async (raw) => {
     const tx = raw as unknown as Db;
     await tx.delete(saleLines).where(eq(saleLines.saleId, old.id));
+    let keepNo: string | undefined;
     if (old.voucherId) {
+      const [ov] = await tx
+        .select({ no: vouchers.vchrNo })
+        .from(vouchers)
+        .where(eq(vouchers.id, old.voucherId));
+      keepNo = ov?.no;
       await tx.update(sales).set({ voucherId: null }).where(eq(sales.id, old.id));
       await tx.delete(vouchers).where(eq(vouchers.id, old.voucherId));
     }
     // The old stock movement is gone, so the check sees the position without this bill.
-    await assertStockAvailable(tx, ctx.bookId, lines);
-    const voucherId = await postSale(tx, ctx, { ...input, billNo: old.billNo }, lines, tot);
+    await assertStockAvailable(tx, ctx.bookId, lines, input.billDate);
+    const voucherId = await postSale(
+      tx,
+      ctx,
+      { ...input, billNo: old.billNo },
+      tot.taxed,
+      tot,
+      keepNo,
+    );
     await tx
       .update(sales)
       .set({
@@ -542,7 +599,7 @@ export async function updateSale(
         modifiedAt: new Date(),
       })
       .where(eq(sales.id, old.id));
-    await writeLines(tx, old.id, lines);
+    await writeLines(tx, old.id, tot.taxed);
     await log(tx, ctx, 'UPDATE', old.billNo, `Net ${tot.net.toFixed(2)}`);
   });
   return { billNo: old.billNo, net: tot.net };
@@ -610,6 +667,18 @@ export async function listSales(db: Db, bookId: string): Promise<SaleRow[]> {
   }));
 }
 
+/** The account a sale's voucher debited (a cash sale's Cash or Bank ledger). */
+async function debitedAccount(db: Db, voucherId: string | null): Promise<string> {
+  if (!voucherId) return '';
+  const [dr] = await db
+    .select({ code: voucherLines.accCode })
+    .from(voucherLines)
+    .where(and(eq(voucherLines.voucherId, voucherId), sql`${voucherLines.drAmount} > 0`))
+    .orderBy(asc(voucherLines.lineNo))
+    .limit(1);
+  return dr?.code ?? '';
+}
+
 /** One bill with its lines, for reopening. */
 export async function saleBill(db: Db, bookId: string, billNo: string) {
   const s = await findSale(db, bookId, billNo);
@@ -619,25 +688,23 @@ export async function saleBill(db: Db, bookId: string, billNo: string) {
     .from(saleLines)
     .where(eq(saleLines.saleId, s.id))
     .orderBy(asc(saleLines.lineNo));
-  const lines: SaleLine[] = rows.map((r) => ({
-    itemCode: r.itemCode,
-    itemName: r.itemName ?? '',
-    hsnNo: r.hsnNo,
-    unit: r.unit,
-    location: r.location,
-    qty: Number(r.qty),
-    rate: Number(r.rate),
-    disP: Number(r.disP),
-    disA: Number(r.disA),
-    amount: Number(r.amount),
-    sgstP: Number(r.sgstP),
-    sgstA: Number(r.sgstA),
-    cgstP: Number(r.cgstP),
-    cgstA: Number(r.cgstA),
-    igstP: Number(r.igstP),
-    igstA: Number(r.igstA),
-    lineTotal: Number(r.lineTotal),
-  }));
+  // The lines as entered: the stored values carry the bill discount's share (taken before tax,
+  // 2026-11-14), so they're worked out again from quantity, rate, discount and GST rate.
+  const lines: SaleLine[] = rows.map((r) =>
+    saleLine({
+      itemCode: r.itemCode,
+      itemName: r.itemName ?? '',
+      hsnNo: r.hsnNo,
+      unit: r.unit,
+      location: r.location,
+      qty: Number(r.qty),
+      rate: Number(r.rate),
+      disP: Number(r.disP),
+      disA: Number(r.disA),
+      gstRate: Number(r.sgstP) + Number(r.cgstP) + Number(r.igstP),
+      interState: s.isInterState,
+    }),
+  );
   return {
     billNo: s.billNo,
     billDate: s.billDate,
@@ -652,6 +719,8 @@ export async function saleBill(db: Db, bookId: string, billNo: string) {
     mobile: s.mobile ?? '',
     gstNo: s.gstNo ?? '',
     location: s.location ?? '',
+    narration: s.narration ?? '',
+    cashAccount: s.payMode === 'Cash' ? await debitedAccount(db, s.voucherId) : '',
     billDiscPct: Number(s.billDiscPct),
     billDiscAmt: Number(s.billDiscAmt),
     isInterState: s.isInterState,

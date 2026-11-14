@@ -101,8 +101,8 @@ describe('save', () => {
 
     const [v] = await listVouchers(db, ctx.bookId, ['PUR']);
     expect(v).toMatchObject({ vchrNo: 'PUR-001', refNo: 'PB-0001', netAmount: 1233, partyCode: 'AC0001' });
-    // The narration stays empty: MDA's "Purchase <bill>" fallback never applies (Q-49).
-    expect(v!.narration).toBe('');
+    // A blank narration posts as "Purchase <bill>" (MDA's fallback never applied: Q-49).
+    expect(v!.narration).toBe('Purchase PB-0001');
     const lines = await voucherLinesOf(db, ctx.bookId, v!.id);
     expect(lines.map((l) => [l.accCode, l.dr, l.cr])).toEqual([
       ['PUR001', 1049.99, 0],
@@ -159,11 +159,11 @@ describe('save', () => {
 });
 
 describe('update and cancel', () => {
-  test('update keeps the bill number but reposts under a new PUR number (Q-07)', async () => {
+  test('update keeps the bill number and its PUR number', async () => {
     await savePurchase(db, ctx, bill());
     await updatePurchase(db, ctx, bill({ lines: [bill().lines[0]!] }));
     const vs = await listVouchers(db, ctx.bookId, ['PUR'], true);
-    expect(vs.map((v) => v.vchrNo)).toEqual(['PUR-002']);
+    expect(vs.map((v) => v.vchrNo)).toEqual(['PUR-001']);
     expect(vs[0]!.netAmount).toBe(1121);
     expect(await stockOf('IT02')).toBe(0);
     expect((await purchaseBill(db, ctx.bookId, 'PB-0001'))!.lines).toHaveLength(1);

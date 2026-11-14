@@ -33,16 +33,14 @@ const { auditLog, bookUsers, voucherSeries } = schema;
 export type Actor = { bookId: string; userName: string; role: string };
 
 async function log(db: Db, a: Actor, action: string, table: string, key: string, details = '') {
-  await db
-    .insert(auditLog)
-    .values({
-      bookId: a.bookId,
-      userName: a.userName,
-      action,
-      tableName: table,
-      recordKey: key,
-      details,
-    });
+  await db.insert(auditLog).values({
+    bookId: a.bookId,
+    userName: a.userName,
+    action,
+    tableName: table,
+    recordKey: key,
+    details,
+  });
 }
 
 const requireAdmin = (a: Actor, message: string = um.adminOnly) => {
@@ -74,6 +72,37 @@ export type UserInput = {
   isActive: boolean;
 };
 
+/** Another user of the book with this name, whatever its case. */
+async function nameTaken(db: Db, bookId: string, name: string, exceptCode?: string) {
+  const [u] = await db
+    .select({ code: bookUsers.userCode })
+    .from(bookUsers)
+    .where(
+      and(
+        eq(bookUsers.bookId, bookId),
+        sql`lower(${bookUsers.userName}) = ${name.toLowerCase()}`,
+        exceptCode ? sql`${bookUsers.userCode} <> ${exceptCode}` : undefined,
+      ),
+    );
+  return !!u;
+}
+
+/** Active Admins in the book other than the given user. */
+async function otherActiveAdmins(db: Db, bookId: string, exceptCode: string) {
+  const [r] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(bookUsers)
+    .where(
+      and(
+        eq(bookUsers.bookId, bookId),
+        sql`lower(${bookUsers.role}) = 'admin'`,
+        eq(bookUsers.isActive, true),
+        sql`${bookUsers.userCode} <> ${exceptCode}`,
+      ),
+    );
+  return Number(r?.n ?? 0);
+}
+
 const isUnique = (err: unknown) =>
   /unique|duplicate/i.test(
     String((err as Error)?.message ?? err) + String((err as { cause?: unknown })?.cause ?? ''),
@@ -84,6 +113,7 @@ export async function createBookUser(db: Db, a: Actor, input: UserInput): Promis
   requireAdmin(a);
   const name = input.userName.trim();
   const role = input.role || NEW_USER_ROLE;
+  if (await nameTaken(db, a.bookId, name)) throw new UserError(um.exists(name));
   const row = {
     bookId: a.bookId,
     userCode: userCode(name, Date.now()),
@@ -112,6 +142,24 @@ export async function updateBookUser(
   requireAdmin(a);
   const name = input.userName.trim();
   const role = input.role || NEW_USER_ROLE;
+  const [before] = await db
+    .select()
+    .from(bookUsers)
+    .where(and(eq(bookUsers.bookId, a.bookId), eq(bookUsers.userCode, code)));
+  if (before) {
+    if (await nameTaken(db, a.bookId, name, code)) throw new UserError(`Error: ${um.exists(name)}`);
+    const stillAdmin = isAdminRole(role) && input.isActive;
+    // Your own role and status stay as they are: a change would sign you out at once.
+    if (
+      before.userName === a.userName &&
+      (role.toLowerCase() !== before.role.toLowerCase() || !input.isActive)
+    )
+      throw new UserError(um.notSelfChange);
+    // At least one active Admin must remain (MDA allowed none: Q-54).
+    if (isAdminRole(before.role) && before.isActive && !stillAdmin)
+      if ((await otherActiveAdmins(db, a.bookId, code)) === 0)
+        throw new UserError(um.lastAdminChange);
+  }
   const data: Partial<typeof bookUsers.$inferInsert> = {
     userName: name,
     role,
@@ -200,23 +248,46 @@ export async function listSeries(db: Db, bookId: string): Promise<SeriesRow[]> {
   );
 }
 
-/** Changes a series' prefix and width (Admin only). Numbers already used keep their form; the
- *  next one is counted under the new prefix. */
+/** Changes a series' prefix and width (Admin only), and optionally the number it starts from.
+ *  Numbers already used keep their form; the next one is counted under the new prefix. A start
+ *  below a number already used is refused (MDA's counter never moved: Q-08, fixed 2026-11-14). */
 export async function updateSeries(
   db: Db,
   a: Actor,
   type: string,
-  input: { prefix: string; width: number },
+  input: { prefix: string; width: number; startAt?: number },
 ): Promise<void> {
   requireAdmin(a, sm.adminOnly);
   const problem = seriesProblem(input.prefix, input.width);
   if (problem) throw new UserError(problem, { prefix: problem });
+  if (input.startAt !== undefined && (!Number.isInteger(input.startAt) || input.startAt < 1))
+    throw new UserError(sm.startNumber, { startAt: sm.startNumber });
   const prefix = input.prefix.trim().toUpperCase();
-  await db
-    .update(voucherSeries)
-    .set({ prefix, width: input.width })
-    .where(and(eq(voucherSeries.bookId, a.bookId), eq(voucherSeries.vchrType, type)));
-  await log(db, a, 'UPDATE', 'VchrSeries', type, `Prefix ${prefix}, width ${input.width}`);
+  await db.transaction(async (raw) => {
+    const tx = raw as unknown as Db;
+    const where = and(eq(voucherSeries.bookId, a.bookId), eq(voucherSeries.vchrType, type));
+    await tx.update(voucherSeries).set({ prefix, width: input.width }).where(where);
+    if (input.startAt !== undefined) {
+      // The lowest it may start from: the next number after those already used.
+      await tx.update(voucherSeries).set({ lastNo: 0 }).where(where);
+      const next = await nextOf(tx, a.bookId, type);
+      const lowest = parseInt(next.slice(prefix.length).replace(/\D/g, ''), 10) || 1;
+      if (input.startAt < lowest)
+        throw new UserError(sm.startTooLow(lowest), { startAt: sm.startTooLow(lowest) });
+      await tx
+        .update(voucherSeries)
+        .set({ lastNo: input.startAt - 1 })
+        .where(where);
+    }
+  });
+  await log(
+    db,
+    a,
+    'UPDATE',
+    'VchrSeries',
+    type,
+    `Prefix ${prefix}, width ${input.width}${input.startAt ? `, start ${input.startAt}` : ''}`,
+  );
 }
 
 // ── Logs ───────────────────────────────────────────────────────────────────────

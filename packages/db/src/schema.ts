@@ -266,6 +266,12 @@ export const ledgers = pgTable(
     email: text('email'),
     gstin: text('gstin'),
     pan: text('pan'),
+    // Not in MDA's Maacct (its form showed these but never saved them); saved since 2026-11-14.
+    country: text('country'),
+    aadhar: text('aadhar'),
+    /** The Sales Executive master's code (misc_list, type 'SalesExec'). */
+    salesExec: text('sales_exec'),
+    regType: text('reg_type'),
     creditDays: bigint('credit_days', { mode: 'number' }).notNull().default(0),
     creditLimit: numeric('credit_limit', { precision: 14, scale: 2 }).notNull().default('0'),
     isActive: boolean('is_active').notNull().default(true),

@@ -188,7 +188,7 @@ type Env = { Variables: { accountId: string; accountEmail: string } };
 const BOOK_COOKIE = 'qi_book';
 type StoredBook = BookSession & { accountId: string };
 
-/** `:kind` (and `:code`) of /api/misc-masters: 'unit' or 'godown'; any other kind is a 404. */
+/** `:kind` (and `:code`) of /api/misc-masters: 'unit', 'godown' or 'salesExec'; else a 404. */
 const params = <T extends z.ZodRawShape>(shape: T) =>
   zValidator('param', z.object(shape), (result, c) => {
     if (!result.success) return c.json({ message: 'Not found' }, 404);
@@ -555,7 +555,7 @@ export function createApp(opts: AppOptions) {
       return c.json({ ok: true });
     })
 
-    // ── Unit Master and Godown (Misc_Master rows of type 'Unit' / 'Godown') ────────
+    // ── Unit Master, Godown, Sales Executive (Misc_Master rows) ──────────────────
     .get('/api/misc-masters/:kind', kindParam, async (c) => {
       const book = await readBook(c);
       if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
@@ -706,19 +706,27 @@ export function createApp(opts: AppOptions) {
     })
     .get(
       '/api/vouchers/print',
-      zValidator('query', z.object({ no: z.string(), kind: z.enum(['receipt', 'payment']) })),
+      zValidator(
+        'query',
+        z.object({
+          no: z.string(),
+          kind: z.enum(['receipt', 'payment', 'journal', 'debit', 'credit']),
+        }),
+      ),
       async (c) => {
         const book = await readBook(c);
         if (!book) return c.json({ message: 'Not logged in to a book.' }, 401);
         const { no, kind } = c.req.valid('query');
-        const receipt = kind === 'receipt';
-        const v = await voucherForPrint(
-          db,
-          book.bookId,
-          no.trim(),
-          receipt ? ['RCP', 'BNK'] : ['PAY', 'BPAY'],
-          receipt ? 'cr' : 'dr',
-        );
+        const [types, side] = (
+          {
+            receipt: [['RCP', 'BNK'], 'cr'],
+            payment: [['PAY', 'BPAY'], 'dr'],
+            journal: [['JNL'], null],
+            debit: [['DRN'], 'dr'],
+            credit: [['CRN'], 'cr'],
+          } as const
+        )[kind];
+        const v = await voucherForPrint(db, book.bookId, no.trim(), [...types], side);
         return c.json({ voucher: v });
       },
     )

@@ -2,6 +2,13 @@
 // (docs/LOGIC-SPEC.md §7, Q-16) and lib/sub_group_master_page.dart (Q-18). They share one table
 // (Maacct2 / account_groups): Group Master only ever sees ParentGrp='Parent' rows, Sub Group
 // Master only the rest.
+//
+// Changed 2026-11-14 (user's request: every option must work):
+//   - Duplicate names are checked whatever their case (was Q-15).
+//   - A user-made group can be updated and removed; a built-in group can be renamed, but its
+//     type is fixed and it can't be removed (was Q-16).
+//   - A group or sub group with sub groups or ledgers under it can't be removed (was Q-17).
+//   - Moving a sub group gives it (and everything under it) the new parent's type (was Q-18).
 
 import {
   DEFAULT_GROUPS,
@@ -11,12 +18,13 @@ import {
   groupCodePrefix,
   groupFieldErrors,
   groupMessages,
+  isBuiltInGroup,
   nextCode,
   subGroupFieldErrors,
   subGroupMessages,
   type GroupType,
 } from '@qi/core';
-import { and, asc, eq, ne, schema, type Db } from '@qi/db';
+import { and, asc, eq, inArray, ne, schema, sql, type Db } from '@qi/db';
 import { UserError, assertNoFieldErrors } from './errors.ts';
 
 const { accountGroups } = schema;
@@ -26,20 +34,56 @@ export type GroupInput = { name: string; type?: GroupType; isLedger?: 'Yes' | 'N
 export type SubGroupInput = { name: string; under?: string };
 export type SubGroup = AccountGroup & { parentGrpName: string | null };
 
-/** Whether another row in this book already has this name (docs/LOGIC-SPEC.md §7, case-sensitive). */
+/** Whether another row in this book already has this name, whatever its case. */
 async function nameClash(
   db: Db,
   bookId: string,
   name: string,
   excludeCode?: string,
 ): Promise<boolean> {
-  const clauses = [eq(accountGroups.bookId, bookId), eq(accountGroups.grpName, name)];
+  const clauses = [
+    eq(accountGroups.bookId, bookId),
+    sql`lower(${accountGroups.grpName}) = ${name.toLowerCase()}`,
+  ];
   if (excludeCode) clauses.push(ne(accountGroups.grpCode, excludeCode));
   const [clash] = await db
     .select({ id: accountGroups.id })
     .from(accountGroups)
     .where(and(...clauses));
   return !!clash;
+}
+
+/** What sits directly under a group: its sub groups and its ledgers. */
+async function contents(db: Db, bookId: string, grpCode: string) {
+  const n = sql<number>`count(*)::int`;
+  const [subs] = await db
+    .select({ n })
+    .from(accountGroups)
+    .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.parentGrp, grpCode)));
+  const [leds] = await db
+    .select({ n })
+    .from(schema.ledgers)
+    .where(and(eq(schema.ledgers.bookId, bookId), eq(schema.ledgers.grpCode, grpCode)));
+  return { subGroups: Number(subs?.n ?? 0), ledgers: Number(leds?.n ?? 0) };
+}
+
+/** Gives a group's whole family of sub groups its type. */
+async function retypeDescendants(db: Db, bookId: string, grpCode: string, grpType: string) {
+  let level = [grpCode];
+  const seen = new Set(level);
+  while (level.length) {
+    const kids = await db
+      .select({ grpCode: accountGroups.grpCode })
+      .from(accountGroups)
+      .where(and(eq(accountGroups.bookId, bookId), inArray(accountGroups.parentGrp, level)));
+    level = kids.map((k) => k.grpCode).filter((c) => !seen.has(c));
+    level.forEach((c) => seen.add(c));
+    if (level.length)
+      await db
+        .update(accountGroups)
+        .set({ grpType })
+        .where(and(eq(accountGroups.bookId, bookId), inArray(accountGroups.grpCode, level)));
+  }
 }
 
 /**
@@ -50,9 +94,13 @@ async function nameClash(
 export const listAllGroups = (
   db: Db,
   bookId: string,
-): Promise<{ grpCode: string; grpName: string }[]> =>
+): Promise<{ grpCode: string; grpName: string; parentGrp: string }[]> =>
   db
-    .select({ grpCode: accountGroups.grpCode, grpName: accountGroups.grpName })
+    .select({
+      grpCode: accountGroups.grpCode,
+      grpName: accountGroups.grpName,
+      parentGrp: accountGroups.parentGrp,
+    })
     .from(accountGroups)
     .where(eq(accountGroups.bookId, bookId))
     .orderBy(asc(accountGroups.grpName));
@@ -107,7 +155,8 @@ export async function createGroup(
   return row!;
 }
 
-/** Update: GrpName, GrpType and IsLedger only — ParentGrp is forced back to 'Parent'. */
+/** Update: GrpName, GrpType and IsLedger only — ParentGrp is forced back to 'Parent'. A
+ *  built-in group keeps its type; a new type passes down to its sub groups. */
 export async function updateGroup(
   db: Db,
   bookId: string,
@@ -120,6 +169,12 @@ export async function updateGroup(
   if (await nameClash(db, bookId, name, grpCode)) {
     throw new UserError(groupMessages.duplicateOnUpdate, { name: groupMessages.duplicateOnUpdate });
   }
+  const [before] = await db
+    .select({ grpType: accountGroups.grpType })
+    .from(accountGroups)
+    .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)));
+  if (before && isBuiltInGroup(grpCode) && before.grpType !== input.type)
+    throw new UserError(groupMessages.builtInType, { type: groupMessages.builtInType });
 
   const [row] = await db
     .update(accountGroups)
@@ -132,21 +187,22 @@ export async function updateGroup(
     .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)))
     .returning();
   if (!row) throw new UserError(groupMessages.noneFound);
+  if (before && before.grpType !== row.grpType)
+    await retypeDescendants(db, bookId, grpCode, row.grpType);
   return row;
 }
 
-/**
- * Remove. Every group Group Master can load has ParentGrp='Parent', and MDA never lets those
- * be removed from here (group_master_page.dart:178-198) — so this always refuses. Kept as a
- * real check, not just a disabled button, in case it is ever called directly (Q-16).
- */
+/** Remove a group the user made, once nothing is under it. Built-in groups stay. */
 export async function deleteGroup(db: Db, bookId: string, grpCode: string): Promise<void> {
   const [row] = await db
     .select()
     .from(accountGroups)
     .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)));
   if (!row) return;
-  if (row.parentGrp === TOP_LEVEL) throw new UserError(groupMessages.notDeletable);
+  if (isBuiltInGroup(grpCode)) throw new UserError(groupMessages.notDeletable);
+  const c = await contents(db, bookId, grpCode);
+  if (c.subGroups || c.ledgers)
+    throw new UserError(groupMessages.inUse(row.grpName, c.subGroups, c.ledgers));
   await db
     .delete(accountGroups)
     .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)));
@@ -221,10 +277,8 @@ export async function createSubGroup(
   return row!;
 }
 
-/**
- * Update: GrpName and ParentGrp only. Re-parenting never touches GrpType — it keeps whatever
- * type the sub group already had, even under a parent of a different type (Q-18, kept as is).
- */
+/** Update: GrpName and ParentGrp. Moved under another parent, it (and everything under it)
+ *  takes that parent's type. */
 export async function updateSubGroup(
   db: Db,
   bookId: string,
@@ -239,19 +293,54 @@ export async function updateSubGroup(
       name: subGroupMessages.duplicateOnUpdate(name),
     });
   }
+  if (input.under === grpCode)
+    throw new UserError(subGroupMessages.underItself, { under: subGroupMessages.underItself });
+  const [parent] = await db
+    .select({ grpType: accountGroups.grpType })
+    .from(accountGroups)
+    .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, input.under!)));
 
   const [row] = await db
     .update(accountGroups)
-    .set({ grpName: name, parentGrp: input.under! })
+    .set({ grpName: name, parentGrp: input.under!, ...(parent ? { grpType: parent.grpType } : {}) })
     .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)))
     .returning();
   if (!row) throw new UserError(groupMessages.noneFound);
+  await retypeDescendants(db, bookId, grpCode, row.grpType);
   return row;
 }
 
-/** Remove: no guard at all, unlike Group Master — MDA just deletes it (docs/LOGIC-SPEC.md Q-17). */
+/** Remove, once no sub group or ledger is under it. */
 export async function deleteSubGroup(db: Db, bookId: string, grpCode: string): Promise<void> {
+  const [row] = await db
+    .select({ grpName: accountGroups.grpName })
+    .from(accountGroups)
+    .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)));
+  if (!row) return;
+  if (isBuiltInGroup(grpCode)) throw new UserError(groupMessages.notDeletable);
+  const c = await contents(db, bookId, grpCode);
+  if (c.subGroups || c.ledgers)
+    throw new UserError(subGroupMessages.inUse(row.grpName, c.subGroups, c.ledgers));
   await db
     .delete(accountGroups)
     .where(and(eq(accountGroups.bookId, bookId), eq(accountGroups.grpCode, grpCode)));
+}
+
+/** The codes of groups and every sub group under them, at any depth (MDA went one level down
+ *  only, so a party in a sub group of a sub group was missing from the lists: Q-26). */
+export async function groupFamilyCodes(db: Db, bookId: string, roots: string[]): Promise<string[]> {
+  const all = await db
+    .select({ code: accountGroups.grpCode, parent: accountGroups.parentGrp })
+    .from(accountGroups)
+    .where(eq(accountGroups.bookId, bookId));
+  const family = new Set(roots.filter((r) => all.some((g) => g.code === r)));
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const g of all)
+      if (!family.has(g.code) && family.has(g.parent)) {
+        family.add(g.code);
+        grew = true;
+      }
+  }
+  return [...family];
 }
